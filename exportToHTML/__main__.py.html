@@ -1,0 +1,32 @@
+<html>
+<head>
+<title>__main__.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cf8e6d;}
+.s1 { color: #bcbec4;}
+.s2 { color: #bcbec4;}
+.s3 { color: #6aab73;}
+</style>
+</head>
+<body bgcolor="#1e1f22">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+__main__.py</font>
+</center></td></tr></table>
+<pre><span class="s0">import </span><span class="s1">argparse</span>
+
+<span class="s0">from </span><span class="s1">pip</span><span class="s2">.</span><span class="s1">_vendor</span><span class="s2">.</span><span class="s1">certifi </span><span class="s0">import </span><span class="s1">contents</span><span class="s2">, </span><span class="s1">where</span>
+
+<span class="s1">parser </span><span class="s2">= </span><span class="s1">argparse</span><span class="s2">.</span><span class="s1">ArgumentParser</span><span class="s2">()</span>
+<span class="s1">parser</span><span class="s2">.</span><span class="s1">add_argument</span><span class="s2">(</span><span class="s3">&quot;-c&quot;</span><span class="s2">, </span><span class="s3">&quot;--contents&quot;</span><span class="s2">, </span><span class="s1">action</span><span class="s2">=</span><span class="s3">&quot;store_true&quot;</span><span class="s2">)</span>
+<span class="s1">args </span><span class="s2">= </span><span class="s1">parser</span><span class="s2">.</span><span class="s1">parse_args</span><span class="s2">()</span>
+
+<span class="s0">if </span><span class="s1">args</span><span class="s2">.</span><span class="s1">contents</span><span class="s2">:</span>
+    <span class="s1">print</span><span class="s2">(</span><span class="s1">contents</span><span class="s2">())</span>
+<span class="s0">else</span><span class="s2">:</span>
+    <span class="s1">print</span><span class="s2">(</span><span class="s1">where</span><span class="s2">())</span>
+</pre>
+</body>
+</html>

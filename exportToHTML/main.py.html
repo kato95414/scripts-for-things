@@ -1,0 +1,52 @@
+<html>
+<head>
+<title>main.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cf8e6d;}
+.s1 { color: #bcbec4;}
+.s2 { color: #bcbec4;}
+.s3 { color: #6aab73;}
+.s4 { color: #7a7e85;}
+.s5 { color: #2aacb8;}
+</style>
+</head>
+<body bgcolor="#1e1f22">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+main.py</font>
+</center></td></tr></table>
+<pre><span class="s0">import </span><span class="s1">shutil</span>
+<span class="s0">import </span><span class="s1">json</span>
+<span class="s0">import </span><span class="s1">sys</span>
+<span class="s0">from </span><span class="s1">utils</span><span class="s2">.</span><span class="s1">nmap_scan </span><span class="s0">import </span><span class="s1">run_nmap</span>
+<span class="s0">from </span><span class="s1">utils</span><span class="s2">.</span><span class="s1">parse_results </span><span class="s0">import </span><span class="s1">parse_nmap_output</span>
+
+<span class="s0">if </span><span class="s1">__name__ </span><span class="s2">== </span><span class="s3">&quot;__main__&quot;</span><span class="s2">:</span>
+    <span class="s4"># Prompt the user for the target IP range or accept it as a command-line argument</span>
+    <span class="s0">if </span><span class="s1">len</span><span class="s2">(</span><span class="s1">sys</span><span class="s2">.</span><span class="s1">argv</span><span class="s2">) &gt; </span><span class="s5">1</span><span class="s2">:</span>
+        <span class="s1">target_range </span><span class="s2">= </span><span class="s1">sys</span><span class="s2">.</span><span class="s1">argv</span><span class="s2">[</span><span class="s5">1</span><span class="s2">]</span>
+    <span class="s0">else</span><span class="s2">:</span>
+        <span class="s1">target_range </span><span class="s2">= </span><span class="s1">input</span><span class="s2">(</span><span class="s3">&quot;who the ops? IP/range (e.g., 192.168.1.0/24 or 192.168.1.1-10): &quot;</span><span class="s2">).</span><span class="s1">strip</span><span class="s2">()</span>
+
+    <span class="s4"># Check if Nmap is installed</span>
+    <span class="s0">if </span><span class="s1">shutil</span><span class="s2">.</span><span class="s1">which</span><span class="s2">(</span><span class="s3">'nmap'</span><span class="s2">) </span><span class="s0">is None</span><span class="s2">:</span>
+        <span class="s1">print</span><span class="s2">(</span><span class="s3">&quot;you done goofed. nmap isnt installed silly.&quot;</span><span class="s2">)</span>
+        <span class="s1">sys</span><span class="s2">.</span><span class="s1">exit</span><span class="s2">(</span><span class="s5">1</span><span class="s2">)</span>
+
+    <span class="s4"># Run Nmap scan</span>
+    <span class="s1">nmap_output </span><span class="s2">= </span><span class="s1">run_nmap</span><span class="s2">(</span><span class="s1">target_range</span><span class="s2">)</span>
+
+    <span class="s0">if </span><span class="s1">nmap_output </span><span class="s0">is None</span><span class="s2">:</span>
+        <span class="s1">print</span><span class="s2">(</span><span class="s3">&quot;ya got caught. Exiting.&quot;</span><span class="s2">)</span>
+        <span class="s1">sys</span><span class="s2">.</span><span class="s1">exit</span><span class="s2">(</span><span class="s5">1</span><span class="s2">)</span>
+
+    <span class="s4"># Parse the Nmap output</span>
+    <span class="s1">hosts_data </span><span class="s2">= </span><span class="s1">parse_nmap_output</span><span class="s2">(</span><span class="s1">nmap_output</span><span class="s2">)</span>
+
+    <span class="s4"># Output results as JSON</span>
+    <span class="s1">json_output </span><span class="s2">= </span><span class="s1">json</span><span class="s2">.</span><span class="s1">dumps</span><span class="s2">(</span><span class="s1">hosts_data</span><span class="s2">, </span><span class="s1">indent</span><span class="s2">=</span><span class="s5">4</span><span class="s2">)</span>
+    <span class="s1">print</span><span class="s2">(</span><span class="s1">json_output</span><span class="s2">)</span></pre>
+</body>
+</html>

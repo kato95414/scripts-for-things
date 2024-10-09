@@ -1,0 +1,117 @@
+<html>
+<head>
+<title>bar.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cf8e6d;}
+.s1 { color: #bcbec4;}
+.s2 { color: #bcbec4;}
+.s3 { color: #7a7e85;}
+.s4 { color: #6aab73;}
+.s5 { color: #5f826b; font-style: italic;}
+.s6 { color: #2aacb8;}
+</style>
+</head>
+<body bgcolor="#1e1f22">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+bar.py</font>
+</center></td></tr></table>
+<pre><span class="s0">from </span><span class="s1">typing </span><span class="s0">import </span><span class="s1">Optional</span><span class="s2">, </span><span class="s1">Union</span>
+
+<span class="s0">from </span><span class="s2">.</span><span class="s1">color </span><span class="s0">import </span><span class="s1">Color</span>
+<span class="s0">from </span><span class="s2">.</span><span class="s1">console </span><span class="s0">import </span><span class="s1">Console</span><span class="s2">, </span><span class="s1">ConsoleOptions</span><span class="s2">, </span><span class="s1">RenderResult</span>
+<span class="s0">from </span><span class="s2">.</span><span class="s1">jupyter </span><span class="s0">import </span><span class="s1">JupyterMixin</span>
+<span class="s0">from </span><span class="s2">.</span><span class="s1">measure </span><span class="s0">import </span><span class="s1">Measurement</span>
+<span class="s0">from </span><span class="s2">.</span><span class="s1">segment </span><span class="s0">import </span><span class="s1">Segment</span>
+<span class="s0">from </span><span class="s2">.</span><span class="s1">style </span><span class="s0">import </span><span class="s1">Style</span>
+
+<span class="s3"># There are left-aligned characters for 1/8 to 7/8, but</span>
+<span class="s3"># the right-aligned characters exist only for 1/8 and 4/8.</span>
+<span class="s1">BEGIN_BLOCK_ELEMENTS </span><span class="s2">= [</span><span class="s4">&quot;█&quot;</span><span class="s2">, </span><span class="s4">&quot;█&quot;</span><span class="s2">, </span><span class="s4">&quot;█&quot;</span><span class="s2">, </span><span class="s4">&quot;▐&quot;</span><span class="s2">, </span><span class="s4">&quot;▐&quot;</span><span class="s2">, </span><span class="s4">&quot;▐&quot;</span><span class="s2">, </span><span class="s4">&quot;▕&quot;</span><span class="s2">, </span><span class="s4">&quot;▕&quot;</span><span class="s2">]</span>
+<span class="s1">END_BLOCK_ELEMENTS </span><span class="s2">= [</span><span class="s4">&quot; &quot;</span><span class="s2">, </span><span class="s4">&quot;▏&quot;</span><span class="s2">, </span><span class="s4">&quot;▎&quot;</span><span class="s2">, </span><span class="s4">&quot;▍&quot;</span><span class="s2">, </span><span class="s4">&quot;▌&quot;</span><span class="s2">, </span><span class="s4">&quot;▋&quot;</span><span class="s2">, </span><span class="s4">&quot;▊&quot;</span><span class="s2">, </span><span class="s4">&quot;▉&quot;</span><span class="s2">]</span>
+<span class="s1">FULL_BLOCK </span><span class="s2">= </span><span class="s4">&quot;█&quot;</span>
+
+
+<span class="s0">class </span><span class="s1">Bar</span><span class="s2">(</span><span class="s1">JupyterMixin</span><span class="s2">):</span>
+    <span class="s5">&quot;&quot;&quot;Renders a solid block bar. 
+ 
+    Args: 
+        size (float): Value for the end of the bar. 
+        begin (float): Begin point (between 0 and size, inclusive). 
+        end (float): End point (between 0 and size, inclusive). 
+        width (int, optional): Width of the bar, or ``None`` for maximum width. Defaults to None. 
+        color (Union[Color, str], optional): Color of the bar. Defaults to &quot;default&quot;. 
+        bgcolor (Union[Color, str], optional): Color of bar background. Defaults to &quot;default&quot;. 
+    &quot;&quot;&quot;</span>
+
+    <span class="s0">def </span><span class="s1">__init__</span><span class="s2">(</span>
+        <span class="s1">self</span><span class="s2">,</span>
+        <span class="s1">size</span><span class="s2">: </span><span class="s1">float</span><span class="s2">,</span>
+        <span class="s1">begin</span><span class="s2">: </span><span class="s1">float</span><span class="s2">,</span>
+        <span class="s1">end</span><span class="s2">: </span><span class="s1">float</span><span class="s2">,</span>
+        <span class="s2">*,</span>
+        <span class="s1">width</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">int</span><span class="s2">] = </span><span class="s0">None</span><span class="s2">,</span>
+        <span class="s1">color</span><span class="s2">: </span><span class="s1">Union</span><span class="s2">[</span><span class="s1">Color</span><span class="s2">, </span><span class="s1">str</span><span class="s2">] = </span><span class="s4">&quot;default&quot;</span><span class="s2">,</span>
+        <span class="s1">bgcolor</span><span class="s2">: </span><span class="s1">Union</span><span class="s2">[</span><span class="s1">Color</span><span class="s2">, </span><span class="s1">str</span><span class="s2">] = </span><span class="s4">&quot;default&quot;</span><span class="s2">,</span>
+    <span class="s2">):</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">size </span><span class="s2">= </span><span class="s1">size</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">begin </span><span class="s2">= </span><span class="s1">max</span><span class="s2">(</span><span class="s1">begin</span><span class="s2">, </span><span class="s6">0</span><span class="s2">)</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">end </span><span class="s2">= </span><span class="s1">min</span><span class="s2">(</span><span class="s1">end</span><span class="s2">, </span><span class="s1">size</span><span class="s2">)</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">width </span><span class="s2">= </span><span class="s1">width</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">style </span><span class="s2">= </span><span class="s1">Style</span><span class="s2">(</span><span class="s1">color</span><span class="s2">=</span><span class="s1">color</span><span class="s2">, </span><span class="s1">bgcolor</span><span class="s2">=</span><span class="s1">bgcolor</span><span class="s2">)</span>
+
+    <span class="s0">def </span><span class="s1">__repr__</span><span class="s2">(</span><span class="s1">self</span><span class="s2">) </span><span class="s1">-&gt; str</span><span class="s2">:</span>
+        <span class="s0">return </span><span class="s4">f&quot;Bar(</span><span class="s0">{</span><span class="s1">self</span><span class="s2">.</span><span class="s1">size</span><span class="s0">}</span><span class="s4">, </span><span class="s0">{</span><span class="s1">self</span><span class="s2">.</span><span class="s1">begin</span><span class="s0">}</span><span class="s4">, </span><span class="s0">{</span><span class="s1">self</span><span class="s2">.</span><span class="s1">end</span><span class="s0">}</span><span class="s4">)&quot;</span>
+
+    <span class="s0">def </span><span class="s1">__rich_console__</span><span class="s2">(</span>
+        <span class="s1">self</span><span class="s2">, </span><span class="s1">console</span><span class="s2">: </span><span class="s1">Console</span><span class="s2">, </span><span class="s1">options</span><span class="s2">: </span><span class="s1">ConsoleOptions</span>
+    <span class="s2">) </span><span class="s1">-&gt; RenderResult</span><span class="s2">:</span>
+
+        <span class="s1">width </span><span class="s2">= </span><span class="s1">min</span><span class="s2">(</span>
+            <span class="s1">self</span><span class="s2">.</span><span class="s1">width </span><span class="s0">if </span><span class="s1">self</span><span class="s2">.</span><span class="s1">width </span><span class="s0">is not None else </span><span class="s1">options</span><span class="s2">.</span><span class="s1">max_width</span><span class="s2">,</span>
+            <span class="s1">options</span><span class="s2">.</span><span class="s1">max_width</span><span class="s2">,</span>
+        <span class="s2">)</span>
+
+        <span class="s0">if </span><span class="s1">self</span><span class="s2">.</span><span class="s1">begin </span><span class="s2">&gt;= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">end</span><span class="s2">:</span>
+            <span class="s0">yield </span><span class="s1">Segment</span><span class="s2">(</span><span class="s4">&quot; &quot; </span><span class="s2">* </span><span class="s1">width</span><span class="s2">, </span><span class="s1">self</span><span class="s2">.</span><span class="s1">style</span><span class="s2">)</span>
+            <span class="s0">yield </span><span class="s1">Segment</span><span class="s2">.</span><span class="s1">line</span><span class="s2">()</span>
+            <span class="s0">return</span>
+
+        <span class="s1">prefix_complete_eights </span><span class="s2">= </span><span class="s1">int</span><span class="s2">(</span><span class="s1">width </span><span class="s2">* </span><span class="s6">8 </span><span class="s2">* </span><span class="s1">self</span><span class="s2">.</span><span class="s1">begin </span><span class="s2">/ </span><span class="s1">self</span><span class="s2">.</span><span class="s1">size</span><span class="s2">)</span>
+        <span class="s1">prefix_bar_count </span><span class="s2">= </span><span class="s1">prefix_complete_eights </span><span class="s2">// </span><span class="s6">8</span>
+        <span class="s1">prefix_eights_count </span><span class="s2">= </span><span class="s1">prefix_complete_eights </span><span class="s2">% </span><span class="s6">8</span>
+
+        <span class="s1">body_complete_eights </span><span class="s2">= </span><span class="s1">int</span><span class="s2">(</span><span class="s1">width </span><span class="s2">* </span><span class="s6">8 </span><span class="s2">* </span><span class="s1">self</span><span class="s2">.</span><span class="s1">end </span><span class="s2">/ </span><span class="s1">self</span><span class="s2">.</span><span class="s1">size</span><span class="s2">)</span>
+        <span class="s1">body_bar_count </span><span class="s2">= </span><span class="s1">body_complete_eights </span><span class="s2">// </span><span class="s6">8</span>
+        <span class="s1">body_eights_count </span><span class="s2">= </span><span class="s1">body_complete_eights </span><span class="s2">% </span><span class="s6">8</span>
+
+        <span class="s3"># When start and end fall into the same cell, we ideally should render</span>
+        <span class="s3"># a symbol that's &quot;center-aligned&quot;, but there is no good symbol in Unicode.</span>
+        <span class="s3"># In this case, we fall back to right-aligned block symbol for simplicity.</span>
+
+        <span class="s1">prefix </span><span class="s2">= </span><span class="s4">&quot; &quot; </span><span class="s2">* </span><span class="s1">prefix_bar_count</span>
+        <span class="s0">if </span><span class="s1">prefix_eights_count</span><span class="s2">:</span>
+            <span class="s1">prefix </span><span class="s2">+= </span><span class="s1">BEGIN_BLOCK_ELEMENTS</span><span class="s2">[</span><span class="s1">prefix_eights_count</span><span class="s2">]</span>
+
+        <span class="s1">body </span><span class="s2">= </span><span class="s1">FULL_BLOCK </span><span class="s2">* </span><span class="s1">body_bar_count</span>
+        <span class="s0">if </span><span class="s1">body_eights_count</span><span class="s2">:</span>
+            <span class="s1">body </span><span class="s2">+= </span><span class="s1">END_BLOCK_ELEMENTS</span><span class="s2">[</span><span class="s1">body_eights_count</span><span class="s2">]</span>
+
+        <span class="s1">suffix </span><span class="s2">= </span><span class="s4">&quot; &quot; </span><span class="s2">* (</span><span class="s1">width </span><span class="s2">- </span><span class="s1">len</span><span class="s2">(</span><span class="s1">body</span><span class="s2">))</span>
+
+        <span class="s0">yield </span><span class="s1">Segment</span><span class="s2">(</span><span class="s1">prefix </span><span class="s2">+ </span><span class="s1">body</span><span class="s2">[</span><span class="s1">len</span><span class="s2">(</span><span class="s1">prefix</span><span class="s2">) :] + </span><span class="s1">suffix</span><span class="s2">, </span><span class="s1">self</span><span class="s2">.</span><span class="s1">style</span><span class="s2">)</span>
+        <span class="s0">yield </span><span class="s1">Segment</span><span class="s2">.</span><span class="s1">line</span><span class="s2">()</span>
+
+    <span class="s0">def </span><span class="s1">__rich_measure__</span><span class="s2">(</span>
+        <span class="s1">self</span><span class="s2">, </span><span class="s1">console</span><span class="s2">: </span><span class="s1">Console</span><span class="s2">, </span><span class="s1">options</span><span class="s2">: </span><span class="s1">ConsoleOptions</span>
+    <span class="s2">) </span><span class="s1">-&gt; Measurement</span><span class="s2">:</span>
+        <span class="s0">return </span><span class="s2">(</span>
+            <span class="s1">Measurement</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">width</span><span class="s2">, </span><span class="s1">self</span><span class="s2">.</span><span class="s1">width</span><span class="s2">)</span>
+            <span class="s0">if </span><span class="s1">self</span><span class="s2">.</span><span class="s1">width </span><span class="s0">is not None</span>
+            <span class="s0">else </span><span class="s1">Measurement</span><span class="s2">(</span><span class="s6">4</span><span class="s2">, </span><span class="s1">options</span><span class="s2">.</span><span class="s1">max_width</span><span class="s2">)</span>
+        <span class="s2">)</span>
+</pre>
+</body>
+</html>

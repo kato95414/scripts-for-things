@@ -1,0 +1,174 @@
+<html>
+<head>
+<title>terminal_theme.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cf8e6d;}
+.s1 { color: #bcbec4;}
+.s2 { color: #bcbec4;}
+.s3 { color: #5f826b; font-style: italic;}
+.s4 { color: #2aacb8;}
+</style>
+</head>
+<body bgcolor="#1e1f22">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+terminal_theme.py</font>
+</center></td></tr></table>
+<pre><span class="s0">from </span><span class="s1">typing </span><span class="s0">import </span><span class="s1">List</span><span class="s2">, </span><span class="s1">Optional</span><span class="s2">, </span><span class="s1">Tuple</span>
+
+<span class="s0">from </span><span class="s2">.</span><span class="s1">color_triplet </span><span class="s0">import </span><span class="s1">ColorTriplet</span>
+<span class="s0">from </span><span class="s2">.</span><span class="s1">palette </span><span class="s0">import </span><span class="s1">Palette</span>
+
+<span class="s1">_ColorTuple </span><span class="s2">= </span><span class="s1">Tuple</span><span class="s2">[</span><span class="s1">int</span><span class="s2">, </span><span class="s1">int</span><span class="s2">, </span><span class="s1">int</span><span class="s2">]</span>
+
+
+<span class="s0">class </span><span class="s1">TerminalTheme</span><span class="s2">:</span>
+    <span class="s3">&quot;&quot;&quot;A color theme used when exporting console content. 
+ 
+    Args: 
+        background (Tuple[int, int, int]): The background color. 
+        foreground (Tuple[int, int, int]): The foreground (text) color. 
+        normal (List[Tuple[int, int, int]]): A list of 8 normal intensity colors. 
+        bright (List[Tuple[int, int, int]], optional): A list of 8 bright colors, or None 
+            to repeat normal intensity. Defaults to None. 
+    &quot;&quot;&quot;</span>
+
+    <span class="s0">def </span><span class="s1">__init__</span><span class="s2">(</span>
+        <span class="s1">self</span><span class="s2">,</span>
+        <span class="s1">background</span><span class="s2">: </span><span class="s1">_ColorTuple</span><span class="s2">,</span>
+        <span class="s1">foreground</span><span class="s2">: </span><span class="s1">_ColorTuple</span><span class="s2">,</span>
+        <span class="s1">normal</span><span class="s2">: </span><span class="s1">List</span><span class="s2">[</span><span class="s1">_ColorTuple</span><span class="s2">],</span>
+        <span class="s1">bright</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">List</span><span class="s2">[</span><span class="s1">_ColorTuple</span><span class="s2">]] = </span><span class="s0">None</span><span class="s2">,</span>
+    <span class="s2">) </span><span class="s1">-&gt; </span><span class="s0">None</span><span class="s2">:</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">background_color </span><span class="s2">= </span><span class="s1">ColorTriplet</span><span class="s2">(*</span><span class="s1">background</span><span class="s2">)</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">foreground_color </span><span class="s2">= </span><span class="s1">ColorTriplet</span><span class="s2">(*</span><span class="s1">foreground</span><span class="s2">)</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">ansi_colors </span><span class="s2">= </span><span class="s1">Palette</span><span class="s2">(</span><span class="s1">normal </span><span class="s2">+ (</span><span class="s1">bright </span><span class="s0">or </span><span class="s1">normal</span><span class="s2">))</span>
+
+
+<span class="s1">DEFAULT_TERMINAL_THEME </span><span class="s2">= </span><span class="s1">TerminalTheme</span><span class="s2">(</span>
+    <span class="s2">(</span><span class="s4">255</span><span class="s2">, </span><span class="s4">255</span><span class="s2">, </span><span class="s4">255</span><span class="s2">),</span>
+    <span class="s2">(</span><span class="s4">0</span><span class="s2">, </span><span class="s4">0</span><span class="s2">, </span><span class="s4">0</span><span class="s2">),</span>
+    <span class="s2">[</span>
+        <span class="s2">(</span><span class="s4">0</span><span class="s2">, </span><span class="s4">0</span><span class="s2">, </span><span class="s4">0</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">128</span><span class="s2">, </span><span class="s4">0</span><span class="s2">, </span><span class="s4">0</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">0</span><span class="s2">, </span><span class="s4">128</span><span class="s2">, </span><span class="s4">0</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">128</span><span class="s2">, </span><span class="s4">128</span><span class="s2">, </span><span class="s4">0</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">0</span><span class="s2">, </span><span class="s4">0</span><span class="s2">, </span><span class="s4">128</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">128</span><span class="s2">, </span><span class="s4">0</span><span class="s2">, </span><span class="s4">128</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">0</span><span class="s2">, </span><span class="s4">128</span><span class="s2">, </span><span class="s4">128</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">192</span><span class="s2">, </span><span class="s4">192</span><span class="s2">, </span><span class="s4">192</span><span class="s2">),</span>
+    <span class="s2">],</span>
+    <span class="s2">[</span>
+        <span class="s2">(</span><span class="s4">128</span><span class="s2">, </span><span class="s4">128</span><span class="s2">, </span><span class="s4">128</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">255</span><span class="s2">, </span><span class="s4">0</span><span class="s2">, </span><span class="s4">0</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">0</span><span class="s2">, </span><span class="s4">255</span><span class="s2">, </span><span class="s4">0</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">255</span><span class="s2">, </span><span class="s4">255</span><span class="s2">, </span><span class="s4">0</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">0</span><span class="s2">, </span><span class="s4">0</span><span class="s2">, </span><span class="s4">255</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">255</span><span class="s2">, </span><span class="s4">0</span><span class="s2">, </span><span class="s4">255</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">0</span><span class="s2">, </span><span class="s4">255</span><span class="s2">, </span><span class="s4">255</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">255</span><span class="s2">, </span><span class="s4">255</span><span class="s2">, </span><span class="s4">255</span><span class="s2">),</span>
+    <span class="s2">],</span>
+<span class="s2">)</span>
+
+<span class="s1">MONOKAI </span><span class="s2">= </span><span class="s1">TerminalTheme</span><span class="s2">(</span>
+    <span class="s2">(</span><span class="s4">12</span><span class="s2">, </span><span class="s4">12</span><span class="s2">, </span><span class="s4">12</span><span class="s2">),</span>
+    <span class="s2">(</span><span class="s4">217</span><span class="s2">, </span><span class="s4">217</span><span class="s2">, </span><span class="s4">217</span><span class="s2">),</span>
+    <span class="s2">[</span>
+        <span class="s2">(</span><span class="s4">26</span><span class="s2">, </span><span class="s4">26</span><span class="s2">, </span><span class="s4">26</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">244</span><span class="s2">, </span><span class="s4">0</span><span class="s2">, </span><span class="s4">95</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">152</span><span class="s2">, </span><span class="s4">224</span><span class="s2">, </span><span class="s4">36</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">253</span><span class="s2">, </span><span class="s4">151</span><span class="s2">, </span><span class="s4">31</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">157</span><span class="s2">, </span><span class="s4">101</span><span class="s2">, </span><span class="s4">255</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">244</span><span class="s2">, </span><span class="s4">0</span><span class="s2">, </span><span class="s4">95</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">88</span><span class="s2">, </span><span class="s4">209</span><span class="s2">, </span><span class="s4">235</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">196</span><span class="s2">, </span><span class="s4">197</span><span class="s2">, </span><span class="s4">181</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">98</span><span class="s2">, </span><span class="s4">94</span><span class="s2">, </span><span class="s4">76</span><span class="s2">),</span>
+    <span class="s2">],</span>
+    <span class="s2">[</span>
+        <span class="s2">(</span><span class="s4">244</span><span class="s2">, </span><span class="s4">0</span><span class="s2">, </span><span class="s4">95</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">152</span><span class="s2">, </span><span class="s4">224</span><span class="s2">, </span><span class="s4">36</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">224</span><span class="s2">, </span><span class="s4">213</span><span class="s2">, </span><span class="s4">97</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">157</span><span class="s2">, </span><span class="s4">101</span><span class="s2">, </span><span class="s4">255</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">244</span><span class="s2">, </span><span class="s4">0</span><span class="s2">, </span><span class="s4">95</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">88</span><span class="s2">, </span><span class="s4">209</span><span class="s2">, </span><span class="s4">235</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">246</span><span class="s2">, </span><span class="s4">246</span><span class="s2">, </span><span class="s4">239</span><span class="s2">),</span>
+    <span class="s2">],</span>
+<span class="s2">)</span>
+<span class="s1">DIMMED_MONOKAI </span><span class="s2">= </span><span class="s1">TerminalTheme</span><span class="s2">(</span>
+    <span class="s2">(</span><span class="s4">25</span><span class="s2">, </span><span class="s4">25</span><span class="s2">, </span><span class="s4">25</span><span class="s2">),</span>
+    <span class="s2">(</span><span class="s4">185</span><span class="s2">, </span><span class="s4">188</span><span class="s2">, </span><span class="s4">186</span><span class="s2">),</span>
+    <span class="s2">[</span>
+        <span class="s2">(</span><span class="s4">58</span><span class="s2">, </span><span class="s4">61</span><span class="s2">, </span><span class="s4">67</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">190</span><span class="s2">, </span><span class="s4">63</span><span class="s2">, </span><span class="s4">72</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">135</span><span class="s2">, </span><span class="s4">154</span><span class="s2">, </span><span class="s4">59</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">197</span><span class="s2">, </span><span class="s4">166</span><span class="s2">, </span><span class="s4">53</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">79</span><span class="s2">, </span><span class="s4">118</span><span class="s2">, </span><span class="s4">161</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">133</span><span class="s2">, </span><span class="s4">92</span><span class="s2">, </span><span class="s4">141</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">87</span><span class="s2">, </span><span class="s4">143</span><span class="s2">, </span><span class="s4">164</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">185</span><span class="s2">, </span><span class="s4">188</span><span class="s2">, </span><span class="s4">186</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">136</span><span class="s2">, </span><span class="s4">137</span><span class="s2">, </span><span class="s4">135</span><span class="s2">),</span>
+    <span class="s2">],</span>
+    <span class="s2">[</span>
+        <span class="s2">(</span><span class="s4">251</span><span class="s2">, </span><span class="s4">0</span><span class="s2">, </span><span class="s4">31</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">15</span><span class="s2">, </span><span class="s4">114</span><span class="s2">, </span><span class="s4">47</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">196</span><span class="s2">, </span><span class="s4">112</span><span class="s2">, </span><span class="s4">51</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">24</span><span class="s2">, </span><span class="s4">109</span><span class="s2">, </span><span class="s4">227</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">251</span><span class="s2">, </span><span class="s4">0</span><span class="s2">, </span><span class="s4">103</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">46</span><span class="s2">, </span><span class="s4">112</span><span class="s2">, </span><span class="s4">109</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">253</span><span class="s2">, </span><span class="s4">255</span><span class="s2">, </span><span class="s4">185</span><span class="s2">),</span>
+    <span class="s2">],</span>
+<span class="s2">)</span>
+<span class="s1">NIGHT_OWLISH </span><span class="s2">= </span><span class="s1">TerminalTheme</span><span class="s2">(</span>
+    <span class="s2">(</span><span class="s4">255</span><span class="s2">, </span><span class="s4">255</span><span class="s2">, </span><span class="s4">255</span><span class="s2">),</span>
+    <span class="s2">(</span><span class="s4">64</span><span class="s2">, </span><span class="s4">63</span><span class="s2">, </span><span class="s4">83</span><span class="s2">),</span>
+    <span class="s2">[</span>
+        <span class="s2">(</span><span class="s4">1</span><span class="s2">, </span><span class="s4">22</span><span class="s2">, </span><span class="s4">39</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">211</span><span class="s2">, </span><span class="s4">66</span><span class="s2">, </span><span class="s4">62</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">42</span><span class="s2">, </span><span class="s4">162</span><span class="s2">, </span><span class="s4">152</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">218</span><span class="s2">, </span><span class="s4">170</span><span class="s2">, </span><span class="s4">1</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">72</span><span class="s2">, </span><span class="s4">118</span><span class="s2">, </span><span class="s4">214</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">64</span><span class="s2">, </span><span class="s4">63</span><span class="s2">, </span><span class="s4">83</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">8</span><span class="s2">, </span><span class="s4">145</span><span class="s2">, </span><span class="s4">106</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">122</span><span class="s2">, </span><span class="s4">129</span><span class="s2">, </span><span class="s4">129</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">122</span><span class="s2">, </span><span class="s4">129</span><span class="s2">, </span><span class="s4">129</span><span class="s2">),</span>
+    <span class="s2">],</span>
+    <span class="s2">[</span>
+        <span class="s2">(</span><span class="s4">247</span><span class="s2">, </span><span class="s4">110</span><span class="s2">, </span><span class="s4">110</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">73</span><span class="s2">, </span><span class="s4">208</span><span class="s2">, </span><span class="s4">197</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">218</span><span class="s2">, </span><span class="s4">194</span><span class="s2">, </span><span class="s4">107</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">92</span><span class="s2">, </span><span class="s4">167</span><span class="s2">, </span><span class="s4">228</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">105</span><span class="s2">, </span><span class="s4">112</span><span class="s2">, </span><span class="s4">152</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">0</span><span class="s2">, </span><span class="s4">201</span><span class="s2">, </span><span class="s4">144</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">152</span><span class="s2">, </span><span class="s4">159</span><span class="s2">, </span><span class="s4">177</span><span class="s2">),</span>
+    <span class="s2">],</span>
+<span class="s2">)</span>
+
+<span class="s1">SVG_EXPORT_THEME </span><span class="s2">= </span><span class="s1">TerminalTheme</span><span class="s2">(</span>
+    <span class="s2">(</span><span class="s4">41</span><span class="s2">, </span><span class="s4">41</span><span class="s2">, </span><span class="s4">41</span><span class="s2">),</span>
+    <span class="s2">(</span><span class="s4">197</span><span class="s2">, </span><span class="s4">200</span><span class="s2">, </span><span class="s4">198</span><span class="s2">),</span>
+    <span class="s2">[</span>
+        <span class="s2">(</span><span class="s4">75</span><span class="s2">, </span><span class="s4">78</span><span class="s2">, </span><span class="s4">85</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">204</span><span class="s2">, </span><span class="s4">85</span><span class="s2">, </span><span class="s4">90</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">152</span><span class="s2">, </span><span class="s4">168</span><span class="s2">, </span><span class="s4">75</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">208</span><span class="s2">, </span><span class="s4">179</span><span class="s2">, </span><span class="s4">68</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">96</span><span class="s2">, </span><span class="s4">138</span><span class="s2">, </span><span class="s4">177</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">152</span><span class="s2">, </span><span class="s4">114</span><span class="s2">, </span><span class="s4">159</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">104</span><span class="s2">, </span><span class="s4">160</span><span class="s2">, </span><span class="s4">179</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">197</span><span class="s2">, </span><span class="s4">200</span><span class="s2">, </span><span class="s4">198</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">154</span><span class="s2">, </span><span class="s4">155</span><span class="s2">, </span><span class="s4">153</span><span class="s2">),</span>
+    <span class="s2">],</span>
+    <span class="s2">[</span>
+        <span class="s2">(</span><span class="s4">255</span><span class="s2">, </span><span class="s4">38</span><span class="s2">, </span><span class="s4">39</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">0</span><span class="s2">, </span><span class="s4">130</span><span class="s2">, </span><span class="s4">61</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">208</span><span class="s2">, </span><span class="s4">132</span><span class="s2">, </span><span class="s4">66</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">25</span><span class="s2">, </span><span class="s4">132</span><span class="s2">, </span><span class="s4">233</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">255</span><span class="s2">, </span><span class="s4">44</span><span class="s2">, </span><span class="s4">122</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">57</span><span class="s2">, </span><span class="s4">130</span><span class="s2">, </span><span class="s4">128</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">253</span><span class="s2">, </span><span class="s4">253</span><span class="s2">, </span><span class="s4">197</span><span class="s2">),</span>
+    <span class="s2">],</span>
+<span class="s2">)</span>
+</pre>
+</body>
+</html>

@@ -1,0 +1,73 @@
+<html>
+<head>
+<title>__pip-runner__.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #5f826b; font-style: italic;}
+.s1 { color: #bcbec4;}
+.s2 { color: #7a7e85;}
+.s3 { color: #cf8e6d;}
+.s4 { color: #bcbec4;}
+.s5 { color: #2aacb8;}
+.s6 { color: #6aab73;}
+</style>
+</head>
+<body bgcolor="#1e1f22">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+__pip-runner__.py</font>
+</center></td></tr></table>
+<pre><span class="s0">&quot;&quot;&quot;Execute exactly this copy of pip, within a different environment. 
+ 
+This file is named as it is, to ensure that this module can't be imported via 
+an import statement. 
+&quot;&quot;&quot;</span>
+
+<span class="s2"># /!\ This version compatibility check section must be Python 2 compatible. /!\</span>
+
+<span class="s3">import </span><span class="s1">sys</span>
+
+<span class="s2"># Copied from setup.py</span>
+<span class="s1">PYTHON_REQUIRES </span><span class="s4">= (</span><span class="s5">3</span><span class="s4">, </span><span class="s5">7</span><span class="s4">)</span>
+
+
+<span class="s3">def </span><span class="s1">version_str</span><span class="s4">(</span><span class="s1">version</span><span class="s4">):  </span><span class="s2"># type: ignore</span>
+    <span class="s3">return </span><span class="s6">&quot;.&quot;</span><span class="s4">.</span><span class="s1">join</span><span class="s4">(</span><span class="s1">str</span><span class="s4">(</span><span class="s1">v</span><span class="s4">) </span><span class="s3">for </span><span class="s1">v </span><span class="s3">in </span><span class="s1">version</span><span class="s4">)</span>
+
+
+<span class="s3">if </span><span class="s1">sys</span><span class="s4">.</span><span class="s1">version_info</span><span class="s4">[:</span><span class="s5">2</span><span class="s4">] &lt; </span><span class="s1">PYTHON_REQUIRES</span><span class="s4">:</span>
+    <span class="s3">raise </span><span class="s1">SystemExit</span><span class="s4">(</span>
+        <span class="s6">&quot;This version of pip does not support python {} (requires &gt;={}).&quot;</span><span class="s4">.</span><span class="s1">format</span><span class="s4">(</span>
+            <span class="s1">version_str</span><span class="s4">(</span><span class="s1">sys</span><span class="s4">.</span><span class="s1">version_info</span><span class="s4">[:</span><span class="s5">2</span><span class="s4">]), </span><span class="s1">version_str</span><span class="s4">(</span><span class="s1">PYTHON_REQUIRES</span><span class="s4">)</span>
+        <span class="s4">)</span>
+    <span class="s4">)</span>
+
+<span class="s2"># From here on, we can use Python 3 features, but the syntax must remain</span>
+<span class="s2"># Python 2 compatible.</span>
+
+<span class="s3">import </span><span class="s1">runpy  </span><span class="s2"># noqa: E402</span>
+<span class="s3">from </span><span class="s1">importlib</span><span class="s4">.</span><span class="s1">machinery </span><span class="s3">import </span><span class="s1">PathFinder  </span><span class="s2"># noqa: E402</span>
+<span class="s3">from </span><span class="s1">os</span><span class="s4">.</span><span class="s1">path </span><span class="s3">import </span><span class="s1">dirname  </span><span class="s2"># noqa: E402</span>
+
+<span class="s1">PIP_SOURCES_ROOT </span><span class="s4">= </span><span class="s1">dirname</span><span class="s4">(</span><span class="s1">dirname</span><span class="s4">(</span><span class="s1">__file__</span><span class="s4">))</span>
+
+
+<span class="s3">class </span><span class="s1">PipImportRedirectingFinder</span><span class="s4">:</span>
+    <span class="s4">@</span><span class="s1">classmethod</span>
+    <span class="s3">def </span><span class="s1">find_spec</span><span class="s4">(</span><span class="s1">self</span><span class="s4">, </span><span class="s1">fullname</span><span class="s4">, </span><span class="s1">path</span><span class="s4">=</span><span class="s3">None</span><span class="s4">, </span><span class="s1">target</span><span class="s4">=</span><span class="s3">None</span><span class="s4">):  </span><span class="s2"># type: ignore</span>
+        <span class="s3">if </span><span class="s1">fullname </span><span class="s4">!= </span><span class="s6">&quot;pip&quot;</span><span class="s4">:</span>
+            <span class="s3">return None</span>
+
+        <span class="s1">spec </span><span class="s4">= </span><span class="s1">PathFinder</span><span class="s4">.</span><span class="s1">find_spec</span><span class="s4">(</span><span class="s1">fullname</span><span class="s4">, [</span><span class="s1">PIP_SOURCES_ROOT</span><span class="s4">], </span><span class="s1">target</span><span class="s4">)</span>
+        <span class="s3">assert </span><span class="s1">spec</span><span class="s4">, (</span><span class="s1">PIP_SOURCES_ROOT</span><span class="s4">, </span><span class="s1">fullname</span><span class="s4">)</span>
+        <span class="s3">return </span><span class="s1">spec</span>
+
+
+<span class="s1">sys</span><span class="s4">.</span><span class="s1">meta_path</span><span class="s4">.</span><span class="s1">insert</span><span class="s4">(</span><span class="s5">0</span><span class="s4">, </span><span class="s1">PipImportRedirectingFinder</span><span class="s4">())</span>
+
+<span class="s3">assert </span><span class="s1">__name__ </span><span class="s4">== </span><span class="s6">&quot;__main__&quot;</span><span class="s4">, </span><span class="s6">&quot;Cannot run __pip-runner__.py as a non-main module&quot;</span>
+<span class="s1">runpy</span><span class="s4">.</span><span class="s1">run_module</span><span class="s4">(</span><span class="s6">&quot;pip&quot;</span><span class="s4">, </span><span class="s1">run_name</span><span class="s4">=</span><span class="s6">&quot;__main__&quot;</span><span class="s4">, </span><span class="s1">alter_sys</span><span class="s4">=</span><span class="s3">True</span><span class="s4">)</span>
+</pre>
+</body>
+</html>

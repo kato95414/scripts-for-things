@@ -1,0 +1,138 @@
+<html>
+<head>
+<title>theme.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cf8e6d;}
+.s1 { color: #bcbec4;}
+.s2 { color: #bcbec4;}
+.s3 { color: #5f826b; font-style: italic;}
+.s4 { color: #6aab73;}
+.s5 { color: #2aacb8;}
+.s6 { color: #7a7e85;}
+</style>
+</head>
+<body bgcolor="#1e1f22">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+theme.py</font>
+</center></td></tr></table>
+<pre><span class="s0">import </span><span class="s1">configparser</span>
+<span class="s0">from </span><span class="s1">typing </span><span class="s0">import </span><span class="s1">Dict</span><span class="s2">, </span><span class="s1">List</span><span class="s2">, </span><span class="s1">IO</span><span class="s2">, </span><span class="s1">Mapping</span><span class="s2">, </span><span class="s1">Optional</span>
+
+<span class="s0">from </span><span class="s2">.</span><span class="s1">default_styles </span><span class="s0">import </span><span class="s1">DEFAULT_STYLES</span>
+<span class="s0">from </span><span class="s2">.</span><span class="s1">style </span><span class="s0">import </span><span class="s1">Style</span><span class="s2">, </span><span class="s1">StyleType</span>
+
+
+<span class="s0">class </span><span class="s1">Theme</span><span class="s2">:</span>
+    <span class="s3">&quot;&quot;&quot;A container for style information, used by :class:`~rich.console.Console`. 
+ 
+    Args: 
+        styles (Dict[str, Style], optional): A mapping of style names on to styles. Defaults to None for a theme with no styles. 
+        inherit (bool, optional): Inherit default styles. Defaults to True. 
+    &quot;&quot;&quot;</span>
+
+    <span class="s1">styles</span><span class="s2">: </span><span class="s1">Dict</span><span class="s2">[</span><span class="s1">str</span><span class="s2">, </span><span class="s1">Style</span><span class="s2">]</span>
+
+    <span class="s0">def </span><span class="s1">__init__</span><span class="s2">(</span>
+        <span class="s1">self</span><span class="s2">, </span><span class="s1">styles</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">Mapping</span><span class="s2">[</span><span class="s1">str</span><span class="s2">, </span><span class="s1">StyleType</span><span class="s2">]] = </span><span class="s0">None</span><span class="s2">, </span><span class="s1">inherit</span><span class="s2">: </span><span class="s1">bool </span><span class="s2">= </span><span class="s0">True</span>
+    <span class="s2">):</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">styles </span><span class="s2">= </span><span class="s1">DEFAULT_STYLES</span><span class="s2">.</span><span class="s1">copy</span><span class="s2">() </span><span class="s0">if </span><span class="s1">inherit </span><span class="s0">else </span><span class="s2">{}</span>
+        <span class="s0">if </span><span class="s1">styles </span><span class="s0">is not None</span><span class="s2">:</span>
+            <span class="s1">self</span><span class="s2">.</span><span class="s1">styles</span><span class="s2">.</span><span class="s1">update</span><span class="s2">(</span>
+                <span class="s2">{</span>
+                    <span class="s1">name</span><span class="s2">: </span><span class="s1">style </span><span class="s0">if </span><span class="s1">isinstance</span><span class="s2">(</span><span class="s1">style</span><span class="s2">, </span><span class="s1">Style</span><span class="s2">) </span><span class="s0">else </span><span class="s1">Style</span><span class="s2">.</span><span class="s1">parse</span><span class="s2">(</span><span class="s1">style</span><span class="s2">)</span>
+                    <span class="s0">for </span><span class="s1">name</span><span class="s2">, </span><span class="s1">style </span><span class="s0">in </span><span class="s1">styles</span><span class="s2">.</span><span class="s1">items</span><span class="s2">()</span>
+                <span class="s2">}</span>
+            <span class="s2">)</span>
+
+    <span class="s2">@</span><span class="s1">property</span>
+    <span class="s0">def </span><span class="s1">config</span><span class="s2">(</span><span class="s1">self</span><span class="s2">) </span><span class="s1">-&gt; str</span><span class="s2">:</span>
+        <span class="s3">&quot;&quot;&quot;Get contents of a config file for this theme.&quot;&quot;&quot;</span>
+        <span class="s1">config </span><span class="s2">= </span><span class="s4">&quot;[styles]</span><span class="s0">\n</span><span class="s4">&quot; </span><span class="s2">+ </span><span class="s4">&quot;</span><span class="s0">\n</span><span class="s4">&quot;</span><span class="s2">.</span><span class="s1">join</span><span class="s2">(</span>
+            <span class="s4">f&quot;</span><span class="s0">{</span><span class="s1">name</span><span class="s0">} </span><span class="s4">= </span><span class="s0">{</span><span class="s1">style</span><span class="s0">}</span><span class="s4">&quot; </span><span class="s0">for </span><span class="s1">name</span><span class="s2">, </span><span class="s1">style </span><span class="s0">in </span><span class="s1">sorted</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">styles</span><span class="s2">.</span><span class="s1">items</span><span class="s2">())</span>
+        <span class="s2">)</span>
+        <span class="s0">return </span><span class="s1">config</span>
+
+    <span class="s2">@</span><span class="s1">classmethod</span>
+    <span class="s0">def </span><span class="s1">from_file</span><span class="s2">(</span>
+        <span class="s1">cls</span><span class="s2">, </span><span class="s1">config_file</span><span class="s2">: </span><span class="s1">IO</span><span class="s2">[</span><span class="s1">str</span><span class="s2">], </span><span class="s1">source</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">str</span><span class="s2">] = </span><span class="s0">None</span><span class="s2">, </span><span class="s1">inherit</span><span class="s2">: </span><span class="s1">bool </span><span class="s2">= </span><span class="s0">True</span>
+    <span class="s2">) </span><span class="s1">-&gt; </span><span class="s4">&quot;Theme&quot;</span><span class="s2">:</span>
+        <span class="s3">&quot;&quot;&quot;Load a theme from a text mode file. 
+ 
+        Args: 
+            config_file (IO[str]): An open conf file. 
+            source (str, optional): The filename of the open file. Defaults to None. 
+            inherit (bool, optional): Inherit default styles. Defaults to True. 
+ 
+        Returns: 
+            Theme: A New theme instance. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">config </span><span class="s2">= </span><span class="s1">configparser</span><span class="s2">.</span><span class="s1">ConfigParser</span><span class="s2">()</span>
+        <span class="s1">config</span><span class="s2">.</span><span class="s1">read_file</span><span class="s2">(</span><span class="s1">config_file</span><span class="s2">, </span><span class="s1">source</span><span class="s2">=</span><span class="s1">source</span><span class="s2">)</span>
+        <span class="s1">styles </span><span class="s2">= {</span><span class="s1">name</span><span class="s2">: </span><span class="s1">Style</span><span class="s2">.</span><span class="s1">parse</span><span class="s2">(</span><span class="s1">value</span><span class="s2">) </span><span class="s0">for </span><span class="s1">name</span><span class="s2">, </span><span class="s1">value </span><span class="s0">in </span><span class="s1">config</span><span class="s2">.</span><span class="s1">items</span><span class="s2">(</span><span class="s4">&quot;styles&quot;</span><span class="s2">)}</span>
+        <span class="s1">theme </span><span class="s2">= </span><span class="s1">Theme</span><span class="s2">(</span><span class="s1">styles</span><span class="s2">, </span><span class="s1">inherit</span><span class="s2">=</span><span class="s1">inherit</span><span class="s2">)</span>
+        <span class="s0">return </span><span class="s1">theme</span>
+
+    <span class="s2">@</span><span class="s1">classmethod</span>
+    <span class="s0">def </span><span class="s1">read</span><span class="s2">(</span>
+        <span class="s1">cls</span><span class="s2">, </span><span class="s1">path</span><span class="s2">: </span><span class="s1">str</span><span class="s2">, </span><span class="s1">inherit</span><span class="s2">: </span><span class="s1">bool </span><span class="s2">= </span><span class="s0">True</span><span class="s2">, </span><span class="s1">encoding</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">str</span><span class="s2">] = </span><span class="s0">None</span>
+    <span class="s2">) </span><span class="s1">-&gt; </span><span class="s4">&quot;Theme&quot;</span><span class="s2">:</span>
+        <span class="s3">&quot;&quot;&quot;Read a theme from a path. 
+ 
+        Args: 
+            path (str): Path to a config file readable by Python configparser module. 
+            inherit (bool, optional): Inherit default styles. Defaults to True. 
+            encoding (str, optional): Encoding of the config file. Defaults to None. 
+ 
+        Returns: 
+            Theme: A new theme instance. 
+        &quot;&quot;&quot;</span>
+        <span class="s0">with </span><span class="s1">open</span><span class="s2">(</span><span class="s1">path</span><span class="s2">, </span><span class="s4">&quot;rt&quot;</span><span class="s2">, </span><span class="s1">encoding</span><span class="s2">=</span><span class="s1">encoding</span><span class="s2">) </span><span class="s0">as </span><span class="s1">config_file</span><span class="s2">:</span>
+            <span class="s0">return </span><span class="s1">cls</span><span class="s2">.</span><span class="s1">from_file</span><span class="s2">(</span><span class="s1">config_file</span><span class="s2">, </span><span class="s1">source</span><span class="s2">=</span><span class="s1">path</span><span class="s2">, </span><span class="s1">inherit</span><span class="s2">=</span><span class="s1">inherit</span><span class="s2">)</span>
+
+
+<span class="s0">class </span><span class="s1">ThemeStackError</span><span class="s2">(</span><span class="s1">Exception</span><span class="s2">):</span>
+    <span class="s3">&quot;&quot;&quot;Base exception for errors related to the theme stack.&quot;&quot;&quot;</span>
+
+
+<span class="s0">class </span><span class="s1">ThemeStack</span><span class="s2">:</span>
+    <span class="s3">&quot;&quot;&quot;A stack of themes. 
+ 
+    Args: 
+        theme (Theme): A theme instance 
+    &quot;&quot;&quot;</span>
+
+    <span class="s0">def </span><span class="s1">__init__</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">theme</span><span class="s2">: </span><span class="s1">Theme</span><span class="s2">) </span><span class="s1">-&gt; </span><span class="s0">None</span><span class="s2">:</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">_entries</span><span class="s2">: </span><span class="s1">List</span><span class="s2">[</span><span class="s1">Dict</span><span class="s2">[</span><span class="s1">str</span><span class="s2">, </span><span class="s1">Style</span><span class="s2">]] = [</span><span class="s1">theme</span><span class="s2">.</span><span class="s1">styles</span><span class="s2">]</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">get </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">_entries</span><span class="s2">[-</span><span class="s5">1</span><span class="s2">].</span><span class="s1">get</span>
+
+    <span class="s0">def </span><span class="s1">push_theme</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">theme</span><span class="s2">: </span><span class="s1">Theme</span><span class="s2">, </span><span class="s1">inherit</span><span class="s2">: </span><span class="s1">bool </span><span class="s2">= </span><span class="s0">True</span><span class="s2">) </span><span class="s1">-&gt; </span><span class="s0">None</span><span class="s2">:</span>
+        <span class="s3">&quot;&quot;&quot;Push a theme on the top of the stack. 
+ 
+        Args: 
+            theme (Theme): A Theme instance. 
+            inherit (boolean, optional): Inherit styles from current top of stack. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">styles</span><span class="s2">: </span><span class="s1">Dict</span><span class="s2">[</span><span class="s1">str</span><span class="s2">, </span><span class="s1">Style</span><span class="s2">]</span>
+        <span class="s1">styles </span><span class="s2">= (</span>
+            <span class="s2">{**</span><span class="s1">self</span><span class="s2">.</span><span class="s1">_entries</span><span class="s2">[-</span><span class="s5">1</span><span class="s2">], **</span><span class="s1">theme</span><span class="s2">.</span><span class="s1">styles</span><span class="s2">} </span><span class="s0">if </span><span class="s1">inherit </span><span class="s0">else </span><span class="s1">theme</span><span class="s2">.</span><span class="s1">styles</span><span class="s2">.</span><span class="s1">copy</span><span class="s2">()</span>
+        <span class="s2">)</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">_entries</span><span class="s2">.</span><span class="s1">append</span><span class="s2">(</span><span class="s1">styles</span><span class="s2">)</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">get </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">_entries</span><span class="s2">[-</span><span class="s5">1</span><span class="s2">].</span><span class="s1">get</span>
+
+    <span class="s0">def </span><span class="s1">pop_theme</span><span class="s2">(</span><span class="s1">self</span><span class="s2">) </span><span class="s1">-&gt; </span><span class="s0">None</span><span class="s2">:</span>
+        <span class="s3">&quot;&quot;&quot;Pop (and discard) the top-most theme.&quot;&quot;&quot;</span>
+        <span class="s0">if </span><span class="s1">len</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">_entries</span><span class="s2">) == </span><span class="s5">1</span><span class="s2">:</span>
+            <span class="s0">raise </span><span class="s1">ThemeStackError</span><span class="s2">(</span><span class="s4">&quot;Unable to pop base theme&quot;</span><span class="s2">)</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">_entries</span><span class="s2">.</span><span class="s1">pop</span><span class="s2">()</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">get </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">_entries</span><span class="s2">[-</span><span class="s5">1</span><span class="s2">].</span><span class="s1">get</span>
+
+
+<span class="s0">if </span><span class="s1">__name__ </span><span class="s2">== </span><span class="s4">&quot;__main__&quot;</span><span class="s2">:  </span><span class="s6"># pragma: no cover</span>
+    <span class="s1">theme </span><span class="s2">= </span><span class="s1">Theme</span><span class="s2">()</span>
+    <span class="s1">print</span><span class="s2">(</span><span class="s1">theme</span><span class="s2">.</span><span class="s1">config</span><span class="s2">)</span>
+</pre>
+</body>
+</html>

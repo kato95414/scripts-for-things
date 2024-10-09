@@ -1,0 +1,399 @@
+<html>
+<head>
+<title>prompt.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cf8e6d;}
+.s1 { color: #bcbec4;}
+.s2 { color: #bcbec4;}
+.s3 { color: #6aab73;}
+.s4 { color: #5f826b; font-style: italic;}
+.s5 { color: #2aacb8;}
+.s6 { color: #7a7e85;}
+</style>
+</head>
+<body bgcolor="#1e1f22">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+prompt.py</font>
+</center></td></tr></table>
+<pre><span class="s0">from </span><span class="s1">typing </span><span class="s0">import </span><span class="s1">Any</span><span class="s2">, </span><span class="s1">Generic</span><span class="s2">, </span><span class="s1">List</span><span class="s2">, </span><span class="s1">Optional</span><span class="s2">, </span><span class="s1">TextIO</span><span class="s2">, </span><span class="s1">TypeVar</span><span class="s2">, </span><span class="s1">Union</span><span class="s2">, </span><span class="s1">overload</span>
+
+<span class="s0">from </span><span class="s2">. </span><span class="s0">import </span><span class="s1">get_console</span>
+<span class="s0">from </span><span class="s2">.</span><span class="s1">console </span><span class="s0">import </span><span class="s1">Console</span>
+<span class="s0">from </span><span class="s2">.</span><span class="s1">text </span><span class="s0">import </span><span class="s1">Text</span><span class="s2">, </span><span class="s1">TextType</span>
+
+<span class="s1">PromptType </span><span class="s2">= </span><span class="s1">TypeVar</span><span class="s2">(</span><span class="s3">&quot;PromptType&quot;</span><span class="s2">)</span>
+<span class="s1">DefaultType </span><span class="s2">= </span><span class="s1">TypeVar</span><span class="s2">(</span><span class="s3">&quot;DefaultType&quot;</span><span class="s2">)</span>
+
+
+<span class="s0">class </span><span class="s1">PromptError</span><span class="s2">(</span><span class="s1">Exception</span><span class="s2">):</span>
+    <span class="s4">&quot;&quot;&quot;Exception base class for prompt related errors.&quot;&quot;&quot;</span>
+
+
+<span class="s0">class </span><span class="s1">InvalidResponse</span><span class="s2">(</span><span class="s1">PromptError</span><span class="s2">):</span>
+    <span class="s4">&quot;&quot;&quot;Exception to indicate a response was invalid. Raise this within process_response() to indicate an error 
+    and provide an error message. 
+ 
+    Args: 
+        message (Union[str, Text]): Error message. 
+    &quot;&quot;&quot;</span>
+
+    <span class="s0">def </span><span class="s1">__init__</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">message</span><span class="s2">: </span><span class="s1">TextType</span><span class="s2">) </span><span class="s1">-&gt; </span><span class="s0">None</span><span class="s2">:</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">message </span><span class="s2">= </span><span class="s1">message</span>
+
+    <span class="s0">def </span><span class="s1">__rich__</span><span class="s2">(</span><span class="s1">self</span><span class="s2">) </span><span class="s1">-&gt; TextType</span><span class="s2">:</span>
+        <span class="s0">return </span><span class="s1">self</span><span class="s2">.</span><span class="s1">message</span>
+
+
+<span class="s0">class </span><span class="s1">PromptBase</span><span class="s2">(</span><span class="s1">Generic</span><span class="s2">[</span><span class="s1">PromptType</span><span class="s2">]):</span>
+    <span class="s4">&quot;&quot;&quot;Ask the user for input until a valid response is received. This is the base class, see one of 
+    the concrete classes for examples. 
+ 
+    Args: 
+        prompt (TextType, optional): Prompt text. Defaults to &quot;&quot;. 
+        console (Console, optional): A Console instance or None to use global console. Defaults to None. 
+        password (bool, optional): Enable password input. Defaults to False. 
+        choices (List[str], optional): A list of valid choices. Defaults to None. 
+        show_default (bool, optional): Show default in prompt. Defaults to True. 
+        show_choices (bool, optional): Show choices in prompt. Defaults to True. 
+    &quot;&quot;&quot;</span>
+
+    <span class="s1">response_type</span><span class="s2">: </span><span class="s1">type </span><span class="s2">= </span><span class="s1">str</span>
+
+    <span class="s1">validate_error_message </span><span class="s2">= </span><span class="s3">&quot;[prompt.invalid]Please enter a valid value&quot;</span>
+    <span class="s1">illegal_choice_message </span><span class="s2">= (</span>
+        <span class="s3">&quot;[prompt.invalid.choice]Please select one of the available options&quot;</span>
+    <span class="s2">)</span>
+    <span class="s1">prompt_suffix </span><span class="s2">= </span><span class="s3">&quot;: &quot;</span>
+
+    <span class="s1">choices</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">List</span><span class="s2">[</span><span class="s1">str</span><span class="s2">]] = </span><span class="s0">None</span>
+
+    <span class="s0">def </span><span class="s1">__init__</span><span class="s2">(</span>
+        <span class="s1">self</span><span class="s2">,</span>
+        <span class="s1">prompt</span><span class="s2">: </span><span class="s1">TextType </span><span class="s2">= </span><span class="s3">&quot;&quot;</span><span class="s2">,</span>
+        <span class="s2">*,</span>
+        <span class="s1">console</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">Console</span><span class="s2">] = </span><span class="s0">None</span><span class="s2">,</span>
+        <span class="s1">password</span><span class="s2">: </span><span class="s1">bool </span><span class="s2">= </span><span class="s0">False</span><span class="s2">,</span>
+        <span class="s1">choices</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">List</span><span class="s2">[</span><span class="s1">str</span><span class="s2">]] = </span><span class="s0">None</span><span class="s2">,</span>
+        <span class="s1">show_default</span><span class="s2">: </span><span class="s1">bool </span><span class="s2">= </span><span class="s0">True</span><span class="s2">,</span>
+        <span class="s1">show_choices</span><span class="s2">: </span><span class="s1">bool </span><span class="s2">= </span><span class="s0">True</span><span class="s2">,</span>
+    <span class="s2">) </span><span class="s1">-&gt; </span><span class="s0">None</span><span class="s2">:</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">console </span><span class="s2">= </span><span class="s1">console </span><span class="s0">or </span><span class="s1">get_console</span><span class="s2">()</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">prompt </span><span class="s2">= (</span>
+            <span class="s1">Text</span><span class="s2">.</span><span class="s1">from_markup</span><span class="s2">(</span><span class="s1">prompt</span><span class="s2">, </span><span class="s1">style</span><span class="s2">=</span><span class="s3">&quot;prompt&quot;</span><span class="s2">)</span>
+            <span class="s0">if </span><span class="s1">isinstance</span><span class="s2">(</span><span class="s1">prompt</span><span class="s2">, </span><span class="s1">str</span><span class="s2">)</span>
+            <span class="s0">else </span><span class="s1">prompt</span>
+        <span class="s2">)</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">password </span><span class="s2">= </span><span class="s1">password</span>
+        <span class="s0">if </span><span class="s1">choices </span><span class="s0">is not None</span><span class="s2">:</span>
+            <span class="s1">self</span><span class="s2">.</span><span class="s1">choices </span><span class="s2">= </span><span class="s1">choices</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">show_default </span><span class="s2">= </span><span class="s1">show_default</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">show_choices </span><span class="s2">= </span><span class="s1">show_choices</span>
+
+    <span class="s2">@</span><span class="s1">classmethod</span>
+    <span class="s2">@</span><span class="s1">overload</span>
+    <span class="s0">def </span><span class="s1">ask</span><span class="s2">(</span>
+        <span class="s1">cls</span><span class="s2">,</span>
+        <span class="s1">prompt</span><span class="s2">: </span><span class="s1">TextType </span><span class="s2">= </span><span class="s3">&quot;&quot;</span><span class="s2">,</span>
+        <span class="s2">*,</span>
+        <span class="s1">console</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">Console</span><span class="s2">] = </span><span class="s0">None</span><span class="s2">,</span>
+        <span class="s1">password</span><span class="s2">: </span><span class="s1">bool </span><span class="s2">= </span><span class="s0">False</span><span class="s2">,</span>
+        <span class="s1">choices</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">List</span><span class="s2">[</span><span class="s1">str</span><span class="s2">]] = </span><span class="s0">None</span><span class="s2">,</span>
+        <span class="s1">show_default</span><span class="s2">: </span><span class="s1">bool </span><span class="s2">= </span><span class="s0">True</span><span class="s2">,</span>
+        <span class="s1">show_choices</span><span class="s2">: </span><span class="s1">bool </span><span class="s2">= </span><span class="s0">True</span><span class="s2">,</span>
+        <span class="s1">default</span><span class="s2">: </span><span class="s1">DefaultType</span><span class="s2">,</span>
+        <span class="s1">stream</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">TextIO</span><span class="s2">] = </span><span class="s0">None</span><span class="s2">,</span>
+    <span class="s2">) </span><span class="s1">-&gt; Union</span><span class="s2">[</span><span class="s1">DefaultType</span><span class="s2">, </span><span class="s1">PromptType</span><span class="s2">]:</span>
+        <span class="s2">...</span>
+
+    <span class="s2">@</span><span class="s1">classmethod</span>
+    <span class="s2">@</span><span class="s1">overload</span>
+    <span class="s0">def </span><span class="s1">ask</span><span class="s2">(</span>
+        <span class="s1">cls</span><span class="s2">,</span>
+        <span class="s1">prompt</span><span class="s2">: </span><span class="s1">TextType </span><span class="s2">= </span><span class="s3">&quot;&quot;</span><span class="s2">,</span>
+        <span class="s2">*,</span>
+        <span class="s1">console</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">Console</span><span class="s2">] = </span><span class="s0">None</span><span class="s2">,</span>
+        <span class="s1">password</span><span class="s2">: </span><span class="s1">bool </span><span class="s2">= </span><span class="s0">False</span><span class="s2">,</span>
+        <span class="s1">choices</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">List</span><span class="s2">[</span><span class="s1">str</span><span class="s2">]] = </span><span class="s0">None</span><span class="s2">,</span>
+        <span class="s1">show_default</span><span class="s2">: </span><span class="s1">bool </span><span class="s2">= </span><span class="s0">True</span><span class="s2">,</span>
+        <span class="s1">show_choices</span><span class="s2">: </span><span class="s1">bool </span><span class="s2">= </span><span class="s0">True</span><span class="s2">,</span>
+        <span class="s1">stream</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">TextIO</span><span class="s2">] = </span><span class="s0">None</span><span class="s2">,</span>
+    <span class="s2">) </span><span class="s1">-&gt; PromptType</span><span class="s2">:</span>
+        <span class="s2">...</span>
+
+    <span class="s2">@</span><span class="s1">classmethod</span>
+    <span class="s0">def </span><span class="s1">ask</span><span class="s2">(</span>
+        <span class="s1">cls</span><span class="s2">,</span>
+        <span class="s1">prompt</span><span class="s2">: </span><span class="s1">TextType </span><span class="s2">= </span><span class="s3">&quot;&quot;</span><span class="s2">,</span>
+        <span class="s2">*,</span>
+        <span class="s1">console</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">Console</span><span class="s2">] = </span><span class="s0">None</span><span class="s2">,</span>
+        <span class="s1">password</span><span class="s2">: </span><span class="s1">bool </span><span class="s2">= </span><span class="s0">False</span><span class="s2">,</span>
+        <span class="s1">choices</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">List</span><span class="s2">[</span><span class="s1">str</span><span class="s2">]] = </span><span class="s0">None</span><span class="s2">,</span>
+        <span class="s1">show_default</span><span class="s2">: </span><span class="s1">bool </span><span class="s2">= </span><span class="s0">True</span><span class="s2">,</span>
+        <span class="s1">show_choices</span><span class="s2">: </span><span class="s1">bool </span><span class="s2">= </span><span class="s0">True</span><span class="s2">,</span>
+        <span class="s1">default</span><span class="s2">: </span><span class="s1">Any </span><span class="s2">= ...,</span>
+        <span class="s1">stream</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">TextIO</span><span class="s2">] = </span><span class="s0">None</span><span class="s2">,</span>
+    <span class="s2">) </span><span class="s1">-&gt; Any</span><span class="s2">:</span>
+        <span class="s4">&quot;&quot;&quot;Shortcut to construct and run a prompt loop and return the result. 
+ 
+        Example: 
+            &gt;&gt;&gt; filename = Prompt.ask(&quot;Enter a filename&quot;) 
+ 
+        Args: 
+            prompt (TextType, optional): Prompt text. Defaults to &quot;&quot;. 
+            console (Console, optional): A Console instance or None to use global console. Defaults to None. 
+            password (bool, optional): Enable password input. Defaults to False. 
+            choices (List[str], optional): A list of valid choices. Defaults to None. 
+            show_default (bool, optional): Show default in prompt. Defaults to True. 
+            show_choices (bool, optional): Show choices in prompt. Defaults to True. 
+            stream (TextIO, optional): Optional text file open for reading to get input. Defaults to None. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">_prompt </span><span class="s2">= </span><span class="s1">cls</span><span class="s2">(</span>
+            <span class="s1">prompt</span><span class="s2">,</span>
+            <span class="s1">console</span><span class="s2">=</span><span class="s1">console</span><span class="s2">,</span>
+            <span class="s1">password</span><span class="s2">=</span><span class="s1">password</span><span class="s2">,</span>
+            <span class="s1">choices</span><span class="s2">=</span><span class="s1">choices</span><span class="s2">,</span>
+            <span class="s1">show_default</span><span class="s2">=</span><span class="s1">show_default</span><span class="s2">,</span>
+            <span class="s1">show_choices</span><span class="s2">=</span><span class="s1">show_choices</span><span class="s2">,</span>
+        <span class="s2">)</span>
+        <span class="s0">return </span><span class="s1">_prompt</span><span class="s2">(</span><span class="s1">default</span><span class="s2">=</span><span class="s1">default</span><span class="s2">, </span><span class="s1">stream</span><span class="s2">=</span><span class="s1">stream</span><span class="s2">)</span>
+
+    <span class="s0">def </span><span class="s1">render_default</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">default</span><span class="s2">: </span><span class="s1">DefaultType</span><span class="s2">) </span><span class="s1">-&gt; Text</span><span class="s2">:</span>
+        <span class="s4">&quot;&quot;&quot;Turn the supplied default in to a Text instance. 
+ 
+        Args: 
+            default (DefaultType): Default value. 
+ 
+        Returns: 
+            Text: Text containing rendering of default value. 
+        &quot;&quot;&quot;</span>
+        <span class="s0">return </span><span class="s1">Text</span><span class="s2">(</span><span class="s3">f&quot;(</span><span class="s0">{</span><span class="s1">default</span><span class="s0">}</span><span class="s3">)&quot;</span><span class="s2">, </span><span class="s3">&quot;prompt.default&quot;</span><span class="s2">)</span>
+
+    <span class="s0">def </span><span class="s1">make_prompt</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">default</span><span class="s2">: </span><span class="s1">DefaultType</span><span class="s2">) </span><span class="s1">-&gt; Text</span><span class="s2">:</span>
+        <span class="s4">&quot;&quot;&quot;Make prompt text. 
+ 
+        Args: 
+            default (DefaultType): Default value. 
+ 
+        Returns: 
+            Text: Text to display in prompt. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">prompt </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">prompt</span><span class="s2">.</span><span class="s1">copy</span><span class="s2">()</span>
+        <span class="s1">prompt</span><span class="s2">.</span><span class="s1">end </span><span class="s2">= </span><span class="s3">&quot;&quot;</span>
+
+        <span class="s0">if </span><span class="s1">self</span><span class="s2">.</span><span class="s1">show_choices </span><span class="s0">and </span><span class="s1">self</span><span class="s2">.</span><span class="s1">choices</span><span class="s2">:</span>
+            <span class="s1">_choices </span><span class="s2">= </span><span class="s3">&quot;/&quot;</span><span class="s2">.</span><span class="s1">join</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">choices</span><span class="s2">)</span>
+            <span class="s1">choices </span><span class="s2">= </span><span class="s3">f&quot;[</span><span class="s0">{</span><span class="s1">_choices</span><span class="s0">}</span><span class="s3">]&quot;</span>
+            <span class="s1">prompt</span><span class="s2">.</span><span class="s1">append</span><span class="s2">(</span><span class="s3">&quot; &quot;</span><span class="s2">)</span>
+            <span class="s1">prompt</span><span class="s2">.</span><span class="s1">append</span><span class="s2">(</span><span class="s1">choices</span><span class="s2">, </span><span class="s3">&quot;prompt.choices&quot;</span><span class="s2">)</span>
+
+        <span class="s0">if </span><span class="s2">(</span>
+            <span class="s1">default </span><span class="s2">!= ...</span>
+            <span class="s0">and </span><span class="s1">self</span><span class="s2">.</span><span class="s1">show_default</span>
+            <span class="s0">and </span><span class="s1">isinstance</span><span class="s2">(</span><span class="s1">default</span><span class="s2">, (</span><span class="s1">str</span><span class="s2">, </span><span class="s1">self</span><span class="s2">.</span><span class="s1">response_type</span><span class="s2">))</span>
+        <span class="s2">):</span>
+            <span class="s1">prompt</span><span class="s2">.</span><span class="s1">append</span><span class="s2">(</span><span class="s3">&quot; &quot;</span><span class="s2">)</span>
+            <span class="s1">_default </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">render_default</span><span class="s2">(</span><span class="s1">default</span><span class="s2">)</span>
+            <span class="s1">prompt</span><span class="s2">.</span><span class="s1">append</span><span class="s2">(</span><span class="s1">_default</span><span class="s2">)</span>
+
+        <span class="s1">prompt</span><span class="s2">.</span><span class="s1">append</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">prompt_suffix</span><span class="s2">)</span>
+
+        <span class="s0">return </span><span class="s1">prompt</span>
+
+    <span class="s2">@</span><span class="s1">classmethod</span>
+    <span class="s0">def </span><span class="s1">get_input</span><span class="s2">(</span>
+        <span class="s1">cls</span><span class="s2">,</span>
+        <span class="s1">console</span><span class="s2">: </span><span class="s1">Console</span><span class="s2">,</span>
+        <span class="s1">prompt</span><span class="s2">: </span><span class="s1">TextType</span><span class="s2">,</span>
+        <span class="s1">password</span><span class="s2">: </span><span class="s1">bool</span><span class="s2">,</span>
+        <span class="s1">stream</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">TextIO</span><span class="s2">] = </span><span class="s0">None</span><span class="s2">,</span>
+    <span class="s2">) </span><span class="s1">-&gt; str</span><span class="s2">:</span>
+        <span class="s4">&quot;&quot;&quot;Get input from user. 
+ 
+        Args: 
+            console (Console): Console instance. 
+            prompt (TextType): Prompt text. 
+            password (bool): Enable password entry. 
+ 
+        Returns: 
+            str: String from user. 
+        &quot;&quot;&quot;</span>
+        <span class="s0">return </span><span class="s1">console</span><span class="s2">.</span><span class="s1">input</span><span class="s2">(</span><span class="s1">prompt</span><span class="s2">, </span><span class="s1">password</span><span class="s2">=</span><span class="s1">password</span><span class="s2">, </span><span class="s1">stream</span><span class="s2">=</span><span class="s1">stream</span><span class="s2">)</span>
+
+    <span class="s0">def </span><span class="s1">check_choice</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">value</span><span class="s2">: </span><span class="s1">str</span><span class="s2">) </span><span class="s1">-&gt; bool</span><span class="s2">:</span>
+        <span class="s4">&quot;&quot;&quot;Check value is in the list of valid choices. 
+ 
+        Args: 
+            value (str): Value entered by user. 
+ 
+        Returns: 
+            bool: True if choice was valid, otherwise False. 
+        &quot;&quot;&quot;</span>
+        <span class="s0">assert </span><span class="s1">self</span><span class="s2">.</span><span class="s1">choices </span><span class="s0">is not None</span>
+        <span class="s0">return </span><span class="s1">value</span><span class="s2">.</span><span class="s1">strip</span><span class="s2">() </span><span class="s0">in </span><span class="s1">self</span><span class="s2">.</span><span class="s1">choices</span>
+
+    <span class="s0">def </span><span class="s1">process_response</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">value</span><span class="s2">: </span><span class="s1">str</span><span class="s2">) </span><span class="s1">-&gt; PromptType</span><span class="s2">:</span>
+        <span class="s4">&quot;&quot;&quot;Process response from user, convert to prompt type. 
+ 
+        Args: 
+            value (str): String typed by user. 
+ 
+        Raises: 
+            InvalidResponse: If ``value`` is invalid. 
+ 
+        Returns: 
+            PromptType: The value to be returned from ask method. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">value </span><span class="s2">= </span><span class="s1">value</span><span class="s2">.</span><span class="s1">strip</span><span class="s2">()</span>
+        <span class="s0">try</span><span class="s2">:</span>
+            <span class="s1">return_value</span><span class="s2">: </span><span class="s1">PromptType </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">response_type</span><span class="s2">(</span><span class="s1">value</span><span class="s2">)</span>
+        <span class="s0">except </span><span class="s1">ValueError</span><span class="s2">:</span>
+            <span class="s0">raise </span><span class="s1">InvalidResponse</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">validate_error_message</span><span class="s2">)</span>
+
+        <span class="s0">if </span><span class="s1">self</span><span class="s2">.</span><span class="s1">choices </span><span class="s0">is not None and not </span><span class="s1">self</span><span class="s2">.</span><span class="s1">check_choice</span><span class="s2">(</span><span class="s1">value</span><span class="s2">):</span>
+            <span class="s0">raise </span><span class="s1">InvalidResponse</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">illegal_choice_message</span><span class="s2">)</span>
+
+        <span class="s0">return </span><span class="s1">return_value</span>
+
+    <span class="s0">def </span><span class="s1">on_validate_error</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">value</span><span class="s2">: </span><span class="s1">str</span><span class="s2">, </span><span class="s1">error</span><span class="s2">: </span><span class="s1">InvalidResponse</span><span class="s2">) </span><span class="s1">-&gt; </span><span class="s0">None</span><span class="s2">:</span>
+        <span class="s4">&quot;&quot;&quot;Called to handle validation error. 
+ 
+        Args: 
+            value (str): String entered by user. 
+            error (InvalidResponse): Exception instance the initiated the error. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">console</span><span class="s2">.</span><span class="s1">print</span><span class="s2">(</span><span class="s1">error</span><span class="s2">)</span>
+
+    <span class="s0">def </span><span class="s1">pre_prompt</span><span class="s2">(</span><span class="s1">self</span><span class="s2">) </span><span class="s1">-&gt; </span><span class="s0">None</span><span class="s2">:</span>
+        <span class="s4">&quot;&quot;&quot;Hook to display something before the prompt.&quot;&quot;&quot;</span>
+
+    <span class="s2">@</span><span class="s1">overload</span>
+    <span class="s0">def </span><span class="s1">__call__</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, *, </span><span class="s1">stream</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">TextIO</span><span class="s2">] = </span><span class="s0">None</span><span class="s2">) </span><span class="s1">-&gt; PromptType</span><span class="s2">:</span>
+        <span class="s2">...</span>
+
+    <span class="s2">@</span><span class="s1">overload</span>
+    <span class="s0">def </span><span class="s1">__call__</span><span class="s2">(</span>
+        <span class="s1">self</span><span class="s2">, *, </span><span class="s1">default</span><span class="s2">: </span><span class="s1">DefaultType</span><span class="s2">, </span><span class="s1">stream</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">TextIO</span><span class="s2">] = </span><span class="s0">None</span>
+    <span class="s2">) </span><span class="s1">-&gt; Union</span><span class="s2">[</span><span class="s1">PromptType</span><span class="s2">, </span><span class="s1">DefaultType</span><span class="s2">]:</span>
+        <span class="s2">...</span>
+
+    <span class="s0">def </span><span class="s1">__call__</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, *, </span><span class="s1">default</span><span class="s2">: </span><span class="s1">Any </span><span class="s2">= ..., </span><span class="s1">stream</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">TextIO</span><span class="s2">] = </span><span class="s0">None</span><span class="s2">) </span><span class="s1">-&gt; Any</span><span class="s2">:</span>
+        <span class="s4">&quot;&quot;&quot;Run the prompt loop. 
+ 
+        Args: 
+            default (Any, optional): Optional default value. 
+ 
+        Returns: 
+            PromptType: Processed value. 
+        &quot;&quot;&quot;</span>
+        <span class="s0">while True</span><span class="s2">:</span>
+            <span class="s1">self</span><span class="s2">.</span><span class="s1">pre_prompt</span><span class="s2">()</span>
+            <span class="s1">prompt </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">make_prompt</span><span class="s2">(</span><span class="s1">default</span><span class="s2">)</span>
+            <span class="s1">value </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">get_input</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">console</span><span class="s2">, </span><span class="s1">prompt</span><span class="s2">, </span><span class="s1">self</span><span class="s2">.</span><span class="s1">password</span><span class="s2">, </span><span class="s1">stream</span><span class="s2">=</span><span class="s1">stream</span><span class="s2">)</span>
+            <span class="s0">if </span><span class="s1">value </span><span class="s2">== </span><span class="s3">&quot;&quot; </span><span class="s0">and </span><span class="s1">default </span><span class="s2">!= ...:</span>
+                <span class="s0">return </span><span class="s1">default</span>
+            <span class="s0">try</span><span class="s2">:</span>
+                <span class="s1">return_value </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">process_response</span><span class="s2">(</span><span class="s1">value</span><span class="s2">)</span>
+            <span class="s0">except </span><span class="s1">InvalidResponse </span><span class="s0">as </span><span class="s1">error</span><span class="s2">:</span>
+                <span class="s1">self</span><span class="s2">.</span><span class="s1">on_validate_error</span><span class="s2">(</span><span class="s1">value</span><span class="s2">, </span><span class="s1">error</span><span class="s2">)</span>
+                <span class="s0">continue</span>
+            <span class="s0">else</span><span class="s2">:</span>
+                <span class="s0">return </span><span class="s1">return_value</span>
+
+
+<span class="s0">class </span><span class="s1">Prompt</span><span class="s2">(</span><span class="s1">PromptBase</span><span class="s2">[</span><span class="s1">str</span><span class="s2">]):</span>
+    <span class="s4">&quot;&quot;&quot;A prompt that returns a str. 
+ 
+    Example: 
+        &gt;&gt;&gt; name = Prompt.ask(&quot;Enter your name&quot;) 
+ 
+ 
+    &quot;&quot;&quot;</span>
+
+    <span class="s1">response_type </span><span class="s2">= </span><span class="s1">str</span>
+
+
+<span class="s0">class </span><span class="s1">IntPrompt</span><span class="s2">(</span><span class="s1">PromptBase</span><span class="s2">[</span><span class="s1">int</span><span class="s2">]):</span>
+    <span class="s4">&quot;&quot;&quot;A prompt that returns an integer. 
+ 
+    Example: 
+        &gt;&gt;&gt; burrito_count = IntPrompt.ask(&quot;How many burritos do you want to order&quot;) 
+ 
+    &quot;&quot;&quot;</span>
+
+    <span class="s1">response_type </span><span class="s2">= </span><span class="s1">int</span>
+    <span class="s1">validate_error_message </span><span class="s2">= </span><span class="s3">&quot;[prompt.invalid]Please enter a valid integer number&quot;</span>
+
+
+<span class="s0">class </span><span class="s1">FloatPrompt</span><span class="s2">(</span><span class="s1">PromptBase</span><span class="s2">[</span><span class="s1">int</span><span class="s2">]):</span>
+    <span class="s4">&quot;&quot;&quot;A prompt that returns a float. 
+ 
+    Example: 
+        &gt;&gt;&gt; temperature = FloatPrompt.ask(&quot;Enter desired temperature&quot;) 
+ 
+    &quot;&quot;&quot;</span>
+
+    <span class="s1">response_type </span><span class="s2">= </span><span class="s1">float</span>
+    <span class="s1">validate_error_message </span><span class="s2">= </span><span class="s3">&quot;[prompt.invalid]Please enter a number&quot;</span>
+
+
+<span class="s0">class </span><span class="s1">Confirm</span><span class="s2">(</span><span class="s1">PromptBase</span><span class="s2">[</span><span class="s1">bool</span><span class="s2">]):</span>
+    <span class="s4">&quot;&quot;&quot;A yes / no confirmation prompt. 
+ 
+    Example: 
+        &gt;&gt;&gt; if Confirm.ask(&quot;Continue&quot;): 
+                run_job() 
+ 
+    &quot;&quot;&quot;</span>
+
+    <span class="s1">response_type </span><span class="s2">= </span><span class="s1">bool</span>
+    <span class="s1">validate_error_message </span><span class="s2">= </span><span class="s3">&quot;[prompt.invalid]Please enter Y or N&quot;</span>
+    <span class="s1">choices</span><span class="s2">: </span><span class="s1">List</span><span class="s2">[</span><span class="s1">str</span><span class="s2">] = [</span><span class="s3">&quot;y&quot;</span><span class="s2">, </span><span class="s3">&quot;n&quot;</span><span class="s2">]</span>
+
+    <span class="s0">def </span><span class="s1">render_default</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">default</span><span class="s2">: </span><span class="s1">DefaultType</span><span class="s2">) </span><span class="s1">-&gt; Text</span><span class="s2">:</span>
+        <span class="s4">&quot;&quot;&quot;Render the default as (y) or (n) rather than True/False.&quot;&quot;&quot;</span>
+        <span class="s1">yes</span><span class="s2">, </span><span class="s1">no </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">choices</span>
+        <span class="s0">return </span><span class="s1">Text</span><span class="s2">(</span><span class="s3">f&quot;(</span><span class="s0">{</span><span class="s1">yes</span><span class="s0">}</span><span class="s3">)&quot; </span><span class="s0">if </span><span class="s1">default </span><span class="s0">else </span><span class="s3">f&quot;(</span><span class="s0">{</span><span class="s1">no</span><span class="s0">}</span><span class="s3">)&quot;</span><span class="s2">, </span><span class="s1">style</span><span class="s2">=</span><span class="s3">&quot;prompt.default&quot;</span><span class="s2">)</span>
+
+    <span class="s0">def </span><span class="s1">process_response</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">value</span><span class="s2">: </span><span class="s1">str</span><span class="s2">) </span><span class="s1">-&gt; bool</span><span class="s2">:</span>
+        <span class="s4">&quot;&quot;&quot;Convert choices to a bool.&quot;&quot;&quot;</span>
+        <span class="s1">value </span><span class="s2">= </span><span class="s1">value</span><span class="s2">.</span><span class="s1">strip</span><span class="s2">().</span><span class="s1">lower</span><span class="s2">()</span>
+        <span class="s0">if </span><span class="s1">value </span><span class="s0">not in </span><span class="s1">self</span><span class="s2">.</span><span class="s1">choices</span><span class="s2">:</span>
+            <span class="s0">raise </span><span class="s1">InvalidResponse</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">validate_error_message</span><span class="s2">)</span>
+        <span class="s0">return </span><span class="s1">value </span><span class="s2">== </span><span class="s1">self</span><span class="s2">.</span><span class="s1">choices</span><span class="s2">[</span><span class="s5">0</span><span class="s2">]</span>
+
+
+<span class="s0">if </span><span class="s1">__name__ </span><span class="s2">== </span><span class="s3">&quot;__main__&quot;</span><span class="s2">:  </span><span class="s6"># pragma: no cover</span>
+
+    <span class="s0">from </span><span class="s1">pip</span><span class="s2">.</span><span class="s1">_vendor</span><span class="s2">.</span><span class="s1">rich </span><span class="s0">import </span><span class="s1">print</span>
+
+    <span class="s0">if </span><span class="s1">Confirm</span><span class="s2">.</span><span class="s1">ask</span><span class="s2">(</span><span class="s3">&quot;Run [i]prompt[/i] tests?&quot;</span><span class="s2">, </span><span class="s1">default</span><span class="s2">=</span><span class="s0">True</span><span class="s2">):</span>
+        <span class="s0">while True</span><span class="s2">:</span>
+            <span class="s1">result </span><span class="s2">= </span><span class="s1">IntPrompt</span><span class="s2">.</span><span class="s1">ask</span><span class="s2">(</span>
+                <span class="s3">&quot;:rocket: Enter a number between [b]1[/b] and [b]10[/b]&quot;</span><span class="s2">, </span><span class="s1">default</span><span class="s2">=</span><span class="s5">5</span>
+            <span class="s2">)</span>
+            <span class="s0">if </span><span class="s1">result </span><span class="s2">&gt;= </span><span class="s5">1 </span><span class="s0">and </span><span class="s1">result </span><span class="s2">&lt;= </span><span class="s5">10</span><span class="s2">:</span>
+                <span class="s0">break</span>
+            <span class="s1">print</span><span class="s2">(</span><span class="s3">&quot;:pile_of_poo: [prompt.invalid]Number must be between 1 and 10&quot;</span><span class="s2">)</span>
+        <span class="s1">print</span><span class="s2">(</span><span class="s3">f&quot;number=</span><span class="s0">{</span><span class="s1">result</span><span class="s0">}</span><span class="s3">&quot;</span><span class="s2">)</span>
+
+        <span class="s0">while True</span><span class="s2">:</span>
+            <span class="s1">password </span><span class="s2">= </span><span class="s1">Prompt</span><span class="s2">.</span><span class="s1">ask</span><span class="s2">(</span>
+                <span class="s3">&quot;Please enter a password [cyan](must be at least 5 characters)&quot;</span><span class="s2">,</span>
+                <span class="s1">password</span><span class="s2">=</span><span class="s0">True</span><span class="s2">,</span>
+            <span class="s2">)</span>
+            <span class="s0">if </span><span class="s1">len</span><span class="s2">(</span><span class="s1">password</span><span class="s2">) &gt;= </span><span class="s5">5</span><span class="s2">:</span>
+                <span class="s0">break</span>
+            <span class="s1">print</span><span class="s2">(</span><span class="s3">&quot;[prompt.invalid]password too short&quot;</span><span class="s2">)</span>
+        <span class="s1">print</span><span class="s2">(</span><span class="s3">f&quot;password=</span><span class="s0">{</span><span class="s1">password</span><span class="s0">!r}</span><span class="s3">&quot;</span><span class="s2">)</span>
+
+        <span class="s1">fruit </span><span class="s2">= </span><span class="s1">Prompt</span><span class="s2">.</span><span class="s1">ask</span><span class="s2">(</span><span class="s3">&quot;Enter a fruit&quot;</span><span class="s2">, </span><span class="s1">choices</span><span class="s2">=[</span><span class="s3">&quot;apple&quot;</span><span class="s2">, </span><span class="s3">&quot;orange&quot;</span><span class="s2">, </span><span class="s3">&quot;pear&quot;</span><span class="s2">])</span>
+        <span class="s1">print</span><span class="s2">(</span><span class="s3">f&quot;fruit=</span><span class="s0">{</span><span class="s1">fruit</span><span class="s0">!r}</span><span class="s3">&quot;</span><span class="s2">)</span>
+
+    <span class="s0">else</span><span class="s2">:</span>
+        <span class="s1">print</span><span class="s2">(</span><span class="s3">&quot;[b]OK :loudly_crying_face:&quot;</span><span class="s2">)</span>
+</pre>
+</body>
+</html>

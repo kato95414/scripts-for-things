@@ -1,0 +1,971 @@
+<html>
+<head>
+<title>syntax.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cf8e6d;}
+.s1 { color: #bcbec4;}
+.s2 { color: #bcbec4;}
+.s3 { color: #6aab73;}
+.s4 { color: #7a7e85;}
+.s5 { color: #2aacb8;}
+.s6 { color: #5f826b; font-style: italic;}
+</style>
+</head>
+<body bgcolor="#1e1f22">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+syntax.py</font>
+</center></td></tr></table>
+<pre><span class="s0">import </span><span class="s1">os</span><span class="s2">.</span><span class="s1">path</span>
+<span class="s0">import </span><span class="s1">platform</span>
+<span class="s0">import </span><span class="s1">re</span>
+<span class="s0">import </span><span class="s1">sys</span>
+<span class="s0">import </span><span class="s1">textwrap</span>
+<span class="s0">from </span><span class="s1">abc </span><span class="s0">import </span><span class="s1">ABC</span><span class="s2">, </span><span class="s1">abstractmethod</span>
+<span class="s0">from </span><span class="s1">pathlib </span><span class="s0">import </span><span class="s1">Path</span>
+<span class="s0">from </span><span class="s1">typing </span><span class="s0">import </span><span class="s2">(</span>
+    <span class="s1">Any</span><span class="s2">,</span>
+    <span class="s1">Dict</span><span class="s2">,</span>
+    <span class="s1">Iterable</span><span class="s2">,</span>
+    <span class="s1">List</span><span class="s2">,</span>
+    <span class="s1">NamedTuple</span><span class="s2">,</span>
+    <span class="s1">Optional</span><span class="s2">,</span>
+    <span class="s1">Sequence</span><span class="s2">,</span>
+    <span class="s1">Set</span><span class="s2">,</span>
+    <span class="s1">Tuple</span><span class="s2">,</span>
+    <span class="s1">Type</span><span class="s2">,</span>
+    <span class="s1">Union</span><span class="s2">,</span>
+<span class="s2">)</span>
+
+<span class="s0">from </span><span class="s1">pip</span><span class="s2">.</span><span class="s1">_vendor</span><span class="s2">.</span><span class="s1">pygments</span><span class="s2">.</span><span class="s1">lexer </span><span class="s0">import </span><span class="s1">Lexer</span>
+<span class="s0">from </span><span class="s1">pip</span><span class="s2">.</span><span class="s1">_vendor</span><span class="s2">.</span><span class="s1">pygments</span><span class="s2">.</span><span class="s1">lexers </span><span class="s0">import </span><span class="s1">get_lexer_by_name</span><span class="s2">, </span><span class="s1">guess_lexer_for_filename</span>
+<span class="s0">from </span><span class="s1">pip</span><span class="s2">.</span><span class="s1">_vendor</span><span class="s2">.</span><span class="s1">pygments</span><span class="s2">.</span><span class="s1">style </span><span class="s0">import </span><span class="s1">Style </span><span class="s0">as </span><span class="s1">PygmentsStyle</span>
+<span class="s0">from </span><span class="s1">pip</span><span class="s2">.</span><span class="s1">_vendor</span><span class="s2">.</span><span class="s1">pygments</span><span class="s2">.</span><span class="s1">styles </span><span class="s0">import </span><span class="s1">get_style_by_name</span>
+<span class="s0">from </span><span class="s1">pip</span><span class="s2">.</span><span class="s1">_vendor</span><span class="s2">.</span><span class="s1">pygments</span><span class="s2">.</span><span class="s1">token </span><span class="s0">import </span><span class="s2">(</span>
+    <span class="s1">Comment</span><span class="s2">,</span>
+    <span class="s1">Error</span><span class="s2">,</span>
+    <span class="s1">Generic</span><span class="s2">,</span>
+    <span class="s1">Keyword</span><span class="s2">,</span>
+    <span class="s1">Name</span><span class="s2">,</span>
+    <span class="s1">Number</span><span class="s2">,</span>
+    <span class="s1">Operator</span><span class="s2">,</span>
+    <span class="s1">String</span><span class="s2">,</span>
+    <span class="s1">Token</span><span class="s2">,</span>
+    <span class="s1">Whitespace</span><span class="s2">,</span>
+<span class="s2">)</span>
+<span class="s0">from </span><span class="s1">pip</span><span class="s2">.</span><span class="s1">_vendor</span><span class="s2">.</span><span class="s1">pygments</span><span class="s2">.</span><span class="s1">util </span><span class="s0">import </span><span class="s1">ClassNotFound</span>
+
+<span class="s0">from </span><span class="s1">pip</span><span class="s2">.</span><span class="s1">_vendor</span><span class="s2">.</span><span class="s1">rich</span><span class="s2">.</span><span class="s1">containers </span><span class="s0">import </span><span class="s1">Lines</span>
+<span class="s0">from </span><span class="s1">pip</span><span class="s2">.</span><span class="s1">_vendor</span><span class="s2">.</span><span class="s1">rich</span><span class="s2">.</span><span class="s1">padding </span><span class="s0">import </span><span class="s1">Padding</span><span class="s2">, </span><span class="s1">PaddingDimensions</span>
+
+<span class="s0">from </span><span class="s2">.</span><span class="s1">_loop </span><span class="s0">import </span><span class="s1">loop_first</span>
+<span class="s0">from </span><span class="s2">.</span><span class="s1">cells </span><span class="s0">import </span><span class="s1">cell_len</span>
+<span class="s0">from </span><span class="s2">.</span><span class="s1">color </span><span class="s0">import </span><span class="s1">Color</span><span class="s2">, </span><span class="s1">blend_rgb</span>
+<span class="s0">from </span><span class="s2">.</span><span class="s1">console </span><span class="s0">import </span><span class="s1">Console</span><span class="s2">, </span><span class="s1">ConsoleOptions</span><span class="s2">, </span><span class="s1">JustifyMethod</span><span class="s2">, </span><span class="s1">RenderResult</span>
+<span class="s0">from </span><span class="s2">.</span><span class="s1">jupyter </span><span class="s0">import </span><span class="s1">JupyterMixin</span>
+<span class="s0">from </span><span class="s2">.</span><span class="s1">measure </span><span class="s0">import </span><span class="s1">Measurement</span>
+<span class="s0">from </span><span class="s2">.</span><span class="s1">segment </span><span class="s0">import </span><span class="s1">Segment</span><span class="s2">, </span><span class="s1">Segments</span>
+<span class="s0">from </span><span class="s2">.</span><span class="s1">style </span><span class="s0">import </span><span class="s1">Style</span><span class="s2">, </span><span class="s1">StyleType</span>
+<span class="s0">from </span><span class="s2">.</span><span class="s1">text </span><span class="s0">import </span><span class="s1">Text</span>
+
+<span class="s1">TokenType </span><span class="s2">= </span><span class="s1">Tuple</span><span class="s2">[</span><span class="s1">str</span><span class="s2">, ...]</span>
+
+<span class="s1">WINDOWS </span><span class="s2">= </span><span class="s1">platform</span><span class="s2">.</span><span class="s1">system</span><span class="s2">() == </span><span class="s3">&quot;Windows&quot;</span>
+<span class="s1">DEFAULT_THEME </span><span class="s2">= </span><span class="s3">&quot;monokai&quot;</span>
+
+<span class="s4"># The following styles are based on https://github.com/pygments/pygments/blob/master/pygments/formatters/terminal.py</span>
+<span class="s4"># A few modifications were made</span>
+
+<span class="s1">ANSI_LIGHT</span><span class="s2">: </span><span class="s1">Dict</span><span class="s2">[</span><span class="s1">TokenType</span><span class="s2">, </span><span class="s1">Style</span><span class="s2">] = {</span>
+    <span class="s1">Token</span><span class="s2">: </span><span class="s1">Style</span><span class="s2">(),</span>
+    <span class="s1">Whitespace</span><span class="s2">: </span><span class="s1">Style</span><span class="s2">(</span><span class="s1">color</span><span class="s2">=</span><span class="s3">&quot;white&quot;</span><span class="s2">),</span>
+    <span class="s1">Comment</span><span class="s2">: </span><span class="s1">Style</span><span class="s2">(</span><span class="s1">dim</span><span class="s2">=</span><span class="s0">True</span><span class="s2">),</span>
+    <span class="s1">Comment</span><span class="s2">.</span><span class="s1">Preproc</span><span class="s2">: </span><span class="s1">Style</span><span class="s2">(</span><span class="s1">color</span><span class="s2">=</span><span class="s3">&quot;cyan&quot;</span><span class="s2">),</span>
+    <span class="s1">Keyword</span><span class="s2">: </span><span class="s1">Style</span><span class="s2">(</span><span class="s1">color</span><span class="s2">=</span><span class="s3">&quot;blue&quot;</span><span class="s2">),</span>
+    <span class="s1">Keyword</span><span class="s2">.</span><span class="s1">Type</span><span class="s2">: </span><span class="s1">Style</span><span class="s2">(</span><span class="s1">color</span><span class="s2">=</span><span class="s3">&quot;cyan&quot;</span><span class="s2">),</span>
+    <span class="s1">Operator</span><span class="s2">.</span><span class="s1">Word</span><span class="s2">: </span><span class="s1">Style</span><span class="s2">(</span><span class="s1">color</span><span class="s2">=</span><span class="s3">&quot;magenta&quot;</span><span class="s2">),</span>
+    <span class="s1">Name</span><span class="s2">.</span><span class="s1">Builtin</span><span class="s2">: </span><span class="s1">Style</span><span class="s2">(</span><span class="s1">color</span><span class="s2">=</span><span class="s3">&quot;cyan&quot;</span><span class="s2">),</span>
+    <span class="s1">Name</span><span class="s2">.</span><span class="s1">Function</span><span class="s2">: </span><span class="s1">Style</span><span class="s2">(</span><span class="s1">color</span><span class="s2">=</span><span class="s3">&quot;green&quot;</span><span class="s2">),</span>
+    <span class="s1">Name</span><span class="s2">.</span><span class="s1">Namespace</span><span class="s2">: </span><span class="s1">Style</span><span class="s2">(</span><span class="s1">color</span><span class="s2">=</span><span class="s3">&quot;cyan&quot;</span><span class="s2">, </span><span class="s1">underline</span><span class="s2">=</span><span class="s0">True</span><span class="s2">),</span>
+    <span class="s1">Name</span><span class="s2">.</span><span class="s1">Class</span><span class="s2">: </span><span class="s1">Style</span><span class="s2">(</span><span class="s1">color</span><span class="s2">=</span><span class="s3">&quot;green&quot;</span><span class="s2">, </span><span class="s1">underline</span><span class="s2">=</span><span class="s0">True</span><span class="s2">),</span>
+    <span class="s1">Name</span><span class="s2">.</span><span class="s1">Exception</span><span class="s2">: </span><span class="s1">Style</span><span class="s2">(</span><span class="s1">color</span><span class="s2">=</span><span class="s3">&quot;cyan&quot;</span><span class="s2">),</span>
+    <span class="s1">Name</span><span class="s2">.</span><span class="s1">Decorator</span><span class="s2">: </span><span class="s1">Style</span><span class="s2">(</span><span class="s1">color</span><span class="s2">=</span><span class="s3">&quot;magenta&quot;</span><span class="s2">, </span><span class="s1">bold</span><span class="s2">=</span><span class="s0">True</span><span class="s2">),</span>
+    <span class="s1">Name</span><span class="s2">.</span><span class="s1">Variable</span><span class="s2">: </span><span class="s1">Style</span><span class="s2">(</span><span class="s1">color</span><span class="s2">=</span><span class="s3">&quot;red&quot;</span><span class="s2">),</span>
+    <span class="s1">Name</span><span class="s2">.</span><span class="s1">Constant</span><span class="s2">: </span><span class="s1">Style</span><span class="s2">(</span><span class="s1">color</span><span class="s2">=</span><span class="s3">&quot;red&quot;</span><span class="s2">),</span>
+    <span class="s1">Name</span><span class="s2">.</span><span class="s1">Attribute</span><span class="s2">: </span><span class="s1">Style</span><span class="s2">(</span><span class="s1">color</span><span class="s2">=</span><span class="s3">&quot;cyan&quot;</span><span class="s2">),</span>
+    <span class="s1">Name</span><span class="s2">.</span><span class="s1">Tag</span><span class="s2">: </span><span class="s1">Style</span><span class="s2">(</span><span class="s1">color</span><span class="s2">=</span><span class="s3">&quot;bright_blue&quot;</span><span class="s2">),</span>
+    <span class="s1">String</span><span class="s2">: </span><span class="s1">Style</span><span class="s2">(</span><span class="s1">color</span><span class="s2">=</span><span class="s3">&quot;yellow&quot;</span><span class="s2">),</span>
+    <span class="s1">Number</span><span class="s2">: </span><span class="s1">Style</span><span class="s2">(</span><span class="s1">color</span><span class="s2">=</span><span class="s3">&quot;blue&quot;</span><span class="s2">),</span>
+    <span class="s1">Generic</span><span class="s2">.</span><span class="s1">Deleted</span><span class="s2">: </span><span class="s1">Style</span><span class="s2">(</span><span class="s1">color</span><span class="s2">=</span><span class="s3">&quot;bright_red&quot;</span><span class="s2">),</span>
+    <span class="s1">Generic</span><span class="s2">.</span><span class="s1">Inserted</span><span class="s2">: </span><span class="s1">Style</span><span class="s2">(</span><span class="s1">color</span><span class="s2">=</span><span class="s3">&quot;green&quot;</span><span class="s2">),</span>
+    <span class="s1">Generic</span><span class="s2">.</span><span class="s1">Heading</span><span class="s2">: </span><span class="s1">Style</span><span class="s2">(</span><span class="s1">bold</span><span class="s2">=</span><span class="s0">True</span><span class="s2">),</span>
+    <span class="s1">Generic</span><span class="s2">.</span><span class="s1">Subheading</span><span class="s2">: </span><span class="s1">Style</span><span class="s2">(</span><span class="s1">color</span><span class="s2">=</span><span class="s3">&quot;magenta&quot;</span><span class="s2">, </span><span class="s1">bold</span><span class="s2">=</span><span class="s0">True</span><span class="s2">),</span>
+    <span class="s1">Generic</span><span class="s2">.</span><span class="s1">Prompt</span><span class="s2">: </span><span class="s1">Style</span><span class="s2">(</span><span class="s1">bold</span><span class="s2">=</span><span class="s0">True</span><span class="s2">),</span>
+    <span class="s1">Generic</span><span class="s2">.</span><span class="s1">Error</span><span class="s2">: </span><span class="s1">Style</span><span class="s2">(</span><span class="s1">color</span><span class="s2">=</span><span class="s3">&quot;bright_red&quot;</span><span class="s2">),</span>
+    <span class="s1">Error</span><span class="s2">: </span><span class="s1">Style</span><span class="s2">(</span><span class="s1">color</span><span class="s2">=</span><span class="s3">&quot;red&quot;</span><span class="s2">, </span><span class="s1">underline</span><span class="s2">=</span><span class="s0">True</span><span class="s2">),</span>
+<span class="s2">}</span>
+
+<span class="s1">ANSI_DARK</span><span class="s2">: </span><span class="s1">Dict</span><span class="s2">[</span><span class="s1">TokenType</span><span class="s2">, </span><span class="s1">Style</span><span class="s2">] = {</span>
+    <span class="s1">Token</span><span class="s2">: </span><span class="s1">Style</span><span class="s2">(),</span>
+    <span class="s1">Whitespace</span><span class="s2">: </span><span class="s1">Style</span><span class="s2">(</span><span class="s1">color</span><span class="s2">=</span><span class="s3">&quot;bright_black&quot;</span><span class="s2">),</span>
+    <span class="s1">Comment</span><span class="s2">: </span><span class="s1">Style</span><span class="s2">(</span><span class="s1">dim</span><span class="s2">=</span><span class="s0">True</span><span class="s2">),</span>
+    <span class="s1">Comment</span><span class="s2">.</span><span class="s1">Preproc</span><span class="s2">: </span><span class="s1">Style</span><span class="s2">(</span><span class="s1">color</span><span class="s2">=</span><span class="s3">&quot;bright_cyan&quot;</span><span class="s2">),</span>
+    <span class="s1">Keyword</span><span class="s2">: </span><span class="s1">Style</span><span class="s2">(</span><span class="s1">color</span><span class="s2">=</span><span class="s3">&quot;bright_blue&quot;</span><span class="s2">),</span>
+    <span class="s1">Keyword</span><span class="s2">.</span><span class="s1">Type</span><span class="s2">: </span><span class="s1">Style</span><span class="s2">(</span><span class="s1">color</span><span class="s2">=</span><span class="s3">&quot;bright_cyan&quot;</span><span class="s2">),</span>
+    <span class="s1">Operator</span><span class="s2">.</span><span class="s1">Word</span><span class="s2">: </span><span class="s1">Style</span><span class="s2">(</span><span class="s1">color</span><span class="s2">=</span><span class="s3">&quot;bright_magenta&quot;</span><span class="s2">),</span>
+    <span class="s1">Name</span><span class="s2">.</span><span class="s1">Builtin</span><span class="s2">: </span><span class="s1">Style</span><span class="s2">(</span><span class="s1">color</span><span class="s2">=</span><span class="s3">&quot;bright_cyan&quot;</span><span class="s2">),</span>
+    <span class="s1">Name</span><span class="s2">.</span><span class="s1">Function</span><span class="s2">: </span><span class="s1">Style</span><span class="s2">(</span><span class="s1">color</span><span class="s2">=</span><span class="s3">&quot;bright_green&quot;</span><span class="s2">),</span>
+    <span class="s1">Name</span><span class="s2">.</span><span class="s1">Namespace</span><span class="s2">: </span><span class="s1">Style</span><span class="s2">(</span><span class="s1">color</span><span class="s2">=</span><span class="s3">&quot;bright_cyan&quot;</span><span class="s2">, </span><span class="s1">underline</span><span class="s2">=</span><span class="s0">True</span><span class="s2">),</span>
+    <span class="s1">Name</span><span class="s2">.</span><span class="s1">Class</span><span class="s2">: </span><span class="s1">Style</span><span class="s2">(</span><span class="s1">color</span><span class="s2">=</span><span class="s3">&quot;bright_green&quot;</span><span class="s2">, </span><span class="s1">underline</span><span class="s2">=</span><span class="s0">True</span><span class="s2">),</span>
+    <span class="s1">Name</span><span class="s2">.</span><span class="s1">Exception</span><span class="s2">: </span><span class="s1">Style</span><span class="s2">(</span><span class="s1">color</span><span class="s2">=</span><span class="s3">&quot;bright_cyan&quot;</span><span class="s2">),</span>
+    <span class="s1">Name</span><span class="s2">.</span><span class="s1">Decorator</span><span class="s2">: </span><span class="s1">Style</span><span class="s2">(</span><span class="s1">color</span><span class="s2">=</span><span class="s3">&quot;bright_magenta&quot;</span><span class="s2">, </span><span class="s1">bold</span><span class="s2">=</span><span class="s0">True</span><span class="s2">),</span>
+    <span class="s1">Name</span><span class="s2">.</span><span class="s1">Variable</span><span class="s2">: </span><span class="s1">Style</span><span class="s2">(</span><span class="s1">color</span><span class="s2">=</span><span class="s3">&quot;bright_red&quot;</span><span class="s2">),</span>
+    <span class="s1">Name</span><span class="s2">.</span><span class="s1">Constant</span><span class="s2">: </span><span class="s1">Style</span><span class="s2">(</span><span class="s1">color</span><span class="s2">=</span><span class="s3">&quot;bright_red&quot;</span><span class="s2">),</span>
+    <span class="s1">Name</span><span class="s2">.</span><span class="s1">Attribute</span><span class="s2">: </span><span class="s1">Style</span><span class="s2">(</span><span class="s1">color</span><span class="s2">=</span><span class="s3">&quot;bright_cyan&quot;</span><span class="s2">),</span>
+    <span class="s1">Name</span><span class="s2">.</span><span class="s1">Tag</span><span class="s2">: </span><span class="s1">Style</span><span class="s2">(</span><span class="s1">color</span><span class="s2">=</span><span class="s3">&quot;bright_blue&quot;</span><span class="s2">),</span>
+    <span class="s1">String</span><span class="s2">: </span><span class="s1">Style</span><span class="s2">(</span><span class="s1">color</span><span class="s2">=</span><span class="s3">&quot;yellow&quot;</span><span class="s2">),</span>
+    <span class="s1">Number</span><span class="s2">: </span><span class="s1">Style</span><span class="s2">(</span><span class="s1">color</span><span class="s2">=</span><span class="s3">&quot;bright_blue&quot;</span><span class="s2">),</span>
+    <span class="s1">Generic</span><span class="s2">.</span><span class="s1">Deleted</span><span class="s2">: </span><span class="s1">Style</span><span class="s2">(</span><span class="s1">color</span><span class="s2">=</span><span class="s3">&quot;bright_red&quot;</span><span class="s2">),</span>
+    <span class="s1">Generic</span><span class="s2">.</span><span class="s1">Inserted</span><span class="s2">: </span><span class="s1">Style</span><span class="s2">(</span><span class="s1">color</span><span class="s2">=</span><span class="s3">&quot;bright_green&quot;</span><span class="s2">),</span>
+    <span class="s1">Generic</span><span class="s2">.</span><span class="s1">Heading</span><span class="s2">: </span><span class="s1">Style</span><span class="s2">(</span><span class="s1">bold</span><span class="s2">=</span><span class="s0">True</span><span class="s2">),</span>
+    <span class="s1">Generic</span><span class="s2">.</span><span class="s1">Subheading</span><span class="s2">: </span><span class="s1">Style</span><span class="s2">(</span><span class="s1">color</span><span class="s2">=</span><span class="s3">&quot;bright_magenta&quot;</span><span class="s2">, </span><span class="s1">bold</span><span class="s2">=</span><span class="s0">True</span><span class="s2">),</span>
+    <span class="s1">Generic</span><span class="s2">.</span><span class="s1">Prompt</span><span class="s2">: </span><span class="s1">Style</span><span class="s2">(</span><span class="s1">bold</span><span class="s2">=</span><span class="s0">True</span><span class="s2">),</span>
+    <span class="s1">Generic</span><span class="s2">.</span><span class="s1">Error</span><span class="s2">: </span><span class="s1">Style</span><span class="s2">(</span><span class="s1">color</span><span class="s2">=</span><span class="s3">&quot;bright_red&quot;</span><span class="s2">),</span>
+    <span class="s1">Error</span><span class="s2">: </span><span class="s1">Style</span><span class="s2">(</span><span class="s1">color</span><span class="s2">=</span><span class="s3">&quot;red&quot;</span><span class="s2">, </span><span class="s1">underline</span><span class="s2">=</span><span class="s0">True</span><span class="s2">),</span>
+<span class="s2">}</span>
+
+<span class="s1">RICH_SYNTAX_THEMES </span><span class="s2">= {</span><span class="s3">&quot;ansi_light&quot;</span><span class="s2">: </span><span class="s1">ANSI_LIGHT</span><span class="s2">, </span><span class="s3">&quot;ansi_dark&quot;</span><span class="s2">: </span><span class="s1">ANSI_DARK</span><span class="s2">}</span>
+<span class="s1">NUMBERS_COLUMN_DEFAULT_PADDING </span><span class="s2">= </span><span class="s5">2</span>
+
+
+<span class="s0">class </span><span class="s1">SyntaxTheme</span><span class="s2">(</span><span class="s1">ABC</span><span class="s2">):</span>
+    <span class="s6">&quot;&quot;&quot;Base class for a syntax theme.&quot;&quot;&quot;</span>
+
+    <span class="s2">@</span><span class="s1">abstractmethod</span>
+    <span class="s0">def </span><span class="s1">get_style_for_token</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">token_type</span><span class="s2">: </span><span class="s1">TokenType</span><span class="s2">) </span><span class="s1">-&gt; Style</span><span class="s2">:</span>
+        <span class="s6">&quot;&quot;&quot;Get a style for a given Pygments token.&quot;&quot;&quot;</span>
+        <span class="s0">raise </span><span class="s1">NotImplementedError  </span><span class="s4"># pragma: no cover</span>
+
+    <span class="s2">@</span><span class="s1">abstractmethod</span>
+    <span class="s0">def </span><span class="s1">get_background_style</span><span class="s2">(</span><span class="s1">self</span><span class="s2">) </span><span class="s1">-&gt; Style</span><span class="s2">:</span>
+        <span class="s6">&quot;&quot;&quot;Get the background color.&quot;&quot;&quot;</span>
+        <span class="s0">raise </span><span class="s1">NotImplementedError  </span><span class="s4"># pragma: no cover</span>
+
+
+<span class="s0">class </span><span class="s1">PygmentsSyntaxTheme</span><span class="s2">(</span><span class="s1">SyntaxTheme</span><span class="s2">):</span>
+    <span class="s6">&quot;&quot;&quot;Syntax theme that delegates to Pygments theme.&quot;&quot;&quot;</span>
+
+    <span class="s0">def </span><span class="s1">__init__</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">theme</span><span class="s2">: </span><span class="s1">Union</span><span class="s2">[</span><span class="s1">str</span><span class="s2">, </span><span class="s1">Type</span><span class="s2">[</span><span class="s1">PygmentsStyle</span><span class="s2">]]) </span><span class="s1">-&gt; </span><span class="s0">None</span><span class="s2">:</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">_style_cache</span><span class="s2">: </span><span class="s1">Dict</span><span class="s2">[</span><span class="s1">TokenType</span><span class="s2">, </span><span class="s1">Style</span><span class="s2">] = {}</span>
+        <span class="s0">if </span><span class="s1">isinstance</span><span class="s2">(</span><span class="s1">theme</span><span class="s2">, </span><span class="s1">str</span><span class="s2">):</span>
+            <span class="s0">try</span><span class="s2">:</span>
+                <span class="s1">self</span><span class="s2">.</span><span class="s1">_pygments_style_class </span><span class="s2">= </span><span class="s1">get_style_by_name</span><span class="s2">(</span><span class="s1">theme</span><span class="s2">)</span>
+            <span class="s0">except </span><span class="s1">ClassNotFound</span><span class="s2">:</span>
+                <span class="s1">self</span><span class="s2">.</span><span class="s1">_pygments_style_class </span><span class="s2">= </span><span class="s1">get_style_by_name</span><span class="s2">(</span><span class="s3">&quot;default&quot;</span><span class="s2">)</span>
+        <span class="s0">else</span><span class="s2">:</span>
+            <span class="s1">self</span><span class="s2">.</span><span class="s1">_pygments_style_class </span><span class="s2">= </span><span class="s1">theme</span>
+
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">_background_color </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">_pygments_style_class</span><span class="s2">.</span><span class="s1">background_color</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">_background_style </span><span class="s2">= </span><span class="s1">Style</span><span class="s2">(</span><span class="s1">bgcolor</span><span class="s2">=</span><span class="s1">self</span><span class="s2">.</span><span class="s1">_background_color</span><span class="s2">)</span>
+
+    <span class="s0">def </span><span class="s1">get_style_for_token</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">token_type</span><span class="s2">: </span><span class="s1">TokenType</span><span class="s2">) </span><span class="s1">-&gt; Style</span><span class="s2">:</span>
+        <span class="s6">&quot;&quot;&quot;Get a style from a Pygments class.&quot;&quot;&quot;</span>
+        <span class="s0">try</span><span class="s2">:</span>
+            <span class="s0">return </span><span class="s1">self</span><span class="s2">.</span><span class="s1">_style_cache</span><span class="s2">[</span><span class="s1">token_type</span><span class="s2">]</span>
+        <span class="s0">except </span><span class="s1">KeyError</span><span class="s2">:</span>
+            <span class="s0">try</span><span class="s2">:</span>
+                <span class="s1">pygments_style </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">_pygments_style_class</span><span class="s2">.</span><span class="s1">style_for_token</span><span class="s2">(</span><span class="s1">token_type</span><span class="s2">)</span>
+            <span class="s0">except </span><span class="s1">KeyError</span><span class="s2">:</span>
+                <span class="s1">style </span><span class="s2">= </span><span class="s1">Style</span><span class="s2">.</span><span class="s1">null</span><span class="s2">()</span>
+            <span class="s0">else</span><span class="s2">:</span>
+                <span class="s1">color </span><span class="s2">= </span><span class="s1">pygments_style</span><span class="s2">[</span><span class="s3">&quot;color&quot;</span><span class="s2">]</span>
+                <span class="s1">bgcolor </span><span class="s2">= </span><span class="s1">pygments_style</span><span class="s2">[</span><span class="s3">&quot;bgcolor&quot;</span><span class="s2">]</span>
+                <span class="s1">style </span><span class="s2">= </span><span class="s1">Style</span><span class="s2">(</span>
+                    <span class="s1">color</span><span class="s2">=</span><span class="s3">&quot;#&quot; </span><span class="s2">+ </span><span class="s1">color </span><span class="s0">if </span><span class="s1">color </span><span class="s0">else </span><span class="s3">&quot;#000000&quot;</span><span class="s2">,</span>
+                    <span class="s1">bgcolor</span><span class="s2">=</span><span class="s3">&quot;#&quot; </span><span class="s2">+ </span><span class="s1">bgcolor </span><span class="s0">if </span><span class="s1">bgcolor </span><span class="s0">else </span><span class="s1">self</span><span class="s2">.</span><span class="s1">_background_color</span><span class="s2">,</span>
+                    <span class="s1">bold</span><span class="s2">=</span><span class="s1">pygments_style</span><span class="s2">[</span><span class="s3">&quot;bold&quot;</span><span class="s2">],</span>
+                    <span class="s1">italic</span><span class="s2">=</span><span class="s1">pygments_style</span><span class="s2">[</span><span class="s3">&quot;italic&quot;</span><span class="s2">],</span>
+                    <span class="s1">underline</span><span class="s2">=</span><span class="s1">pygments_style</span><span class="s2">[</span><span class="s3">&quot;underline&quot;</span><span class="s2">],</span>
+                <span class="s2">)</span>
+            <span class="s1">self</span><span class="s2">.</span><span class="s1">_style_cache</span><span class="s2">[</span><span class="s1">token_type</span><span class="s2">] = </span><span class="s1">style</span>
+        <span class="s0">return </span><span class="s1">style</span>
+
+    <span class="s0">def </span><span class="s1">get_background_style</span><span class="s2">(</span><span class="s1">self</span><span class="s2">) </span><span class="s1">-&gt; Style</span><span class="s2">:</span>
+        <span class="s0">return </span><span class="s1">self</span><span class="s2">.</span><span class="s1">_background_style</span>
+
+
+<span class="s0">class </span><span class="s1">ANSISyntaxTheme</span><span class="s2">(</span><span class="s1">SyntaxTheme</span><span class="s2">):</span>
+    <span class="s6">&quot;&quot;&quot;Syntax theme to use standard colors.&quot;&quot;&quot;</span>
+
+    <span class="s0">def </span><span class="s1">__init__</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">style_map</span><span class="s2">: </span><span class="s1">Dict</span><span class="s2">[</span><span class="s1">TokenType</span><span class="s2">, </span><span class="s1">Style</span><span class="s2">]) </span><span class="s1">-&gt; </span><span class="s0">None</span><span class="s2">:</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">style_map </span><span class="s2">= </span><span class="s1">style_map</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">_missing_style </span><span class="s2">= </span><span class="s1">Style</span><span class="s2">.</span><span class="s1">null</span><span class="s2">()</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">_background_style </span><span class="s2">= </span><span class="s1">Style</span><span class="s2">.</span><span class="s1">null</span><span class="s2">()</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">_style_cache</span><span class="s2">: </span><span class="s1">Dict</span><span class="s2">[</span><span class="s1">TokenType</span><span class="s2">, </span><span class="s1">Style</span><span class="s2">] = {}</span>
+
+    <span class="s0">def </span><span class="s1">get_style_for_token</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">token_type</span><span class="s2">: </span><span class="s1">TokenType</span><span class="s2">) </span><span class="s1">-&gt; Style</span><span class="s2">:</span>
+        <span class="s6">&quot;&quot;&quot;Look up style in the style map.&quot;&quot;&quot;</span>
+        <span class="s0">try</span><span class="s2">:</span>
+            <span class="s0">return </span><span class="s1">self</span><span class="s2">.</span><span class="s1">_style_cache</span><span class="s2">[</span><span class="s1">token_type</span><span class="s2">]</span>
+        <span class="s0">except </span><span class="s1">KeyError</span><span class="s2">:</span>
+            <span class="s4"># Styles form a hierarchy</span>
+            <span class="s4"># We need to go from most to least specific</span>
+            <span class="s4"># e.g. (&quot;foo&quot;, &quot;bar&quot;, &quot;baz&quot;) to (&quot;foo&quot;, &quot;bar&quot;)  to (&quot;foo&quot;,)</span>
+            <span class="s1">get_style </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">style_map</span><span class="s2">.</span><span class="s1">get</span>
+            <span class="s1">token </span><span class="s2">= </span><span class="s1">tuple</span><span class="s2">(</span><span class="s1">token_type</span><span class="s2">)</span>
+            <span class="s1">style </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">_missing_style</span>
+            <span class="s0">while </span><span class="s1">token</span><span class="s2">:</span>
+                <span class="s1">_style </span><span class="s2">= </span><span class="s1">get_style</span><span class="s2">(</span><span class="s1">token</span><span class="s2">)</span>
+                <span class="s0">if </span><span class="s1">_style </span><span class="s0">is not None</span><span class="s2">:</span>
+                    <span class="s1">style </span><span class="s2">= </span><span class="s1">_style</span>
+                    <span class="s0">break</span>
+                <span class="s1">token </span><span class="s2">= </span><span class="s1">token</span><span class="s2">[:-</span><span class="s5">1</span><span class="s2">]</span>
+            <span class="s1">self</span><span class="s2">.</span><span class="s1">_style_cache</span><span class="s2">[</span><span class="s1">token_type</span><span class="s2">] = </span><span class="s1">style</span>
+            <span class="s0">return </span><span class="s1">style</span>
+
+    <span class="s0">def </span><span class="s1">get_background_style</span><span class="s2">(</span><span class="s1">self</span><span class="s2">) </span><span class="s1">-&gt; Style</span><span class="s2">:</span>
+        <span class="s0">return </span><span class="s1">self</span><span class="s2">.</span><span class="s1">_background_style</span>
+
+
+<span class="s1">SyntaxPosition </span><span class="s2">= </span><span class="s1">Tuple</span><span class="s2">[</span><span class="s1">int</span><span class="s2">, </span><span class="s1">int</span><span class="s2">]</span>
+
+
+<span class="s0">class </span><span class="s1">_SyntaxHighlightRange</span><span class="s2">(</span><span class="s1">NamedTuple</span><span class="s2">):</span>
+    <span class="s6">&quot;&quot;&quot; 
+    A range to highlight in a Syntax object. 
+    `start` and `end` are 2-integers tuples, where the first integer is the line number 
+    (starting from 1) and the second integer is the column index (starting from 0). 
+    &quot;&quot;&quot;</span>
+
+    <span class="s1">style</span><span class="s2">: </span><span class="s1">StyleType</span>
+    <span class="s1">start</span><span class="s2">: </span><span class="s1">SyntaxPosition</span>
+    <span class="s1">end</span><span class="s2">: </span><span class="s1">SyntaxPosition</span>
+
+
+<span class="s0">class </span><span class="s1">Syntax</span><span class="s2">(</span><span class="s1">JupyterMixin</span><span class="s2">):</span>
+    <span class="s6">&quot;&quot;&quot;Construct a Syntax object to render syntax highlighted code. 
+ 
+    Args: 
+        code (str): Code to highlight. 
+        lexer (Lexer | str): Lexer to use (see https://pygments.org/docs/lexers/) 
+        theme (str, optional): Color theme, aka Pygments style (see https://pygments.org/docs/styles/#getting-a-list-of-available-styles). Defaults to &quot;monokai&quot;. 
+        dedent (bool, optional): Enable stripping of initial whitespace. Defaults to False. 
+        line_numbers (bool, optional): Enable rendering of line numbers. Defaults to False. 
+        start_line (int, optional): Starting number for line numbers. Defaults to 1. 
+        line_range (Tuple[int | None, int | None], optional): If given should be a tuple of the start and end line to render. 
+            A value of None in the tuple indicates the range is open in that direction. 
+        highlight_lines (Set[int]): A set of line numbers to highlight. 
+        code_width: Width of code to render (not including line numbers), or ``None`` to use all available width. 
+        tab_size (int, optional): Size of tabs. Defaults to 4. 
+        word_wrap (bool, optional): Enable word wrapping. 
+        background_color (str, optional): Optional background color, or None to use theme color. Defaults to None. 
+        indent_guides (bool, optional): Show indent guides. Defaults to False. 
+        padding (PaddingDimensions): Padding to apply around the syntax. Defaults to 0 (no padding). 
+    &quot;&quot;&quot;</span>
+
+    <span class="s1">_pygments_style_class</span><span class="s2">: </span><span class="s1">Type</span><span class="s2">[</span><span class="s1">PygmentsStyle</span><span class="s2">]</span>
+    <span class="s1">_theme</span><span class="s2">: </span><span class="s1">SyntaxTheme</span>
+
+    <span class="s2">@</span><span class="s1">classmethod</span>
+    <span class="s0">def </span><span class="s1">get_theme</span><span class="s2">(</span><span class="s1">cls</span><span class="s2">, </span><span class="s1">name</span><span class="s2">: </span><span class="s1">Union</span><span class="s2">[</span><span class="s1">str</span><span class="s2">, </span><span class="s1">SyntaxTheme</span><span class="s2">]) </span><span class="s1">-&gt; SyntaxTheme</span><span class="s2">:</span>
+        <span class="s6">&quot;&quot;&quot;Get a syntax theme instance.&quot;&quot;&quot;</span>
+        <span class="s0">if </span><span class="s1">isinstance</span><span class="s2">(</span><span class="s1">name</span><span class="s2">, </span><span class="s1">SyntaxTheme</span><span class="s2">):</span>
+            <span class="s0">return </span><span class="s1">name</span>
+        <span class="s1">theme</span><span class="s2">: </span><span class="s1">SyntaxTheme</span>
+        <span class="s0">if </span><span class="s1">name </span><span class="s0">in </span><span class="s1">RICH_SYNTAX_THEMES</span><span class="s2">:</span>
+            <span class="s1">theme </span><span class="s2">= </span><span class="s1">ANSISyntaxTheme</span><span class="s2">(</span><span class="s1">RICH_SYNTAX_THEMES</span><span class="s2">[</span><span class="s1">name</span><span class="s2">])</span>
+        <span class="s0">else</span><span class="s2">:</span>
+            <span class="s1">theme </span><span class="s2">= </span><span class="s1">PygmentsSyntaxTheme</span><span class="s2">(</span><span class="s1">name</span><span class="s2">)</span>
+        <span class="s0">return </span><span class="s1">theme</span>
+
+    <span class="s0">def </span><span class="s1">__init__</span><span class="s2">(</span>
+        <span class="s1">self</span><span class="s2">,</span>
+        <span class="s1">code</span><span class="s2">: </span><span class="s1">str</span><span class="s2">,</span>
+        <span class="s1">lexer</span><span class="s2">: </span><span class="s1">Union</span><span class="s2">[</span><span class="s1">Lexer</span><span class="s2">, </span><span class="s1">str</span><span class="s2">],</span>
+        <span class="s2">*,</span>
+        <span class="s1">theme</span><span class="s2">: </span><span class="s1">Union</span><span class="s2">[</span><span class="s1">str</span><span class="s2">, </span><span class="s1">SyntaxTheme</span><span class="s2">] = </span><span class="s1">DEFAULT_THEME</span><span class="s2">,</span>
+        <span class="s1">dedent</span><span class="s2">: </span><span class="s1">bool </span><span class="s2">= </span><span class="s0">False</span><span class="s2">,</span>
+        <span class="s1">line_numbers</span><span class="s2">: </span><span class="s1">bool </span><span class="s2">= </span><span class="s0">False</span><span class="s2">,</span>
+        <span class="s1">start_line</span><span class="s2">: </span><span class="s1">int </span><span class="s2">= </span><span class="s5">1</span><span class="s2">,</span>
+        <span class="s1">line_range</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">Tuple</span><span class="s2">[</span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">int</span><span class="s2">], </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">int</span><span class="s2">]]] = </span><span class="s0">None</span><span class="s2">,</span>
+        <span class="s1">highlight_lines</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">Set</span><span class="s2">[</span><span class="s1">int</span><span class="s2">]] = </span><span class="s0">None</span><span class="s2">,</span>
+        <span class="s1">code_width</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">int</span><span class="s2">] = </span><span class="s0">None</span><span class="s2">,</span>
+        <span class="s1">tab_size</span><span class="s2">: </span><span class="s1">int </span><span class="s2">= </span><span class="s5">4</span><span class="s2">,</span>
+        <span class="s1">word_wrap</span><span class="s2">: </span><span class="s1">bool </span><span class="s2">= </span><span class="s0">False</span><span class="s2">,</span>
+        <span class="s1">background_color</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">str</span><span class="s2">] = </span><span class="s0">None</span><span class="s2">,</span>
+        <span class="s1">indent_guides</span><span class="s2">: </span><span class="s1">bool </span><span class="s2">= </span><span class="s0">False</span><span class="s2">,</span>
+        <span class="s1">padding</span><span class="s2">: </span><span class="s1">PaddingDimensions </span><span class="s2">= </span><span class="s5">0</span><span class="s2">,</span>
+    <span class="s2">) </span><span class="s1">-&gt; </span><span class="s0">None</span><span class="s2">:</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">code </span><span class="s2">= </span><span class="s1">code</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">_lexer </span><span class="s2">= </span><span class="s1">lexer</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">dedent </span><span class="s2">= </span><span class="s1">dedent</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">line_numbers </span><span class="s2">= </span><span class="s1">line_numbers</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">start_line </span><span class="s2">= </span><span class="s1">start_line</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">line_range </span><span class="s2">= </span><span class="s1">line_range</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">highlight_lines </span><span class="s2">= </span><span class="s1">highlight_lines </span><span class="s0">or </span><span class="s1">set</span><span class="s2">()</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">code_width </span><span class="s2">= </span><span class="s1">code_width</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">tab_size </span><span class="s2">= </span><span class="s1">tab_size</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">word_wrap </span><span class="s2">= </span><span class="s1">word_wrap</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">background_color </span><span class="s2">= </span><span class="s1">background_color</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">background_style </span><span class="s2">= (</span>
+            <span class="s1">Style</span><span class="s2">(</span><span class="s1">bgcolor</span><span class="s2">=</span><span class="s1">background_color</span><span class="s2">) </span><span class="s0">if </span><span class="s1">background_color </span><span class="s0">else </span><span class="s1">Style</span><span class="s2">()</span>
+        <span class="s2">)</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">indent_guides </span><span class="s2">= </span><span class="s1">indent_guides</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">padding </span><span class="s2">= </span><span class="s1">padding</span>
+
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">_theme </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">get_theme</span><span class="s2">(</span><span class="s1">theme</span><span class="s2">)</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">_stylized_ranges</span><span class="s2">: </span><span class="s1">List</span><span class="s2">[</span><span class="s1">_SyntaxHighlightRange</span><span class="s2">] = []</span>
+
+    <span class="s2">@</span><span class="s1">classmethod</span>
+    <span class="s0">def </span><span class="s1">from_path</span><span class="s2">(</span>
+        <span class="s1">cls</span><span class="s2">,</span>
+        <span class="s1">path</span><span class="s2">: </span><span class="s1">str</span><span class="s2">,</span>
+        <span class="s1">encoding</span><span class="s2">: </span><span class="s1">str </span><span class="s2">= </span><span class="s3">&quot;utf-8&quot;</span><span class="s2">,</span>
+        <span class="s1">lexer</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">Union</span><span class="s2">[</span><span class="s1">Lexer</span><span class="s2">, </span><span class="s1">str</span><span class="s2">]] = </span><span class="s0">None</span><span class="s2">,</span>
+        <span class="s1">theme</span><span class="s2">: </span><span class="s1">Union</span><span class="s2">[</span><span class="s1">str</span><span class="s2">, </span><span class="s1">SyntaxTheme</span><span class="s2">] = </span><span class="s1">DEFAULT_THEME</span><span class="s2">,</span>
+        <span class="s1">dedent</span><span class="s2">: </span><span class="s1">bool </span><span class="s2">= </span><span class="s0">False</span><span class="s2">,</span>
+        <span class="s1">line_numbers</span><span class="s2">: </span><span class="s1">bool </span><span class="s2">= </span><span class="s0">False</span><span class="s2">,</span>
+        <span class="s1">line_range</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">Tuple</span><span class="s2">[</span><span class="s1">int</span><span class="s2">, </span><span class="s1">int</span><span class="s2">]] = </span><span class="s0">None</span><span class="s2">,</span>
+        <span class="s1">start_line</span><span class="s2">: </span><span class="s1">int </span><span class="s2">= </span><span class="s5">1</span><span class="s2">,</span>
+        <span class="s1">highlight_lines</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">Set</span><span class="s2">[</span><span class="s1">int</span><span class="s2">]] = </span><span class="s0">None</span><span class="s2">,</span>
+        <span class="s1">code_width</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">int</span><span class="s2">] = </span><span class="s0">None</span><span class="s2">,</span>
+        <span class="s1">tab_size</span><span class="s2">: </span><span class="s1">int </span><span class="s2">= </span><span class="s5">4</span><span class="s2">,</span>
+        <span class="s1">word_wrap</span><span class="s2">: </span><span class="s1">bool </span><span class="s2">= </span><span class="s0">False</span><span class="s2">,</span>
+        <span class="s1">background_color</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">str</span><span class="s2">] = </span><span class="s0">None</span><span class="s2">,</span>
+        <span class="s1">indent_guides</span><span class="s2">: </span><span class="s1">bool </span><span class="s2">= </span><span class="s0">False</span><span class="s2">,</span>
+        <span class="s1">padding</span><span class="s2">: </span><span class="s1">PaddingDimensions </span><span class="s2">= </span><span class="s5">0</span><span class="s2">,</span>
+    <span class="s2">) </span><span class="s1">-&gt; </span><span class="s3">&quot;Syntax&quot;</span><span class="s2">:</span>
+        <span class="s6">&quot;&quot;&quot;Construct a Syntax object from a file. 
+ 
+        Args: 
+            path (str): Path to file to highlight. 
+            encoding (str): Encoding of file. 
+            lexer (str | Lexer, optional): Lexer to use. If None, lexer will be auto-detected from path/file content. 
+            theme (str, optional): Color theme, aka Pygments style (see https://pygments.org/docs/styles/#getting-a-list-of-available-styles). Defaults to &quot;emacs&quot;. 
+            dedent (bool, optional): Enable stripping of initial whitespace. Defaults to True. 
+            line_numbers (bool, optional): Enable rendering of line numbers. Defaults to False. 
+            start_line (int, optional): Starting number for line numbers. Defaults to 1. 
+            line_range (Tuple[int, int], optional): If given should be a tuple of the start and end line to render. 
+            highlight_lines (Set[int]): A set of line numbers to highlight. 
+            code_width: Width of code to render (not including line numbers), or ``None`` to use all available width. 
+            tab_size (int, optional): Size of tabs. Defaults to 4. 
+            word_wrap (bool, optional): Enable word wrapping of code. 
+            background_color (str, optional): Optional background color, or None to use theme color. Defaults to None. 
+            indent_guides (bool, optional): Show indent guides. Defaults to False. 
+            padding (PaddingDimensions): Padding to apply around the syntax. Defaults to 0 (no padding). 
+ 
+        Returns: 
+            [Syntax]: A Syntax object that may be printed to the console 
+        &quot;&quot;&quot;</span>
+        <span class="s1">code </span><span class="s2">= </span><span class="s1">Path</span><span class="s2">(</span><span class="s1">path</span><span class="s2">).</span><span class="s1">read_text</span><span class="s2">(</span><span class="s1">encoding</span><span class="s2">=</span><span class="s1">encoding</span><span class="s2">)</span>
+
+        <span class="s0">if not </span><span class="s1">lexer</span><span class="s2">:</span>
+            <span class="s1">lexer </span><span class="s2">= </span><span class="s1">cls</span><span class="s2">.</span><span class="s1">guess_lexer</span><span class="s2">(</span><span class="s1">path</span><span class="s2">, </span><span class="s1">code</span><span class="s2">=</span><span class="s1">code</span><span class="s2">)</span>
+
+        <span class="s0">return </span><span class="s1">cls</span><span class="s2">(</span>
+            <span class="s1">code</span><span class="s2">,</span>
+            <span class="s1">lexer</span><span class="s2">,</span>
+            <span class="s1">theme</span><span class="s2">=</span><span class="s1">theme</span><span class="s2">,</span>
+            <span class="s1">dedent</span><span class="s2">=</span><span class="s1">dedent</span><span class="s2">,</span>
+            <span class="s1">line_numbers</span><span class="s2">=</span><span class="s1">line_numbers</span><span class="s2">,</span>
+            <span class="s1">line_range</span><span class="s2">=</span><span class="s1">line_range</span><span class="s2">,</span>
+            <span class="s1">start_line</span><span class="s2">=</span><span class="s1">start_line</span><span class="s2">,</span>
+            <span class="s1">highlight_lines</span><span class="s2">=</span><span class="s1">highlight_lines</span><span class="s2">,</span>
+            <span class="s1">code_width</span><span class="s2">=</span><span class="s1">code_width</span><span class="s2">,</span>
+            <span class="s1">tab_size</span><span class="s2">=</span><span class="s1">tab_size</span><span class="s2">,</span>
+            <span class="s1">word_wrap</span><span class="s2">=</span><span class="s1">word_wrap</span><span class="s2">,</span>
+            <span class="s1">background_color</span><span class="s2">=</span><span class="s1">background_color</span><span class="s2">,</span>
+            <span class="s1">indent_guides</span><span class="s2">=</span><span class="s1">indent_guides</span><span class="s2">,</span>
+            <span class="s1">padding</span><span class="s2">=</span><span class="s1">padding</span><span class="s2">,</span>
+        <span class="s2">)</span>
+
+    <span class="s2">@</span><span class="s1">classmethod</span>
+    <span class="s0">def </span><span class="s1">guess_lexer</span><span class="s2">(</span><span class="s1">cls</span><span class="s2">, </span><span class="s1">path</span><span class="s2">: </span><span class="s1">str</span><span class="s2">, </span><span class="s1">code</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">str</span><span class="s2">] = </span><span class="s0">None</span><span class="s2">) </span><span class="s1">-&gt; str</span><span class="s2">:</span>
+        <span class="s6">&quot;&quot;&quot;Guess the alias of the Pygments lexer to use based on a path and an optional string of code. 
+        If code is supplied, it will use a combination of the code and the filename to determine the 
+        best lexer to use. For example, if the file is ``index.html`` and the file contains Django 
+        templating syntax, then &quot;html+django&quot; will be returned. If the file is ``index.html``, and no 
+        templating language is used, the &quot;html&quot; lexer will be used. If no string of code 
+        is supplied, the lexer will be chosen based on the file extension.. 
+ 
+        Args: 
+             path (AnyStr): The path to the file containing the code you wish to know the lexer for. 
+             code (str, optional): Optional string of code that will be used as a fallback if no lexer 
+                is found for the supplied path. 
+ 
+        Returns: 
+            str: The name of the Pygments lexer that best matches the supplied path/code. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">lexer</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">Lexer</span><span class="s2">] = </span><span class="s0">None</span>
+        <span class="s1">lexer_name </span><span class="s2">= </span><span class="s3">&quot;default&quot;</span>
+        <span class="s0">if </span><span class="s1">code</span><span class="s2">:</span>
+            <span class="s0">try</span><span class="s2">:</span>
+                <span class="s1">lexer </span><span class="s2">= </span><span class="s1">guess_lexer_for_filename</span><span class="s2">(</span><span class="s1">path</span><span class="s2">, </span><span class="s1">code</span><span class="s2">)</span>
+            <span class="s0">except </span><span class="s1">ClassNotFound</span><span class="s2">:</span>
+                <span class="s0">pass</span>
+
+        <span class="s0">if not </span><span class="s1">lexer</span><span class="s2">:</span>
+            <span class="s0">try</span><span class="s2">:</span>
+                <span class="s1">_</span><span class="s2">, </span><span class="s1">ext </span><span class="s2">= </span><span class="s1">os</span><span class="s2">.</span><span class="s1">path</span><span class="s2">.</span><span class="s1">splitext</span><span class="s2">(</span><span class="s1">path</span><span class="s2">)</span>
+                <span class="s0">if </span><span class="s1">ext</span><span class="s2">:</span>
+                    <span class="s1">extension </span><span class="s2">= </span><span class="s1">ext</span><span class="s2">.</span><span class="s1">lstrip</span><span class="s2">(</span><span class="s3">&quot;.&quot;</span><span class="s2">).</span><span class="s1">lower</span><span class="s2">()</span>
+                    <span class="s1">lexer </span><span class="s2">= </span><span class="s1">get_lexer_by_name</span><span class="s2">(</span><span class="s1">extension</span><span class="s2">)</span>
+            <span class="s0">except </span><span class="s1">ClassNotFound</span><span class="s2">:</span>
+                <span class="s0">pass</span>
+
+        <span class="s0">if </span><span class="s1">lexer</span><span class="s2">:</span>
+            <span class="s0">if </span><span class="s1">lexer</span><span class="s2">.</span><span class="s1">aliases</span><span class="s2">:</span>
+                <span class="s1">lexer_name </span><span class="s2">= </span><span class="s1">lexer</span><span class="s2">.</span><span class="s1">aliases</span><span class="s2">[</span><span class="s5">0</span><span class="s2">]</span>
+            <span class="s0">else</span><span class="s2">:</span>
+                <span class="s1">lexer_name </span><span class="s2">= </span><span class="s1">lexer</span><span class="s2">.</span><span class="s1">name</span>
+
+        <span class="s0">return </span><span class="s1">lexer_name</span>
+
+    <span class="s0">def </span><span class="s1">_get_base_style</span><span class="s2">(</span><span class="s1">self</span><span class="s2">) </span><span class="s1">-&gt; Style</span><span class="s2">:</span>
+        <span class="s6">&quot;&quot;&quot;Get the base style.&quot;&quot;&quot;</span>
+        <span class="s1">default_style </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">_theme</span><span class="s2">.</span><span class="s1">get_background_style</span><span class="s2">() + </span><span class="s1">self</span><span class="s2">.</span><span class="s1">background_style</span>
+        <span class="s0">return </span><span class="s1">default_style</span>
+
+    <span class="s0">def </span><span class="s1">_get_token_color</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">token_type</span><span class="s2">: </span><span class="s1">TokenType</span><span class="s2">) </span><span class="s1">-&gt; Optional</span><span class="s2">[</span><span class="s1">Color</span><span class="s2">]:</span>
+        <span class="s6">&quot;&quot;&quot;Get a color (if any) for the given token. 
+ 
+        Args: 
+            token_type (TokenType): A token type tuple from Pygments. 
+ 
+        Returns: 
+            Optional[Color]: Color from theme, or None for no color. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">style </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">_theme</span><span class="s2">.</span><span class="s1">get_style_for_token</span><span class="s2">(</span><span class="s1">token_type</span><span class="s2">)</span>
+        <span class="s0">return </span><span class="s1">style</span><span class="s2">.</span><span class="s1">color</span>
+
+    <span class="s2">@</span><span class="s1">property</span>
+    <span class="s0">def </span><span class="s1">lexer</span><span class="s2">(</span><span class="s1">self</span><span class="s2">) </span><span class="s1">-&gt; Optional</span><span class="s2">[</span><span class="s1">Lexer</span><span class="s2">]:</span>
+        <span class="s6">&quot;&quot;&quot;The lexer for this syntax, or None if no lexer was found. 
+ 
+        Tries to find the lexer by name if a string was passed to the constructor. 
+        &quot;&quot;&quot;</span>
+
+        <span class="s0">if </span><span class="s1">isinstance</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">_lexer</span><span class="s2">, </span><span class="s1">Lexer</span><span class="s2">):</span>
+            <span class="s0">return </span><span class="s1">self</span><span class="s2">.</span><span class="s1">_lexer</span>
+        <span class="s0">try</span><span class="s2">:</span>
+            <span class="s0">return </span><span class="s1">get_lexer_by_name</span><span class="s2">(</span>
+                <span class="s1">self</span><span class="s2">.</span><span class="s1">_lexer</span><span class="s2">,</span>
+                <span class="s1">stripnl</span><span class="s2">=</span><span class="s0">False</span><span class="s2">,</span>
+                <span class="s1">ensurenl</span><span class="s2">=</span><span class="s0">True</span><span class="s2">,</span>
+                <span class="s1">tabsize</span><span class="s2">=</span><span class="s1">self</span><span class="s2">.</span><span class="s1">tab_size</span><span class="s2">,</span>
+            <span class="s2">)</span>
+        <span class="s0">except </span><span class="s1">ClassNotFound</span><span class="s2">:</span>
+            <span class="s0">return None</span>
+
+    <span class="s0">def </span><span class="s1">highlight</span><span class="s2">(</span>
+        <span class="s1">self</span><span class="s2">,</span>
+        <span class="s1">code</span><span class="s2">: </span><span class="s1">str</span><span class="s2">,</span>
+        <span class="s1">line_range</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">Tuple</span><span class="s2">[</span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">int</span><span class="s2">], </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">int</span><span class="s2">]]] = </span><span class="s0">None</span><span class="s2">,</span>
+    <span class="s2">) </span><span class="s1">-&gt; Text</span><span class="s2">:</span>
+        <span class="s6">&quot;&quot;&quot;Highlight code and return a Text instance. 
+ 
+        Args: 
+            code (str): Code to highlight. 
+            line_range(Tuple[int, int], optional): Optional line range to highlight. 
+ 
+        Returns: 
+            Text: A text instance containing highlighted syntax. 
+        &quot;&quot;&quot;</span>
+
+        <span class="s1">base_style </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">_get_base_style</span><span class="s2">()</span>
+        <span class="s1">justify</span><span class="s2">: </span><span class="s1">JustifyMethod </span><span class="s2">= (</span>
+            <span class="s3">&quot;default&quot; </span><span class="s0">if </span><span class="s1">base_style</span><span class="s2">.</span><span class="s1">transparent_background </span><span class="s0">else </span><span class="s3">&quot;left&quot;</span>
+        <span class="s2">)</span>
+
+        <span class="s1">text </span><span class="s2">= </span><span class="s1">Text</span><span class="s2">(</span>
+            <span class="s1">justify</span><span class="s2">=</span><span class="s1">justify</span><span class="s2">,</span>
+            <span class="s1">style</span><span class="s2">=</span><span class="s1">base_style</span><span class="s2">,</span>
+            <span class="s1">tab_size</span><span class="s2">=</span><span class="s1">self</span><span class="s2">.</span><span class="s1">tab_size</span><span class="s2">,</span>
+            <span class="s1">no_wrap</span><span class="s2">=</span><span class="s0">not </span><span class="s1">self</span><span class="s2">.</span><span class="s1">word_wrap</span><span class="s2">,</span>
+        <span class="s2">)</span>
+        <span class="s1">_get_theme_style </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">_theme</span><span class="s2">.</span><span class="s1">get_style_for_token</span>
+
+        <span class="s1">lexer </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">lexer</span>
+
+        <span class="s0">if </span><span class="s1">lexer </span><span class="s0">is None</span><span class="s2">:</span>
+            <span class="s1">text</span><span class="s2">.</span><span class="s1">append</span><span class="s2">(</span><span class="s1">code</span><span class="s2">)</span>
+        <span class="s0">else</span><span class="s2">:</span>
+            <span class="s0">if </span><span class="s1">line_range</span><span class="s2">:</span>
+                <span class="s4"># More complicated path to only stylize a portion of the code</span>
+                <span class="s4"># This speeds up further operations as there are less spans to process</span>
+                <span class="s1">line_start</span><span class="s2">, </span><span class="s1">line_end </span><span class="s2">= </span><span class="s1">line_range</span>
+
+                <span class="s0">def </span><span class="s1">line_tokenize</span><span class="s2">() </span><span class="s1">-&gt; Iterable</span><span class="s2">[</span><span class="s1">Tuple</span><span class="s2">[</span><span class="s1">Any</span><span class="s2">, </span><span class="s1">str</span><span class="s2">]]:</span>
+                    <span class="s6">&quot;&quot;&quot;Split tokens to one per line.&quot;&quot;&quot;</span>
+                    <span class="s0">assert </span><span class="s1">lexer  </span><span class="s4"># required to make MyPy happy - we know lexer is not None at this point</span>
+
+                    <span class="s0">for </span><span class="s1">token_type</span><span class="s2">, </span><span class="s1">token </span><span class="s0">in </span><span class="s1">lexer</span><span class="s2">.</span><span class="s1">get_tokens</span><span class="s2">(</span><span class="s1">code</span><span class="s2">):</span>
+                        <span class="s0">while </span><span class="s1">token</span><span class="s2">:</span>
+                            <span class="s1">line_token</span><span class="s2">, </span><span class="s1">new_line</span><span class="s2">, </span><span class="s1">token </span><span class="s2">= </span><span class="s1">token</span><span class="s2">.</span><span class="s1">partition</span><span class="s2">(</span><span class="s3">&quot;</span><span class="s0">\n</span><span class="s3">&quot;</span><span class="s2">)</span>
+                            <span class="s0">yield </span><span class="s1">token_type</span><span class="s2">, </span><span class="s1">line_token </span><span class="s2">+ </span><span class="s1">new_line</span>
+
+                <span class="s0">def </span><span class="s1">tokens_to_spans</span><span class="s2">() </span><span class="s1">-&gt; Iterable</span><span class="s2">[</span><span class="s1">Tuple</span><span class="s2">[</span><span class="s1">str</span><span class="s2">, </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">Style</span><span class="s2">]]]:</span>
+                    <span class="s6">&quot;&quot;&quot;Convert tokens to spans.&quot;&quot;&quot;</span>
+                    <span class="s1">tokens </span><span class="s2">= </span><span class="s1">iter</span><span class="s2">(</span><span class="s1">line_tokenize</span><span class="s2">())</span>
+                    <span class="s1">line_no </span><span class="s2">= </span><span class="s5">0</span>
+                    <span class="s1">_line_start </span><span class="s2">= </span><span class="s1">line_start </span><span class="s2">- </span><span class="s5">1 </span><span class="s0">if </span><span class="s1">line_start </span><span class="s0">else </span><span class="s5">0</span>
+
+                    <span class="s4"># Skip over tokens until line start</span>
+                    <span class="s0">while </span><span class="s1">line_no </span><span class="s2">&lt; </span><span class="s1">_line_start</span><span class="s2">:</span>
+                        <span class="s0">try</span><span class="s2">:</span>
+                            <span class="s1">_token_type</span><span class="s2">, </span><span class="s1">token </span><span class="s2">= </span><span class="s1">next</span><span class="s2">(</span><span class="s1">tokens</span><span class="s2">)</span>
+                        <span class="s0">except </span><span class="s1">StopIteration</span><span class="s2">:</span>
+                            <span class="s0">break</span>
+                        <span class="s0">yield </span><span class="s2">(</span><span class="s1">token</span><span class="s2">, </span><span class="s0">None</span><span class="s2">)</span>
+                        <span class="s0">if </span><span class="s1">token</span><span class="s2">.</span><span class="s1">endswith</span><span class="s2">(</span><span class="s3">&quot;</span><span class="s0">\n</span><span class="s3">&quot;</span><span class="s2">):</span>
+                            <span class="s1">line_no </span><span class="s2">+= </span><span class="s5">1</span>
+                    <span class="s4"># Generate spans until line end</span>
+                    <span class="s0">for </span><span class="s1">token_type</span><span class="s2">, </span><span class="s1">token </span><span class="s0">in </span><span class="s1">tokens</span><span class="s2">:</span>
+                        <span class="s0">yield </span><span class="s2">(</span><span class="s1">token</span><span class="s2">, </span><span class="s1">_get_theme_style</span><span class="s2">(</span><span class="s1">token_type</span><span class="s2">))</span>
+                        <span class="s0">if </span><span class="s1">token</span><span class="s2">.</span><span class="s1">endswith</span><span class="s2">(</span><span class="s3">&quot;</span><span class="s0">\n</span><span class="s3">&quot;</span><span class="s2">):</span>
+                            <span class="s1">line_no </span><span class="s2">+= </span><span class="s5">1</span>
+                            <span class="s0">if </span><span class="s1">line_end </span><span class="s0">and </span><span class="s1">line_no </span><span class="s2">&gt;= </span><span class="s1">line_end</span><span class="s2">:</span>
+                                <span class="s0">break</span>
+
+                <span class="s1">text</span><span class="s2">.</span><span class="s1">append_tokens</span><span class="s2">(</span><span class="s1">tokens_to_spans</span><span class="s2">())</span>
+
+            <span class="s0">else</span><span class="s2">:</span>
+                <span class="s1">text</span><span class="s2">.</span><span class="s1">append_tokens</span><span class="s2">(</span>
+                    <span class="s2">(</span><span class="s1">token</span><span class="s2">, </span><span class="s1">_get_theme_style</span><span class="s2">(</span><span class="s1">token_type</span><span class="s2">))</span>
+                    <span class="s0">for </span><span class="s1">token_type</span><span class="s2">, </span><span class="s1">token </span><span class="s0">in </span><span class="s1">lexer</span><span class="s2">.</span><span class="s1">get_tokens</span><span class="s2">(</span><span class="s1">code</span><span class="s2">)</span>
+                <span class="s2">)</span>
+            <span class="s0">if </span><span class="s1">self</span><span class="s2">.</span><span class="s1">background_color </span><span class="s0">is not None</span><span class="s2">:</span>
+                <span class="s1">text</span><span class="s2">.</span><span class="s1">stylize</span><span class="s2">(</span><span class="s3">f&quot;on </span><span class="s0">{</span><span class="s1">self</span><span class="s2">.</span><span class="s1">background_color</span><span class="s0">}</span><span class="s3">&quot;</span><span class="s2">)</span>
+
+        <span class="s0">if </span><span class="s1">self</span><span class="s2">.</span><span class="s1">_stylized_ranges</span><span class="s2">:</span>
+            <span class="s1">self</span><span class="s2">.</span><span class="s1">_apply_stylized_ranges</span><span class="s2">(</span><span class="s1">text</span><span class="s2">)</span>
+
+        <span class="s0">return </span><span class="s1">text</span>
+
+    <span class="s0">def </span><span class="s1">stylize_range</span><span class="s2">(</span>
+        <span class="s1">self</span><span class="s2">, </span><span class="s1">style</span><span class="s2">: </span><span class="s1">StyleType</span><span class="s2">, </span><span class="s1">start</span><span class="s2">: </span><span class="s1">SyntaxPosition</span><span class="s2">, </span><span class="s1">end</span><span class="s2">: </span><span class="s1">SyntaxPosition</span>
+    <span class="s2">) </span><span class="s1">-&gt; </span><span class="s0">None</span><span class="s2">:</span>
+        <span class="s6">&quot;&quot;&quot; 
+        Adds a custom style on a part of the code, that will be applied to the syntax display when it's rendered. 
+        Line numbers are 1-based, while column indexes are 0-based. 
+ 
+        Args: 
+            style (StyleType): The style to apply. 
+            start (Tuple[int, int]): The start of the range, in the form `[line number, column index]`. 
+            end (Tuple[int, int]): The end of the range, in the form `[line number, column index]`. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">_stylized_ranges</span><span class="s2">.</span><span class="s1">append</span><span class="s2">(</span><span class="s1">_SyntaxHighlightRange</span><span class="s2">(</span><span class="s1">style</span><span class="s2">, </span><span class="s1">start</span><span class="s2">, </span><span class="s1">end</span><span class="s2">))</span>
+
+    <span class="s0">def </span><span class="s1">_get_line_numbers_color</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">blend</span><span class="s2">: </span><span class="s1">float </span><span class="s2">= </span><span class="s5">0.3</span><span class="s2">) </span><span class="s1">-&gt; Color</span><span class="s2">:</span>
+        <span class="s1">background_style </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">_theme</span><span class="s2">.</span><span class="s1">get_background_style</span><span class="s2">() + </span><span class="s1">self</span><span class="s2">.</span><span class="s1">background_style</span>
+        <span class="s1">background_color </span><span class="s2">= </span><span class="s1">background_style</span><span class="s2">.</span><span class="s1">bgcolor</span>
+        <span class="s0">if </span><span class="s1">background_color </span><span class="s0">is None or </span><span class="s1">background_color</span><span class="s2">.</span><span class="s1">is_system_defined</span><span class="s2">:</span>
+            <span class="s0">return </span><span class="s1">Color</span><span class="s2">.</span><span class="s1">default</span><span class="s2">()</span>
+        <span class="s1">foreground_color </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">_get_token_color</span><span class="s2">(</span><span class="s1">Token</span><span class="s2">.</span><span class="s1">Text</span><span class="s2">)</span>
+        <span class="s0">if </span><span class="s1">foreground_color </span><span class="s0">is None or </span><span class="s1">foreground_color</span><span class="s2">.</span><span class="s1">is_system_defined</span><span class="s2">:</span>
+            <span class="s0">return </span><span class="s1">foreground_color </span><span class="s0">or </span><span class="s1">Color</span><span class="s2">.</span><span class="s1">default</span><span class="s2">()</span>
+        <span class="s1">new_color </span><span class="s2">= </span><span class="s1">blend_rgb</span><span class="s2">(</span>
+            <span class="s1">background_color</span><span class="s2">.</span><span class="s1">get_truecolor</span><span class="s2">(),</span>
+            <span class="s1">foreground_color</span><span class="s2">.</span><span class="s1">get_truecolor</span><span class="s2">(),</span>
+            <span class="s1">cross_fade</span><span class="s2">=</span><span class="s1">blend</span><span class="s2">,</span>
+        <span class="s2">)</span>
+        <span class="s0">return </span><span class="s1">Color</span><span class="s2">.</span><span class="s1">from_triplet</span><span class="s2">(</span><span class="s1">new_color</span><span class="s2">)</span>
+
+    <span class="s2">@</span><span class="s1">property</span>
+    <span class="s0">def </span><span class="s1">_numbers_column_width</span><span class="s2">(</span><span class="s1">self</span><span class="s2">) </span><span class="s1">-&gt; int</span><span class="s2">:</span>
+        <span class="s6">&quot;&quot;&quot;Get the number of characters used to render the numbers column.&quot;&quot;&quot;</span>
+        <span class="s1">column_width </span><span class="s2">= </span><span class="s5">0</span>
+        <span class="s0">if </span><span class="s1">self</span><span class="s2">.</span><span class="s1">line_numbers</span><span class="s2">:</span>
+            <span class="s1">column_width </span><span class="s2">= (</span>
+                <span class="s1">len</span><span class="s2">(</span><span class="s1">str</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">start_line </span><span class="s2">+ </span><span class="s1">self</span><span class="s2">.</span><span class="s1">code</span><span class="s2">.</span><span class="s1">count</span><span class="s2">(</span><span class="s3">&quot;</span><span class="s0">\n</span><span class="s3">&quot;</span><span class="s2">)))</span>
+                <span class="s2">+ </span><span class="s1">NUMBERS_COLUMN_DEFAULT_PADDING</span>
+            <span class="s2">)</span>
+        <span class="s0">return </span><span class="s1">column_width</span>
+
+    <span class="s0">def </span><span class="s1">_get_number_styles</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">console</span><span class="s2">: </span><span class="s1">Console</span><span class="s2">) </span><span class="s1">-&gt; Tuple</span><span class="s2">[</span><span class="s1">Style</span><span class="s2">, </span><span class="s1">Style</span><span class="s2">, </span><span class="s1">Style</span><span class="s2">]:</span>
+        <span class="s6">&quot;&quot;&quot;Get background, number, and highlight styles for line numbers.&quot;&quot;&quot;</span>
+        <span class="s1">background_style </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">_get_base_style</span><span class="s2">()</span>
+        <span class="s0">if </span><span class="s1">background_style</span><span class="s2">.</span><span class="s1">transparent_background</span><span class="s2">:</span>
+            <span class="s0">return </span><span class="s1">Style</span><span class="s2">.</span><span class="s1">null</span><span class="s2">(), </span><span class="s1">Style</span><span class="s2">(</span><span class="s1">dim</span><span class="s2">=</span><span class="s0">True</span><span class="s2">), </span><span class="s1">Style</span><span class="s2">.</span><span class="s1">null</span><span class="s2">()</span>
+        <span class="s0">if </span><span class="s1">console</span><span class="s2">.</span><span class="s1">color_system </span><span class="s0">in </span><span class="s2">(</span><span class="s3">&quot;256&quot;</span><span class="s2">, </span><span class="s3">&quot;truecolor&quot;</span><span class="s2">):</span>
+            <span class="s1">number_style </span><span class="s2">= </span><span class="s1">Style</span><span class="s2">.</span><span class="s1">chain</span><span class="s2">(</span>
+                <span class="s1">background_style</span><span class="s2">,</span>
+                <span class="s1">self</span><span class="s2">.</span><span class="s1">_theme</span><span class="s2">.</span><span class="s1">get_style_for_token</span><span class="s2">(</span><span class="s1">Token</span><span class="s2">.</span><span class="s1">Text</span><span class="s2">),</span>
+                <span class="s1">Style</span><span class="s2">(</span><span class="s1">color</span><span class="s2">=</span><span class="s1">self</span><span class="s2">.</span><span class="s1">_get_line_numbers_color</span><span class="s2">()),</span>
+                <span class="s1">self</span><span class="s2">.</span><span class="s1">background_style</span><span class="s2">,</span>
+            <span class="s2">)</span>
+            <span class="s1">highlight_number_style </span><span class="s2">= </span><span class="s1">Style</span><span class="s2">.</span><span class="s1">chain</span><span class="s2">(</span>
+                <span class="s1">background_style</span><span class="s2">,</span>
+                <span class="s1">self</span><span class="s2">.</span><span class="s1">_theme</span><span class="s2">.</span><span class="s1">get_style_for_token</span><span class="s2">(</span><span class="s1">Token</span><span class="s2">.</span><span class="s1">Text</span><span class="s2">),</span>
+                <span class="s1">Style</span><span class="s2">(</span><span class="s1">bold</span><span class="s2">=</span><span class="s0">True</span><span class="s2">, </span><span class="s1">color</span><span class="s2">=</span><span class="s1">self</span><span class="s2">.</span><span class="s1">_get_line_numbers_color</span><span class="s2">(</span><span class="s5">0.9</span><span class="s2">)),</span>
+                <span class="s1">self</span><span class="s2">.</span><span class="s1">background_style</span><span class="s2">,</span>
+            <span class="s2">)</span>
+        <span class="s0">else</span><span class="s2">:</span>
+            <span class="s1">number_style </span><span class="s2">= </span><span class="s1">background_style </span><span class="s2">+ </span><span class="s1">Style</span><span class="s2">(</span><span class="s1">dim</span><span class="s2">=</span><span class="s0">True</span><span class="s2">)</span>
+            <span class="s1">highlight_number_style </span><span class="s2">= </span><span class="s1">background_style </span><span class="s2">+ </span><span class="s1">Style</span><span class="s2">(</span><span class="s1">dim</span><span class="s2">=</span><span class="s0">False</span><span class="s2">)</span>
+        <span class="s0">return </span><span class="s1">background_style</span><span class="s2">, </span><span class="s1">number_style</span><span class="s2">, </span><span class="s1">highlight_number_style</span>
+
+    <span class="s0">def </span><span class="s1">__rich_measure__</span><span class="s2">(</span>
+        <span class="s1">self</span><span class="s2">, </span><span class="s1">console</span><span class="s2">: </span><span class="s3">&quot;Console&quot;</span><span class="s2">, </span><span class="s1">options</span><span class="s2">: </span><span class="s3">&quot;ConsoleOptions&quot;</span>
+    <span class="s2">) </span><span class="s1">-&gt; </span><span class="s3">&quot;Measurement&quot;</span><span class="s2">:</span>
+        <span class="s1">_</span><span class="s2">, </span><span class="s1">right</span><span class="s2">, </span><span class="s1">_</span><span class="s2">, </span><span class="s1">left </span><span class="s2">= </span><span class="s1">Padding</span><span class="s2">.</span><span class="s1">unpack</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">padding</span><span class="s2">)</span>
+        <span class="s1">padding </span><span class="s2">= </span><span class="s1">left </span><span class="s2">+ </span><span class="s1">right</span>
+        <span class="s0">if </span><span class="s1">self</span><span class="s2">.</span><span class="s1">code_width </span><span class="s0">is not None</span><span class="s2">:</span>
+            <span class="s1">width </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">code_width </span><span class="s2">+ </span><span class="s1">self</span><span class="s2">.</span><span class="s1">_numbers_column_width </span><span class="s2">+ </span><span class="s1">padding </span><span class="s2">+ </span><span class="s5">1</span>
+            <span class="s0">return </span><span class="s1">Measurement</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">_numbers_column_width</span><span class="s2">, </span><span class="s1">width</span><span class="s2">)</span>
+        <span class="s1">lines </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">code</span><span class="s2">.</span><span class="s1">splitlines</span><span class="s2">()</span>
+        <span class="s1">width </span><span class="s2">= (</span>
+            <span class="s1">self</span><span class="s2">.</span><span class="s1">_numbers_column_width</span>
+            <span class="s2">+ </span><span class="s1">padding</span>
+            <span class="s2">+ (</span><span class="s1">max</span><span class="s2">(</span><span class="s1">cell_len</span><span class="s2">(</span><span class="s1">line</span><span class="s2">) </span><span class="s0">for </span><span class="s1">line </span><span class="s0">in </span><span class="s1">lines</span><span class="s2">) </span><span class="s0">if </span><span class="s1">lines </span><span class="s0">else </span><span class="s5">0</span><span class="s2">)</span>
+        <span class="s2">)</span>
+        <span class="s0">if </span><span class="s1">self</span><span class="s2">.</span><span class="s1">line_numbers</span><span class="s2">:</span>
+            <span class="s1">width </span><span class="s2">+= </span><span class="s5">1</span>
+        <span class="s0">return </span><span class="s1">Measurement</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">_numbers_column_width</span><span class="s2">, </span><span class="s1">width</span><span class="s2">)</span>
+
+    <span class="s0">def </span><span class="s1">__rich_console__</span><span class="s2">(</span>
+        <span class="s1">self</span><span class="s2">, </span><span class="s1">console</span><span class="s2">: </span><span class="s1">Console</span><span class="s2">, </span><span class="s1">options</span><span class="s2">: </span><span class="s1">ConsoleOptions</span>
+    <span class="s2">) </span><span class="s1">-&gt; RenderResult</span><span class="s2">:</span>
+        <span class="s1">segments </span><span class="s2">= </span><span class="s1">Segments</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">_get_syntax</span><span class="s2">(</span><span class="s1">console</span><span class="s2">, </span><span class="s1">options</span><span class="s2">))</span>
+        <span class="s0">if </span><span class="s1">self</span><span class="s2">.</span><span class="s1">padding</span><span class="s2">:</span>
+            <span class="s0">yield </span><span class="s1">Padding</span><span class="s2">(</span>
+                <span class="s1">segments</span><span class="s2">, </span><span class="s1">style</span><span class="s2">=</span><span class="s1">self</span><span class="s2">.</span><span class="s1">_theme</span><span class="s2">.</span><span class="s1">get_background_style</span><span class="s2">(), </span><span class="s1">pad</span><span class="s2">=</span><span class="s1">self</span><span class="s2">.</span><span class="s1">padding</span>
+            <span class="s2">)</span>
+        <span class="s0">else</span><span class="s2">:</span>
+            <span class="s0">yield </span><span class="s1">segments</span>
+
+    <span class="s0">def </span><span class="s1">_get_syntax</span><span class="s2">(</span>
+        <span class="s1">self</span><span class="s2">,</span>
+        <span class="s1">console</span><span class="s2">: </span><span class="s1">Console</span><span class="s2">,</span>
+        <span class="s1">options</span><span class="s2">: </span><span class="s1">ConsoleOptions</span><span class="s2">,</span>
+    <span class="s2">) </span><span class="s1">-&gt; Iterable</span><span class="s2">[</span><span class="s1">Segment</span><span class="s2">]:</span>
+        <span class="s6">&quot;&quot;&quot; 
+        Get the Segments for the Syntax object, excluding any vertical/horizontal padding 
+        &quot;&quot;&quot;</span>
+        <span class="s1">transparent_background </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">_get_base_style</span><span class="s2">().</span><span class="s1">transparent_background</span>
+        <span class="s1">code_width </span><span class="s2">= (</span>
+            <span class="s2">(</span>
+                <span class="s2">(</span><span class="s1">options</span><span class="s2">.</span><span class="s1">max_width </span><span class="s2">- </span><span class="s1">self</span><span class="s2">.</span><span class="s1">_numbers_column_width </span><span class="s2">- </span><span class="s5">1</span><span class="s2">)</span>
+                <span class="s0">if </span><span class="s1">self</span><span class="s2">.</span><span class="s1">line_numbers</span>
+                <span class="s0">else </span><span class="s1">options</span><span class="s2">.</span><span class="s1">max_width</span>
+            <span class="s2">)</span>
+            <span class="s0">if </span><span class="s1">self</span><span class="s2">.</span><span class="s1">code_width </span><span class="s0">is None</span>
+            <span class="s0">else </span><span class="s1">self</span><span class="s2">.</span><span class="s1">code_width</span>
+        <span class="s2">)</span>
+
+        <span class="s1">ends_on_nl</span><span class="s2">, </span><span class="s1">processed_code </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">_process_code</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">code</span><span class="s2">)</span>
+        <span class="s1">text </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">highlight</span><span class="s2">(</span><span class="s1">processed_code</span><span class="s2">, </span><span class="s1">self</span><span class="s2">.</span><span class="s1">line_range</span><span class="s2">)</span>
+
+        <span class="s0">if not </span><span class="s1">self</span><span class="s2">.</span><span class="s1">line_numbers </span><span class="s0">and not </span><span class="s1">self</span><span class="s2">.</span><span class="s1">word_wrap </span><span class="s0">and not </span><span class="s1">self</span><span class="s2">.</span><span class="s1">line_range</span><span class="s2">:</span>
+            <span class="s0">if not </span><span class="s1">ends_on_nl</span><span class="s2">:</span>
+                <span class="s1">text</span><span class="s2">.</span><span class="s1">remove_suffix</span><span class="s2">(</span><span class="s3">&quot;</span><span class="s0">\n</span><span class="s3">&quot;</span><span class="s2">)</span>
+            <span class="s4"># Simple case of just rendering text</span>
+            <span class="s1">style </span><span class="s2">= (</span>
+                <span class="s1">self</span><span class="s2">.</span><span class="s1">_get_base_style</span><span class="s2">()</span>
+                <span class="s2">+ </span><span class="s1">self</span><span class="s2">.</span><span class="s1">_theme</span><span class="s2">.</span><span class="s1">get_style_for_token</span><span class="s2">(</span><span class="s1">Comment</span><span class="s2">)</span>
+                <span class="s2">+ </span><span class="s1">Style</span><span class="s2">(</span><span class="s1">dim</span><span class="s2">=</span><span class="s0">True</span><span class="s2">)</span>
+                <span class="s2">+ </span><span class="s1">self</span><span class="s2">.</span><span class="s1">background_style</span>
+            <span class="s2">)</span>
+            <span class="s0">if </span><span class="s1">self</span><span class="s2">.</span><span class="s1">indent_guides </span><span class="s0">and not </span><span class="s1">options</span><span class="s2">.</span><span class="s1">ascii_only</span><span class="s2">:</span>
+                <span class="s1">text </span><span class="s2">= </span><span class="s1">text</span><span class="s2">.</span><span class="s1">with_indent_guides</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">tab_size</span><span class="s2">, </span><span class="s1">style</span><span class="s2">=</span><span class="s1">style</span><span class="s2">)</span>
+                <span class="s1">text</span><span class="s2">.</span><span class="s1">overflow </span><span class="s2">= </span><span class="s3">&quot;crop&quot;</span>
+            <span class="s0">if </span><span class="s1">style</span><span class="s2">.</span><span class="s1">transparent_background</span><span class="s2">:</span>
+                <span class="s0">yield from </span><span class="s1">console</span><span class="s2">.</span><span class="s1">render</span><span class="s2">(</span>
+                    <span class="s1">text</span><span class="s2">, </span><span class="s1">options</span><span class="s2">=</span><span class="s1">options</span><span class="s2">.</span><span class="s1">update</span><span class="s2">(</span><span class="s1">width</span><span class="s2">=</span><span class="s1">code_width</span><span class="s2">)</span>
+                <span class="s2">)</span>
+            <span class="s0">else</span><span class="s2">:</span>
+                <span class="s1">syntax_lines </span><span class="s2">= </span><span class="s1">console</span><span class="s2">.</span><span class="s1">render_lines</span><span class="s2">(</span>
+                    <span class="s1">text</span><span class="s2">,</span>
+                    <span class="s1">options</span><span class="s2">.</span><span class="s1">update</span><span class="s2">(</span><span class="s1">width</span><span class="s2">=</span><span class="s1">code_width</span><span class="s2">, </span><span class="s1">height</span><span class="s2">=</span><span class="s0">None</span><span class="s2">, </span><span class="s1">justify</span><span class="s2">=</span><span class="s3">&quot;left&quot;</span><span class="s2">),</span>
+                    <span class="s1">style</span><span class="s2">=</span><span class="s1">self</span><span class="s2">.</span><span class="s1">background_style</span><span class="s2">,</span>
+                    <span class="s1">pad</span><span class="s2">=</span><span class="s0">True</span><span class="s2">,</span>
+                    <span class="s1">new_lines</span><span class="s2">=</span><span class="s0">True</span><span class="s2">,</span>
+                <span class="s2">)</span>
+                <span class="s0">for </span><span class="s1">syntax_line </span><span class="s0">in </span><span class="s1">syntax_lines</span><span class="s2">:</span>
+                    <span class="s0">yield from </span><span class="s1">syntax_line</span>
+            <span class="s0">return</span>
+
+        <span class="s1">start_line</span><span class="s2">, </span><span class="s1">end_line </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">line_range </span><span class="s0">or </span><span class="s2">(</span><span class="s0">None</span><span class="s2">, </span><span class="s0">None</span><span class="s2">)</span>
+        <span class="s1">line_offset </span><span class="s2">= </span><span class="s5">0</span>
+        <span class="s0">if </span><span class="s1">start_line</span><span class="s2">:</span>
+            <span class="s1">line_offset </span><span class="s2">= </span><span class="s1">max</span><span class="s2">(</span><span class="s5">0</span><span class="s2">, </span><span class="s1">start_line </span><span class="s2">- </span><span class="s5">1</span><span class="s2">)</span>
+        <span class="s1">lines</span><span class="s2">: </span><span class="s1">Union</span><span class="s2">[</span><span class="s1">List</span><span class="s2">[</span><span class="s1">Text</span><span class="s2">], </span><span class="s1">Lines</span><span class="s2">] = </span><span class="s1">text</span><span class="s2">.</span><span class="s1">split</span><span class="s2">(</span><span class="s3">&quot;</span><span class="s0">\n</span><span class="s3">&quot;</span><span class="s2">, </span><span class="s1">allow_blank</span><span class="s2">=</span><span class="s1">ends_on_nl</span><span class="s2">)</span>
+        <span class="s0">if </span><span class="s1">self</span><span class="s2">.</span><span class="s1">line_range</span><span class="s2">:</span>
+            <span class="s0">if </span><span class="s1">line_offset </span><span class="s2">&gt; </span><span class="s1">len</span><span class="s2">(</span><span class="s1">lines</span><span class="s2">):</span>
+                <span class="s0">return</span>
+            <span class="s1">lines </span><span class="s2">= </span><span class="s1">lines</span><span class="s2">[</span><span class="s1">line_offset</span><span class="s2">:</span><span class="s1">end_line</span><span class="s2">]</span>
+
+        <span class="s0">if </span><span class="s1">self</span><span class="s2">.</span><span class="s1">indent_guides </span><span class="s0">and not </span><span class="s1">options</span><span class="s2">.</span><span class="s1">ascii_only</span><span class="s2">:</span>
+            <span class="s1">style </span><span class="s2">= (</span>
+                <span class="s1">self</span><span class="s2">.</span><span class="s1">_get_base_style</span><span class="s2">()</span>
+                <span class="s2">+ </span><span class="s1">self</span><span class="s2">.</span><span class="s1">_theme</span><span class="s2">.</span><span class="s1">get_style_for_token</span><span class="s2">(</span><span class="s1">Comment</span><span class="s2">)</span>
+                <span class="s2">+ </span><span class="s1">Style</span><span class="s2">(</span><span class="s1">dim</span><span class="s2">=</span><span class="s0">True</span><span class="s2">)</span>
+                <span class="s2">+ </span><span class="s1">self</span><span class="s2">.</span><span class="s1">background_style</span>
+            <span class="s2">)</span>
+            <span class="s1">lines </span><span class="s2">= (</span>
+                <span class="s1">Text</span><span class="s2">(</span><span class="s3">&quot;</span><span class="s0">\n</span><span class="s3">&quot;</span><span class="s2">)</span>
+                <span class="s2">.</span><span class="s1">join</span><span class="s2">(</span><span class="s1">lines</span><span class="s2">)</span>
+                <span class="s2">.</span><span class="s1">with_indent_guides</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">tab_size</span><span class="s2">, </span><span class="s1">style</span><span class="s2">=</span><span class="s1">style </span><span class="s2">+ </span><span class="s1">Style</span><span class="s2">(</span><span class="s1">italic</span><span class="s2">=</span><span class="s0">False</span><span class="s2">))</span>
+                <span class="s2">.</span><span class="s1">split</span><span class="s2">(</span><span class="s3">&quot;</span><span class="s0">\n</span><span class="s3">&quot;</span><span class="s2">, </span><span class="s1">allow_blank</span><span class="s2">=</span><span class="s0">True</span><span class="s2">)</span>
+            <span class="s2">)</span>
+
+        <span class="s1">numbers_column_width </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">_numbers_column_width</span>
+        <span class="s1">render_options </span><span class="s2">= </span><span class="s1">options</span><span class="s2">.</span><span class="s1">update</span><span class="s2">(</span><span class="s1">width</span><span class="s2">=</span><span class="s1">code_width</span><span class="s2">)</span>
+
+        <span class="s1">highlight_line </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">highlight_lines</span><span class="s2">.</span><span class="s1">__contains__</span>
+        <span class="s1">_Segment </span><span class="s2">= </span><span class="s1">Segment</span>
+        <span class="s1">new_line </span><span class="s2">= </span><span class="s1">_Segment</span><span class="s2">(</span><span class="s3">&quot;</span><span class="s0">\n</span><span class="s3">&quot;</span><span class="s2">)</span>
+
+        <span class="s1">line_pointer </span><span class="s2">= </span><span class="s3">&quot;&gt; &quot; </span><span class="s0">if </span><span class="s1">options</span><span class="s2">.</span><span class="s1">legacy_windows </span><span class="s0">else </span><span class="s3">&quot;❱ &quot;</span>
+
+        <span class="s2">(</span>
+            <span class="s1">background_style</span><span class="s2">,</span>
+            <span class="s1">number_style</span><span class="s2">,</span>
+            <span class="s1">highlight_number_style</span><span class="s2">,</span>
+        <span class="s2">) = </span><span class="s1">self</span><span class="s2">.</span><span class="s1">_get_number_styles</span><span class="s2">(</span><span class="s1">console</span><span class="s2">)</span>
+
+        <span class="s0">for </span><span class="s1">line_no</span><span class="s2">, </span><span class="s1">line </span><span class="s0">in </span><span class="s1">enumerate</span><span class="s2">(</span><span class="s1">lines</span><span class="s2">, </span><span class="s1">self</span><span class="s2">.</span><span class="s1">start_line </span><span class="s2">+ </span><span class="s1">line_offset</span><span class="s2">):</span>
+            <span class="s0">if </span><span class="s1">self</span><span class="s2">.</span><span class="s1">word_wrap</span><span class="s2">:</span>
+                <span class="s1">wrapped_lines </span><span class="s2">= </span><span class="s1">console</span><span class="s2">.</span><span class="s1">render_lines</span><span class="s2">(</span>
+                    <span class="s1">line</span><span class="s2">,</span>
+                    <span class="s1">render_options</span><span class="s2">.</span><span class="s1">update</span><span class="s2">(</span><span class="s1">height</span><span class="s2">=</span><span class="s0">None</span><span class="s2">, </span><span class="s1">justify</span><span class="s2">=</span><span class="s3">&quot;left&quot;</span><span class="s2">),</span>
+                    <span class="s1">style</span><span class="s2">=</span><span class="s1">background_style</span><span class="s2">,</span>
+                    <span class="s1">pad</span><span class="s2">=</span><span class="s0">not </span><span class="s1">transparent_background</span><span class="s2">,</span>
+                <span class="s2">)</span>
+            <span class="s0">else</span><span class="s2">:</span>
+                <span class="s1">segments </span><span class="s2">= </span><span class="s1">list</span><span class="s2">(</span><span class="s1">line</span><span class="s2">.</span><span class="s1">render</span><span class="s2">(</span><span class="s1">console</span><span class="s2">, </span><span class="s1">end</span><span class="s2">=</span><span class="s3">&quot;&quot;</span><span class="s2">))</span>
+                <span class="s0">if </span><span class="s1">options</span><span class="s2">.</span><span class="s1">no_wrap</span><span class="s2">:</span>
+                    <span class="s1">wrapped_lines </span><span class="s2">= [</span><span class="s1">segments</span><span class="s2">]</span>
+                <span class="s0">else</span><span class="s2">:</span>
+                    <span class="s1">wrapped_lines </span><span class="s2">= [</span>
+                        <span class="s1">_Segment</span><span class="s2">.</span><span class="s1">adjust_line_length</span><span class="s2">(</span>
+                            <span class="s1">segments</span><span class="s2">,</span>
+                            <span class="s1">render_options</span><span class="s2">.</span><span class="s1">max_width</span><span class="s2">,</span>
+                            <span class="s1">style</span><span class="s2">=</span><span class="s1">background_style</span><span class="s2">,</span>
+                            <span class="s1">pad</span><span class="s2">=</span><span class="s0">not </span><span class="s1">transparent_background</span><span class="s2">,</span>
+                        <span class="s2">)</span>
+                    <span class="s2">]</span>
+
+            <span class="s0">if </span><span class="s1">self</span><span class="s2">.</span><span class="s1">line_numbers</span><span class="s2">:</span>
+                <span class="s1">wrapped_line_left_pad </span><span class="s2">= </span><span class="s1">_Segment</span><span class="s2">(</span>
+                    <span class="s3">&quot; &quot; </span><span class="s2">* </span><span class="s1">numbers_column_width </span><span class="s2">+ </span><span class="s3">&quot; &quot;</span><span class="s2">, </span><span class="s1">background_style</span>
+                <span class="s2">)</span>
+                <span class="s0">for </span><span class="s1">first</span><span class="s2">, </span><span class="s1">wrapped_line </span><span class="s0">in </span><span class="s1">loop_first</span><span class="s2">(</span><span class="s1">wrapped_lines</span><span class="s2">):</span>
+                    <span class="s0">if </span><span class="s1">first</span><span class="s2">:</span>
+                        <span class="s1">line_column </span><span class="s2">= </span><span class="s1">str</span><span class="s2">(</span><span class="s1">line_no</span><span class="s2">).</span><span class="s1">rjust</span><span class="s2">(</span><span class="s1">numbers_column_width </span><span class="s2">- </span><span class="s5">2</span><span class="s2">) + </span><span class="s3">&quot; &quot;</span>
+                        <span class="s0">if </span><span class="s1">highlight_line</span><span class="s2">(</span><span class="s1">line_no</span><span class="s2">):</span>
+                            <span class="s0">yield </span><span class="s1">_Segment</span><span class="s2">(</span><span class="s1">line_pointer</span><span class="s2">, </span><span class="s1">Style</span><span class="s2">(</span><span class="s1">color</span><span class="s2">=</span><span class="s3">&quot;red&quot;</span><span class="s2">))</span>
+                            <span class="s0">yield </span><span class="s1">_Segment</span><span class="s2">(</span><span class="s1">line_column</span><span class="s2">, </span><span class="s1">highlight_number_style</span><span class="s2">)</span>
+                        <span class="s0">else</span><span class="s2">:</span>
+                            <span class="s0">yield </span><span class="s1">_Segment</span><span class="s2">(</span><span class="s3">&quot;  &quot;</span><span class="s2">, </span><span class="s1">highlight_number_style</span><span class="s2">)</span>
+                            <span class="s0">yield </span><span class="s1">_Segment</span><span class="s2">(</span><span class="s1">line_column</span><span class="s2">, </span><span class="s1">number_style</span><span class="s2">)</span>
+                    <span class="s0">else</span><span class="s2">:</span>
+                        <span class="s0">yield </span><span class="s1">wrapped_line_left_pad</span>
+                    <span class="s0">yield from </span><span class="s1">wrapped_line</span>
+                    <span class="s0">yield </span><span class="s1">new_line</span>
+            <span class="s0">else</span><span class="s2">:</span>
+                <span class="s0">for </span><span class="s1">wrapped_line </span><span class="s0">in </span><span class="s1">wrapped_lines</span><span class="s2">:</span>
+                    <span class="s0">yield from </span><span class="s1">wrapped_line</span>
+                    <span class="s0">yield </span><span class="s1">new_line</span>
+
+    <span class="s0">def </span><span class="s1">_apply_stylized_ranges</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">text</span><span class="s2">: </span><span class="s1">Text</span><span class="s2">) </span><span class="s1">-&gt; </span><span class="s0">None</span><span class="s2">:</span>
+        <span class="s6">&quot;&quot;&quot; 
+        Apply stylized ranges to a text instance, 
+        using the given code to determine the right portion to apply the style to. 
+ 
+        Args: 
+            text (Text): Text instance to apply the style to. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">code </span><span class="s2">= </span><span class="s1">text</span><span class="s2">.</span><span class="s1">plain</span>
+        <span class="s1">newlines_offsets </span><span class="s2">= [</span>
+            <span class="s4"># Let's add outer boundaries at each side of the list:</span>
+            <span class="s5">0</span><span class="s2">,</span>
+            <span class="s4"># N.B. using &quot;\n&quot; here is much faster than using metacharacters such as &quot;^&quot; or &quot;\Z&quot;:</span>
+            <span class="s2">*[</span>
+                <span class="s1">match</span><span class="s2">.</span><span class="s1">start</span><span class="s2">() + </span><span class="s5">1</span>
+                <span class="s0">for </span><span class="s1">match </span><span class="s0">in </span><span class="s1">re</span><span class="s2">.</span><span class="s1">finditer</span><span class="s2">(</span><span class="s3">&quot;</span><span class="s0">\n</span><span class="s3">&quot;</span><span class="s2">, </span><span class="s1">code</span><span class="s2">, </span><span class="s1">flags</span><span class="s2">=</span><span class="s1">re</span><span class="s2">.</span><span class="s1">MULTILINE</span><span class="s2">)</span>
+            <span class="s2">],</span>
+            <span class="s1">len</span><span class="s2">(</span><span class="s1">code</span><span class="s2">) + </span><span class="s5">1</span><span class="s2">,</span>
+        <span class="s2">]</span>
+
+        <span class="s0">for </span><span class="s1">stylized_range </span><span class="s0">in </span><span class="s1">self</span><span class="s2">.</span><span class="s1">_stylized_ranges</span><span class="s2">:</span>
+            <span class="s1">start </span><span class="s2">= </span><span class="s1">_get_code_index_for_syntax_position</span><span class="s2">(</span>
+                <span class="s1">newlines_offsets</span><span class="s2">, </span><span class="s1">stylized_range</span><span class="s2">.</span><span class="s1">start</span>
+            <span class="s2">)</span>
+            <span class="s1">end </span><span class="s2">= </span><span class="s1">_get_code_index_for_syntax_position</span><span class="s2">(</span>
+                <span class="s1">newlines_offsets</span><span class="s2">, </span><span class="s1">stylized_range</span><span class="s2">.</span><span class="s1">end</span>
+            <span class="s2">)</span>
+            <span class="s0">if </span><span class="s1">start </span><span class="s0">is not None and </span><span class="s1">end </span><span class="s0">is not None</span><span class="s2">:</span>
+                <span class="s1">text</span><span class="s2">.</span><span class="s1">stylize</span><span class="s2">(</span><span class="s1">stylized_range</span><span class="s2">.</span><span class="s1">style</span><span class="s2">, </span><span class="s1">start</span><span class="s2">, </span><span class="s1">end</span><span class="s2">)</span>
+
+    <span class="s0">def </span><span class="s1">_process_code</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">code</span><span class="s2">: </span><span class="s1">str</span><span class="s2">) </span><span class="s1">-&gt; Tuple</span><span class="s2">[</span><span class="s1">bool</span><span class="s2">, </span><span class="s1">str</span><span class="s2">]:</span>
+        <span class="s6">&quot;&quot;&quot; 
+        Applies various processing to a raw code string 
+        (normalises it so it always ends with a line return, dedents it if necessary, etc.) 
+ 
+        Args: 
+            code (str): The raw code string to process 
+ 
+        Returns: 
+            Tuple[bool, str]: the boolean indicates whether the raw code ends with a line return, 
+                while the string is the processed code. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">ends_on_nl </span><span class="s2">= </span><span class="s1">code</span><span class="s2">.</span><span class="s1">endswith</span><span class="s2">(</span><span class="s3">&quot;</span><span class="s0">\n</span><span class="s3">&quot;</span><span class="s2">)</span>
+        <span class="s1">processed_code </span><span class="s2">= </span><span class="s1">code </span><span class="s0">if </span><span class="s1">ends_on_nl </span><span class="s0">else </span><span class="s1">code </span><span class="s2">+ </span><span class="s3">&quot;</span><span class="s0">\n</span><span class="s3">&quot;</span>
+        <span class="s1">processed_code </span><span class="s2">= (</span>
+            <span class="s1">textwrap</span><span class="s2">.</span><span class="s1">dedent</span><span class="s2">(</span><span class="s1">processed_code</span><span class="s2">) </span><span class="s0">if </span><span class="s1">self</span><span class="s2">.</span><span class="s1">dedent </span><span class="s0">else </span><span class="s1">processed_code</span>
+        <span class="s2">)</span>
+        <span class="s1">processed_code </span><span class="s2">= </span><span class="s1">processed_code</span><span class="s2">.</span><span class="s1">expandtabs</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">tab_size</span><span class="s2">)</span>
+        <span class="s0">return </span><span class="s1">ends_on_nl</span><span class="s2">, </span><span class="s1">processed_code</span>
+
+
+<span class="s0">def </span><span class="s1">_get_code_index_for_syntax_position</span><span class="s2">(</span>
+    <span class="s1">newlines_offsets</span><span class="s2">: </span><span class="s1">Sequence</span><span class="s2">[</span><span class="s1">int</span><span class="s2">], </span><span class="s1">position</span><span class="s2">: </span><span class="s1">SyntaxPosition</span>
+<span class="s2">) </span><span class="s1">-&gt; Optional</span><span class="s2">[</span><span class="s1">int</span><span class="s2">]:</span>
+    <span class="s6">&quot;&quot;&quot; 
+    Returns the index of the code string for the given positions. 
+ 
+    Args: 
+        newlines_offsets (Sequence[int]): The offset of each newline character found in the code snippet. 
+        position (SyntaxPosition): The position to search for. 
+ 
+    Returns: 
+        Optional[int]: The index of the code string for this position, or `None` 
+            if the given position's line number is out of range (if it's the column that is out of range 
+            we silently clamp its value so that it reaches the end of the line) 
+    &quot;&quot;&quot;</span>
+    <span class="s1">lines_count </span><span class="s2">= </span><span class="s1">len</span><span class="s2">(</span><span class="s1">newlines_offsets</span><span class="s2">)</span>
+
+    <span class="s1">line_number</span><span class="s2">, </span><span class="s1">column_index </span><span class="s2">= </span><span class="s1">position</span>
+    <span class="s0">if </span><span class="s1">line_number </span><span class="s2">&gt; </span><span class="s1">lines_count </span><span class="s0">or </span><span class="s1">len</span><span class="s2">(</span><span class="s1">newlines_offsets</span><span class="s2">) &lt; (</span><span class="s1">line_number </span><span class="s2">+ </span><span class="s5">1</span><span class="s2">):</span>
+        <span class="s0">return None  </span><span class="s4"># `line_number` is out of range</span>
+    <span class="s1">line_index </span><span class="s2">= </span><span class="s1">line_number </span><span class="s2">- </span><span class="s5">1</span>
+    <span class="s1">line_length </span><span class="s2">= </span><span class="s1">newlines_offsets</span><span class="s2">[</span><span class="s1">line_index </span><span class="s2">+ </span><span class="s5">1</span><span class="s2">] - </span><span class="s1">newlines_offsets</span><span class="s2">[</span><span class="s1">line_index</span><span class="s2">] - </span><span class="s5">1</span>
+    <span class="s4"># If `column_index` is out of range: let's silently clamp it:</span>
+    <span class="s1">column_index </span><span class="s2">= </span><span class="s1">min</span><span class="s2">(</span><span class="s1">line_length</span><span class="s2">, </span><span class="s1">column_index</span><span class="s2">)</span>
+    <span class="s0">return </span><span class="s1">newlines_offsets</span><span class="s2">[</span><span class="s1">line_index</span><span class="s2">] + </span><span class="s1">column_index</span>
+
+
+<span class="s0">if </span><span class="s1">__name__ </span><span class="s2">== </span><span class="s3">&quot;__main__&quot;</span><span class="s2">:  </span><span class="s4"># pragma: no cover</span>
+    <span class="s0">import </span><span class="s1">argparse</span>
+    <span class="s0">import </span><span class="s1">sys</span>
+
+    <span class="s1">parser </span><span class="s2">= </span><span class="s1">argparse</span><span class="s2">.</span><span class="s1">ArgumentParser</span><span class="s2">(</span>
+        <span class="s1">description</span><span class="s2">=</span><span class="s3">&quot;Render syntax to the console with Rich&quot;</span>
+    <span class="s2">)</span>
+    <span class="s1">parser</span><span class="s2">.</span><span class="s1">add_argument</span><span class="s2">(</span>
+        <span class="s3">&quot;path&quot;</span><span class="s2">,</span>
+        <span class="s1">metavar</span><span class="s2">=</span><span class="s3">&quot;PATH&quot;</span><span class="s2">,</span>
+        <span class="s1">help</span><span class="s2">=</span><span class="s3">&quot;path to file, or - for stdin&quot;</span><span class="s2">,</span>
+    <span class="s2">)</span>
+    <span class="s1">parser</span><span class="s2">.</span><span class="s1">add_argument</span><span class="s2">(</span>
+        <span class="s3">&quot;-c&quot;</span><span class="s2">,</span>
+        <span class="s3">&quot;--force-color&quot;</span><span class="s2">,</span>
+        <span class="s1">dest</span><span class="s2">=</span><span class="s3">&quot;force_color&quot;</span><span class="s2">,</span>
+        <span class="s1">action</span><span class="s2">=</span><span class="s3">&quot;store_true&quot;</span><span class="s2">,</span>
+        <span class="s1">default</span><span class="s2">=</span><span class="s0">None</span><span class="s2">,</span>
+        <span class="s1">help</span><span class="s2">=</span><span class="s3">&quot;force color for non-terminals&quot;</span><span class="s2">,</span>
+    <span class="s2">)</span>
+    <span class="s1">parser</span><span class="s2">.</span><span class="s1">add_argument</span><span class="s2">(</span>
+        <span class="s3">&quot;-i&quot;</span><span class="s2">,</span>
+        <span class="s3">&quot;--indent-guides&quot;</span><span class="s2">,</span>
+        <span class="s1">dest</span><span class="s2">=</span><span class="s3">&quot;indent_guides&quot;</span><span class="s2">,</span>
+        <span class="s1">action</span><span class="s2">=</span><span class="s3">&quot;store_true&quot;</span><span class="s2">,</span>
+        <span class="s1">default</span><span class="s2">=</span><span class="s0">False</span><span class="s2">,</span>
+        <span class="s1">help</span><span class="s2">=</span><span class="s3">&quot;display indent guides&quot;</span><span class="s2">,</span>
+    <span class="s2">)</span>
+    <span class="s1">parser</span><span class="s2">.</span><span class="s1">add_argument</span><span class="s2">(</span>
+        <span class="s3">&quot;-l&quot;</span><span class="s2">,</span>
+        <span class="s3">&quot;--line-numbers&quot;</span><span class="s2">,</span>
+        <span class="s1">dest</span><span class="s2">=</span><span class="s3">&quot;line_numbers&quot;</span><span class="s2">,</span>
+        <span class="s1">action</span><span class="s2">=</span><span class="s3">&quot;store_true&quot;</span><span class="s2">,</span>
+        <span class="s1">help</span><span class="s2">=</span><span class="s3">&quot;render line numbers&quot;</span><span class="s2">,</span>
+    <span class="s2">)</span>
+    <span class="s1">parser</span><span class="s2">.</span><span class="s1">add_argument</span><span class="s2">(</span>
+        <span class="s3">&quot;-w&quot;</span><span class="s2">,</span>
+        <span class="s3">&quot;--width&quot;</span><span class="s2">,</span>
+        <span class="s1">type</span><span class="s2">=</span><span class="s1">int</span><span class="s2">,</span>
+        <span class="s1">dest</span><span class="s2">=</span><span class="s3">&quot;width&quot;</span><span class="s2">,</span>
+        <span class="s1">default</span><span class="s2">=</span><span class="s0">None</span><span class="s2">,</span>
+        <span class="s1">help</span><span class="s2">=</span><span class="s3">&quot;width of output (default will auto-detect)&quot;</span><span class="s2">,</span>
+    <span class="s2">)</span>
+    <span class="s1">parser</span><span class="s2">.</span><span class="s1">add_argument</span><span class="s2">(</span>
+        <span class="s3">&quot;-r&quot;</span><span class="s2">,</span>
+        <span class="s3">&quot;--wrap&quot;</span><span class="s2">,</span>
+        <span class="s1">dest</span><span class="s2">=</span><span class="s3">&quot;word_wrap&quot;</span><span class="s2">,</span>
+        <span class="s1">action</span><span class="s2">=</span><span class="s3">&quot;store_true&quot;</span><span class="s2">,</span>
+        <span class="s1">default</span><span class="s2">=</span><span class="s0">False</span><span class="s2">,</span>
+        <span class="s1">help</span><span class="s2">=</span><span class="s3">&quot;word wrap long lines&quot;</span><span class="s2">,</span>
+    <span class="s2">)</span>
+    <span class="s1">parser</span><span class="s2">.</span><span class="s1">add_argument</span><span class="s2">(</span>
+        <span class="s3">&quot;-s&quot;</span><span class="s2">,</span>
+        <span class="s3">&quot;--soft-wrap&quot;</span><span class="s2">,</span>
+        <span class="s1">action</span><span class="s2">=</span><span class="s3">&quot;store_true&quot;</span><span class="s2">,</span>
+        <span class="s1">dest</span><span class="s2">=</span><span class="s3">&quot;soft_wrap&quot;</span><span class="s2">,</span>
+        <span class="s1">default</span><span class="s2">=</span><span class="s0">False</span><span class="s2">,</span>
+        <span class="s1">help</span><span class="s2">=</span><span class="s3">&quot;enable soft wrapping mode&quot;</span><span class="s2">,</span>
+    <span class="s2">)</span>
+    <span class="s1">parser</span><span class="s2">.</span><span class="s1">add_argument</span><span class="s2">(</span>
+        <span class="s3">&quot;-t&quot;</span><span class="s2">, </span><span class="s3">&quot;--theme&quot;</span><span class="s2">, </span><span class="s1">dest</span><span class="s2">=</span><span class="s3">&quot;theme&quot;</span><span class="s2">, </span><span class="s1">default</span><span class="s2">=</span><span class="s3">&quot;monokai&quot;</span><span class="s2">, </span><span class="s1">help</span><span class="s2">=</span><span class="s3">&quot;pygments theme&quot;</span>
+    <span class="s2">)</span>
+    <span class="s1">parser</span><span class="s2">.</span><span class="s1">add_argument</span><span class="s2">(</span>
+        <span class="s3">&quot;-b&quot;</span><span class="s2">,</span>
+        <span class="s3">&quot;--background-color&quot;</span><span class="s2">,</span>
+        <span class="s1">dest</span><span class="s2">=</span><span class="s3">&quot;background_color&quot;</span><span class="s2">,</span>
+        <span class="s1">default</span><span class="s2">=</span><span class="s0">None</span><span class="s2">,</span>
+        <span class="s1">help</span><span class="s2">=</span><span class="s3">&quot;Override background color&quot;</span><span class="s2">,</span>
+    <span class="s2">)</span>
+    <span class="s1">parser</span><span class="s2">.</span><span class="s1">add_argument</span><span class="s2">(</span>
+        <span class="s3">&quot;-x&quot;</span><span class="s2">,</span>
+        <span class="s3">&quot;--lexer&quot;</span><span class="s2">,</span>
+        <span class="s1">default</span><span class="s2">=</span><span class="s0">None</span><span class="s2">,</span>
+        <span class="s1">dest</span><span class="s2">=</span><span class="s3">&quot;lexer_name&quot;</span><span class="s2">,</span>
+        <span class="s1">help</span><span class="s2">=</span><span class="s3">&quot;Lexer name&quot;</span><span class="s2">,</span>
+    <span class="s2">)</span>
+    <span class="s1">parser</span><span class="s2">.</span><span class="s1">add_argument</span><span class="s2">(</span>
+        <span class="s3">&quot;-p&quot;</span><span class="s2">, </span><span class="s3">&quot;--padding&quot;</span><span class="s2">, </span><span class="s1">type</span><span class="s2">=</span><span class="s1">int</span><span class="s2">, </span><span class="s1">default</span><span class="s2">=</span><span class="s5">0</span><span class="s2">, </span><span class="s1">dest</span><span class="s2">=</span><span class="s3">&quot;padding&quot;</span><span class="s2">, </span><span class="s1">help</span><span class="s2">=</span><span class="s3">&quot;Padding&quot;</span>
+    <span class="s2">)</span>
+    <span class="s1">parser</span><span class="s2">.</span><span class="s1">add_argument</span><span class="s2">(</span>
+        <span class="s3">&quot;--highlight-line&quot;</span><span class="s2">,</span>
+        <span class="s1">type</span><span class="s2">=</span><span class="s1">int</span><span class="s2">,</span>
+        <span class="s1">default</span><span class="s2">=</span><span class="s0">None</span><span class="s2">,</span>
+        <span class="s1">dest</span><span class="s2">=</span><span class="s3">&quot;highlight_line&quot;</span><span class="s2">,</span>
+        <span class="s1">help</span><span class="s2">=</span><span class="s3">&quot;The line number (not index!) to highlight&quot;</span><span class="s2">,</span>
+    <span class="s2">)</span>
+    <span class="s1">args </span><span class="s2">= </span><span class="s1">parser</span><span class="s2">.</span><span class="s1">parse_args</span><span class="s2">()</span>
+
+    <span class="s0">from </span><span class="s1">pip</span><span class="s2">.</span><span class="s1">_vendor</span><span class="s2">.</span><span class="s1">rich</span><span class="s2">.</span><span class="s1">console </span><span class="s0">import </span><span class="s1">Console</span>
+
+    <span class="s1">console </span><span class="s2">= </span><span class="s1">Console</span><span class="s2">(</span><span class="s1">force_terminal</span><span class="s2">=</span><span class="s1">args</span><span class="s2">.</span><span class="s1">force_color</span><span class="s2">, </span><span class="s1">width</span><span class="s2">=</span><span class="s1">args</span><span class="s2">.</span><span class="s1">width</span><span class="s2">)</span>
+
+    <span class="s0">if </span><span class="s1">args</span><span class="s2">.</span><span class="s1">path </span><span class="s2">== </span><span class="s3">&quot;-&quot;</span><span class="s2">:</span>
+        <span class="s1">code </span><span class="s2">= </span><span class="s1">sys</span><span class="s2">.</span><span class="s1">stdin</span><span class="s2">.</span><span class="s1">read</span><span class="s2">()</span>
+        <span class="s1">syntax </span><span class="s2">= </span><span class="s1">Syntax</span><span class="s2">(</span>
+            <span class="s1">code</span><span class="s2">=</span><span class="s1">code</span><span class="s2">,</span>
+            <span class="s1">lexer</span><span class="s2">=</span><span class="s1">args</span><span class="s2">.</span><span class="s1">lexer_name</span><span class="s2">,</span>
+            <span class="s1">line_numbers</span><span class="s2">=</span><span class="s1">args</span><span class="s2">.</span><span class="s1">line_numbers</span><span class="s2">,</span>
+            <span class="s1">word_wrap</span><span class="s2">=</span><span class="s1">args</span><span class="s2">.</span><span class="s1">word_wrap</span><span class="s2">,</span>
+            <span class="s1">theme</span><span class="s2">=</span><span class="s1">args</span><span class="s2">.</span><span class="s1">theme</span><span class="s2">,</span>
+            <span class="s1">background_color</span><span class="s2">=</span><span class="s1">args</span><span class="s2">.</span><span class="s1">background_color</span><span class="s2">,</span>
+            <span class="s1">indent_guides</span><span class="s2">=</span><span class="s1">args</span><span class="s2">.</span><span class="s1">indent_guides</span><span class="s2">,</span>
+            <span class="s1">padding</span><span class="s2">=</span><span class="s1">args</span><span class="s2">.</span><span class="s1">padding</span><span class="s2">,</span>
+            <span class="s1">highlight_lines</span><span class="s2">={</span><span class="s1">args</span><span class="s2">.</span><span class="s1">highlight_line</span><span class="s2">},</span>
+        <span class="s2">)</span>
+    <span class="s0">else</span><span class="s2">:</span>
+        <span class="s1">syntax </span><span class="s2">= </span><span class="s1">Syntax</span><span class="s2">.</span><span class="s1">from_path</span><span class="s2">(</span>
+            <span class="s1">args</span><span class="s2">.</span><span class="s1">path</span><span class="s2">,</span>
+            <span class="s1">lexer</span><span class="s2">=</span><span class="s1">args</span><span class="s2">.</span><span class="s1">lexer_name</span><span class="s2">,</span>
+            <span class="s1">line_numbers</span><span class="s2">=</span><span class="s1">args</span><span class="s2">.</span><span class="s1">line_numbers</span><span class="s2">,</span>
+            <span class="s1">word_wrap</span><span class="s2">=</span><span class="s1">args</span><span class="s2">.</span><span class="s1">word_wrap</span><span class="s2">,</span>
+            <span class="s1">theme</span><span class="s2">=</span><span class="s1">args</span><span class="s2">.</span><span class="s1">theme</span><span class="s2">,</span>
+            <span class="s1">background_color</span><span class="s2">=</span><span class="s1">args</span><span class="s2">.</span><span class="s1">background_color</span><span class="s2">,</span>
+            <span class="s1">indent_guides</span><span class="s2">=</span><span class="s1">args</span><span class="s2">.</span><span class="s1">indent_guides</span><span class="s2">,</span>
+            <span class="s1">padding</span><span class="s2">=</span><span class="s1">args</span><span class="s2">.</span><span class="s1">padding</span><span class="s2">,</span>
+            <span class="s1">highlight_lines</span><span class="s2">={</span><span class="s1">args</span><span class="s2">.</span><span class="s1">highlight_line</span><span class="s2">},</span>
+        <span class="s2">)</span>
+    <span class="s1">console</span><span class="s2">.</span><span class="s1">print</span><span class="s2">(</span><span class="s1">syntax</span><span class="s2">, </span><span class="s1">soft_wrap</span><span class="s2">=</span><span class="s1">args</span><span class="s2">.</span><span class="s1">soft_wrap</span><span class="s2">)</span>
+</pre>
+</body>
+</html>

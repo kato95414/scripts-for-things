@@ -1,0 +1,68 @@
+<html>
+<head>
+<title>johabprober.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #7a7e85;}
+.s1 { color: #bcbec4;}
+.s2 { color: #cf8e6d;}
+.s3 { color: #bcbec4;}
+.s4 { color: #6aab73;}
+</style>
+</head>
+<body bgcolor="#1e1f22">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+johabprober.py</font>
+</center></td></tr></table>
+<pre><span class="s0">######################## BEGIN LICENSE BLOCK ########################</span>
+<span class="s0"># The Original Code is mozilla.org code.</span>
+<span class="s0">#</span>
+<span class="s0"># The Initial Developer of the Original Code is</span>
+<span class="s0"># Netscape Communications Corporation.</span>
+<span class="s0"># Portions created by the Initial Developer are Copyright (C) 1998</span>
+<span class="s0"># the Initial Developer. All Rights Reserved.</span>
+<span class="s0">#</span>
+<span class="s0"># Contributor(s):</span>
+<span class="s0">#   Mark Pilgrim - port to Python</span>
+<span class="s0">#</span>
+<span class="s0"># This library is free software; you can redistribute it and/or</span>
+<span class="s0"># modify it under the terms of the GNU Lesser General Public</span>
+<span class="s0"># License as published by the Free Software Foundation; either</span>
+<span class="s0"># version 2.1 of the License, or (at your option) any later version.</span>
+<span class="s0">#</span>
+<span class="s0"># This library is distributed in the hope that it will be useful,</span>
+<span class="s0"># but WITHOUT ANY WARRANTY; without even the implied warranty of</span>
+<span class="s0"># MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU</span>
+<span class="s0"># Lesser General Public License for more details.</span>
+<span class="s0">#</span>
+<span class="s0"># You should have received a copy of the GNU Lesser General Public</span>
+<span class="s0"># License along with this library; if not, write to the Free Software</span>
+<span class="s0"># Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA</span>
+<span class="s0"># 02110-1301  USA</span>
+<span class="s0">######################### END LICENSE BLOCK #########################</span>
+
+<span class="s2">from </span><span class="s3">.</span><span class="s1">chardistribution </span><span class="s2">import </span><span class="s1">JOHABDistributionAnalysis</span>
+<span class="s2">from </span><span class="s3">.</span><span class="s1">codingstatemachine </span><span class="s2">import </span><span class="s1">CodingStateMachine</span>
+<span class="s2">from </span><span class="s3">.</span><span class="s1">mbcharsetprober </span><span class="s2">import </span><span class="s1">MultiByteCharSetProber</span>
+<span class="s2">from </span><span class="s3">.</span><span class="s1">mbcssm </span><span class="s2">import </span><span class="s1">JOHAB_SM_MODEL</span>
+
+
+<span class="s2">class </span><span class="s1">JOHABProber</span><span class="s3">(</span><span class="s1">MultiByteCharSetProber</span><span class="s3">):</span>
+    <span class="s2">def </span><span class="s1">__init__</span><span class="s3">(</span><span class="s1">self</span><span class="s3">) </span><span class="s1">-&gt; </span><span class="s2">None</span><span class="s3">:</span>
+        <span class="s1">super</span><span class="s3">().</span><span class="s1">__init__</span><span class="s3">()</span>
+        <span class="s1">self</span><span class="s3">.</span><span class="s1">coding_sm </span><span class="s3">= </span><span class="s1">CodingStateMachine</span><span class="s3">(</span><span class="s1">JOHAB_SM_MODEL</span><span class="s3">)</span>
+        <span class="s1">self</span><span class="s3">.</span><span class="s1">distribution_analyzer </span><span class="s3">= </span><span class="s1">JOHABDistributionAnalysis</span><span class="s3">()</span>
+        <span class="s1">self</span><span class="s3">.</span><span class="s1">reset</span><span class="s3">()</span>
+
+    <span class="s3">@</span><span class="s1">property</span>
+    <span class="s2">def </span><span class="s1">charset_name</span><span class="s3">(</span><span class="s1">self</span><span class="s3">) </span><span class="s1">-&gt; str</span><span class="s3">:</span>
+        <span class="s2">return </span><span class="s4">&quot;Johab&quot;</span>
+
+    <span class="s3">@</span><span class="s1">property</span>
+    <span class="s2">def </span><span class="s1">language</span><span class="s3">(</span><span class="s1">self</span><span class="s3">) </span><span class="s1">-&gt; str</span><span class="s3">:</span>
+        <span class="s2">return </span><span class="s4">&quot;Korean&quot;</span>
+</pre>
+</body>
+</html>

@@ -1,0 +1,330 @@
+<html>
+<head>
+<title>_palettes.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cf8e6d;}
+.s1 { color: #bcbec4;}
+.s2 { color: #bcbec4;}
+.s3 { color: #7a7e85;}
+.s4 { color: #2aacb8;}
+</style>
+</head>
+<body bgcolor="#1e1f22">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+_palettes.py</font>
+</center></td></tr></table>
+<pre><span class="s0">from </span><span class="s2">.</span><span class="s1">palette </span><span class="s0">import </span><span class="s1">Palette</span>
+
+
+<span class="s3"># Taken from https://en.wikipedia.org/wiki/ANSI_escape_code (Windows 10 column)</span>
+<span class="s1">WINDOWS_PALETTE </span><span class="s2">= </span><span class="s1">Palette</span><span class="s2">(</span>
+    <span class="s2">[</span>
+        <span class="s2">(</span><span class="s4">12</span><span class="s2">, </span><span class="s4">12</span><span class="s2">, </span><span class="s4">12</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">197</span><span class="s2">, </span><span class="s4">15</span><span class="s2">, </span><span class="s4">31</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">19</span><span class="s2">, </span><span class="s4">161</span><span class="s2">, </span><span class="s4">14</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">193</span><span class="s2">, </span><span class="s4">156</span><span class="s2">, </span><span class="s4">0</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">0</span><span class="s2">, </span><span class="s4">55</span><span class="s2">, </span><span class="s4">218</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">136</span><span class="s2">, </span><span class="s4">23</span><span class="s2">, </span><span class="s4">152</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">58</span><span class="s2">, </span><span class="s4">150</span><span class="s2">, </span><span class="s4">221</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">204</span><span class="s2">, </span><span class="s4">204</span><span class="s2">, </span><span class="s4">204</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">118</span><span class="s2">, </span><span class="s4">118</span><span class="s2">, </span><span class="s4">118</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">231</span><span class="s2">, </span><span class="s4">72</span><span class="s2">, </span><span class="s4">86</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">22</span><span class="s2">, </span><span class="s4">198</span><span class="s2">, </span><span class="s4">12</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">249</span><span class="s2">, </span><span class="s4">241</span><span class="s2">, </span><span class="s4">165</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">59</span><span class="s2">, </span><span class="s4">120</span><span class="s2">, </span><span class="s4">255</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">180</span><span class="s2">, </span><span class="s4">0</span><span class="s2">, </span><span class="s4">158</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">97</span><span class="s2">, </span><span class="s4">214</span><span class="s2">, </span><span class="s4">214</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">242</span><span class="s2">, </span><span class="s4">242</span><span class="s2">, </span><span class="s4">242</span><span class="s2">),</span>
+    <span class="s2">]</span>
+<span class="s2">)</span>
+
+<span class="s3"># # The standard ansi colors (including bright variants)</span>
+<span class="s1">STANDARD_PALETTE </span><span class="s2">= </span><span class="s1">Palette</span><span class="s2">(</span>
+    <span class="s2">[</span>
+        <span class="s2">(</span><span class="s4">0</span><span class="s2">, </span><span class="s4">0</span><span class="s2">, </span><span class="s4">0</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">170</span><span class="s2">, </span><span class="s4">0</span><span class="s2">, </span><span class="s4">0</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">0</span><span class="s2">, </span><span class="s4">170</span><span class="s2">, </span><span class="s4">0</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">170</span><span class="s2">, </span><span class="s4">85</span><span class="s2">, </span><span class="s4">0</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">0</span><span class="s2">, </span><span class="s4">0</span><span class="s2">, </span><span class="s4">170</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">170</span><span class="s2">, </span><span class="s4">0</span><span class="s2">, </span><span class="s4">170</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">0</span><span class="s2">, </span><span class="s4">170</span><span class="s2">, </span><span class="s4">170</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">170</span><span class="s2">, </span><span class="s4">170</span><span class="s2">, </span><span class="s4">170</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">85</span><span class="s2">, </span><span class="s4">85</span><span class="s2">, </span><span class="s4">85</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">255</span><span class="s2">, </span><span class="s4">85</span><span class="s2">, </span><span class="s4">85</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">85</span><span class="s2">, </span><span class="s4">255</span><span class="s2">, </span><span class="s4">85</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">255</span><span class="s2">, </span><span class="s4">255</span><span class="s2">, </span><span class="s4">85</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">85</span><span class="s2">, </span><span class="s4">85</span><span class="s2">, </span><span class="s4">255</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">255</span><span class="s2">, </span><span class="s4">85</span><span class="s2">, </span><span class="s4">255</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">85</span><span class="s2">, </span><span class="s4">255</span><span class="s2">, </span><span class="s4">255</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">255</span><span class="s2">, </span><span class="s4">255</span><span class="s2">, </span><span class="s4">255</span><span class="s2">),</span>
+    <span class="s2">]</span>
+<span class="s2">)</span>
+
+
+<span class="s3"># The 256 color palette</span>
+<span class="s1">EIGHT_BIT_PALETTE </span><span class="s2">= </span><span class="s1">Palette</span><span class="s2">(</span>
+    <span class="s2">[</span>
+        <span class="s2">(</span><span class="s4">0</span><span class="s2">, </span><span class="s4">0</span><span class="s2">, </span><span class="s4">0</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">128</span><span class="s2">, </span><span class="s4">0</span><span class="s2">, </span><span class="s4">0</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">0</span><span class="s2">, </span><span class="s4">128</span><span class="s2">, </span><span class="s4">0</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">128</span><span class="s2">, </span><span class="s4">128</span><span class="s2">, </span><span class="s4">0</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">0</span><span class="s2">, </span><span class="s4">0</span><span class="s2">, </span><span class="s4">128</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">128</span><span class="s2">, </span><span class="s4">0</span><span class="s2">, </span><span class="s4">128</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">0</span><span class="s2">, </span><span class="s4">128</span><span class="s2">, </span><span class="s4">128</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">192</span><span class="s2">, </span><span class="s4">192</span><span class="s2">, </span><span class="s4">192</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">128</span><span class="s2">, </span><span class="s4">128</span><span class="s2">, </span><span class="s4">128</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">255</span><span class="s2">, </span><span class="s4">0</span><span class="s2">, </span><span class="s4">0</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">0</span><span class="s2">, </span><span class="s4">255</span><span class="s2">, </span><span class="s4">0</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">255</span><span class="s2">, </span><span class="s4">255</span><span class="s2">, </span><span class="s4">0</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">0</span><span class="s2">, </span><span class="s4">0</span><span class="s2">, </span><span class="s4">255</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">255</span><span class="s2">, </span><span class="s4">0</span><span class="s2">, </span><span class="s4">255</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">0</span><span class="s2">, </span><span class="s4">255</span><span class="s2">, </span><span class="s4">255</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">255</span><span class="s2">, </span><span class="s4">255</span><span class="s2">, </span><span class="s4">255</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">0</span><span class="s2">, </span><span class="s4">0</span><span class="s2">, </span><span class="s4">0</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">0</span><span class="s2">, </span><span class="s4">0</span><span class="s2">, </span><span class="s4">95</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">0</span><span class="s2">, </span><span class="s4">0</span><span class="s2">, </span><span class="s4">135</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">0</span><span class="s2">, </span><span class="s4">0</span><span class="s2">, </span><span class="s4">175</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">0</span><span class="s2">, </span><span class="s4">0</span><span class="s2">, </span><span class="s4">215</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">0</span><span class="s2">, </span><span class="s4">0</span><span class="s2">, </span><span class="s4">255</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">0</span><span class="s2">, </span><span class="s4">95</span><span class="s2">, </span><span class="s4">0</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">0</span><span class="s2">, </span><span class="s4">95</span><span class="s2">, </span><span class="s4">95</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">0</span><span class="s2">, </span><span class="s4">95</span><span class="s2">, </span><span class="s4">135</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">0</span><span class="s2">, </span><span class="s4">95</span><span class="s2">, </span><span class="s4">175</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">0</span><span class="s2">, </span><span class="s4">95</span><span class="s2">, </span><span class="s4">215</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">0</span><span class="s2">, </span><span class="s4">95</span><span class="s2">, </span><span class="s4">255</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">0</span><span class="s2">, </span><span class="s4">135</span><span class="s2">, </span><span class="s4">0</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">0</span><span class="s2">, </span><span class="s4">135</span><span class="s2">, </span><span class="s4">95</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">0</span><span class="s2">, </span><span class="s4">135</span><span class="s2">, </span><span class="s4">135</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">0</span><span class="s2">, </span><span class="s4">135</span><span class="s2">, </span><span class="s4">175</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">0</span><span class="s2">, </span><span class="s4">135</span><span class="s2">, </span><span class="s4">215</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">0</span><span class="s2">, </span><span class="s4">135</span><span class="s2">, </span><span class="s4">255</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">0</span><span class="s2">, </span><span class="s4">175</span><span class="s2">, </span><span class="s4">0</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">0</span><span class="s2">, </span><span class="s4">175</span><span class="s2">, </span><span class="s4">95</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">0</span><span class="s2">, </span><span class="s4">175</span><span class="s2">, </span><span class="s4">135</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">0</span><span class="s2">, </span><span class="s4">175</span><span class="s2">, </span><span class="s4">175</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">0</span><span class="s2">, </span><span class="s4">175</span><span class="s2">, </span><span class="s4">215</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">0</span><span class="s2">, </span><span class="s4">175</span><span class="s2">, </span><span class="s4">255</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">0</span><span class="s2">, </span><span class="s4">215</span><span class="s2">, </span><span class="s4">0</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">0</span><span class="s2">, </span><span class="s4">215</span><span class="s2">, </span><span class="s4">95</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">0</span><span class="s2">, </span><span class="s4">215</span><span class="s2">, </span><span class="s4">135</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">0</span><span class="s2">, </span><span class="s4">215</span><span class="s2">, </span><span class="s4">175</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">0</span><span class="s2">, </span><span class="s4">215</span><span class="s2">, </span><span class="s4">215</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">0</span><span class="s2">, </span><span class="s4">215</span><span class="s2">, </span><span class="s4">255</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">0</span><span class="s2">, </span><span class="s4">255</span><span class="s2">, </span><span class="s4">0</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">0</span><span class="s2">, </span><span class="s4">255</span><span class="s2">, </span><span class="s4">95</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">0</span><span class="s2">, </span><span class="s4">255</span><span class="s2">, </span><span class="s4">135</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">0</span><span class="s2">, </span><span class="s4">255</span><span class="s2">, </span><span class="s4">175</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">0</span><span class="s2">, </span><span class="s4">255</span><span class="s2">, </span><span class="s4">215</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">0</span><span class="s2">, </span><span class="s4">255</span><span class="s2">, </span><span class="s4">255</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">95</span><span class="s2">, </span><span class="s4">0</span><span class="s2">, </span><span class="s4">0</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">95</span><span class="s2">, </span><span class="s4">0</span><span class="s2">, </span><span class="s4">95</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">95</span><span class="s2">, </span><span class="s4">0</span><span class="s2">, </span><span class="s4">135</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">95</span><span class="s2">, </span><span class="s4">0</span><span class="s2">, </span><span class="s4">175</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">95</span><span class="s2">, </span><span class="s4">0</span><span class="s2">, </span><span class="s4">215</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">95</span><span class="s2">, </span><span class="s4">0</span><span class="s2">, </span><span class="s4">255</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">95</span><span class="s2">, </span><span class="s4">95</span><span class="s2">, </span><span class="s4">0</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">95</span><span class="s2">, </span><span class="s4">95</span><span class="s2">, </span><span class="s4">95</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">95</span><span class="s2">, </span><span class="s4">95</span><span class="s2">, </span><span class="s4">135</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">95</span><span class="s2">, </span><span class="s4">95</span><span class="s2">, </span><span class="s4">175</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">95</span><span class="s2">, </span><span class="s4">95</span><span class="s2">, </span><span class="s4">215</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">95</span><span class="s2">, </span><span class="s4">95</span><span class="s2">, </span><span class="s4">255</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">95</span><span class="s2">, </span><span class="s4">135</span><span class="s2">, </span><span class="s4">0</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">95</span><span class="s2">, </span><span class="s4">135</span><span class="s2">, </span><span class="s4">95</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">95</span><span class="s2">, </span><span class="s4">135</span><span class="s2">, </span><span class="s4">135</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">95</span><span class="s2">, </span><span class="s4">135</span><span class="s2">, </span><span class="s4">175</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">95</span><span class="s2">, </span><span class="s4">135</span><span class="s2">, </span><span class="s4">215</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">95</span><span class="s2">, </span><span class="s4">135</span><span class="s2">, </span><span class="s4">255</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">95</span><span class="s2">, </span><span class="s4">175</span><span class="s2">, </span><span class="s4">0</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">95</span><span class="s2">, </span><span class="s4">175</span><span class="s2">, </span><span class="s4">95</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">95</span><span class="s2">, </span><span class="s4">175</span><span class="s2">, </span><span class="s4">135</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">95</span><span class="s2">, </span><span class="s4">175</span><span class="s2">, </span><span class="s4">175</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">95</span><span class="s2">, </span><span class="s4">175</span><span class="s2">, </span><span class="s4">215</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">95</span><span class="s2">, </span><span class="s4">175</span><span class="s2">, </span><span class="s4">255</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">95</span><span class="s2">, </span><span class="s4">215</span><span class="s2">, </span><span class="s4">0</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">95</span><span class="s2">, </span><span class="s4">215</span><span class="s2">, </span><span class="s4">95</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">95</span><span class="s2">, </span><span class="s4">215</span><span class="s2">, </span><span class="s4">135</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">95</span><span class="s2">, </span><span class="s4">215</span><span class="s2">, </span><span class="s4">175</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">95</span><span class="s2">, </span><span class="s4">215</span><span class="s2">, </span><span class="s4">215</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">95</span><span class="s2">, </span><span class="s4">215</span><span class="s2">, </span><span class="s4">255</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">95</span><span class="s2">, </span><span class="s4">255</span><span class="s2">, </span><span class="s4">0</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">95</span><span class="s2">, </span><span class="s4">255</span><span class="s2">, </span><span class="s4">95</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">95</span><span class="s2">, </span><span class="s4">255</span><span class="s2">, </span><span class="s4">135</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">95</span><span class="s2">, </span><span class="s4">255</span><span class="s2">, </span><span class="s4">175</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">95</span><span class="s2">, </span><span class="s4">255</span><span class="s2">, </span><span class="s4">215</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">95</span><span class="s2">, </span><span class="s4">255</span><span class="s2">, </span><span class="s4">255</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">135</span><span class="s2">, </span><span class="s4">0</span><span class="s2">, </span><span class="s4">0</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">135</span><span class="s2">, </span><span class="s4">0</span><span class="s2">, </span><span class="s4">95</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">135</span><span class="s2">, </span><span class="s4">0</span><span class="s2">, </span><span class="s4">135</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">135</span><span class="s2">, </span><span class="s4">0</span><span class="s2">, </span><span class="s4">175</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">135</span><span class="s2">, </span><span class="s4">0</span><span class="s2">, </span><span class="s4">215</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">135</span><span class="s2">, </span><span class="s4">0</span><span class="s2">, </span><span class="s4">255</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">135</span><span class="s2">, </span><span class="s4">95</span><span class="s2">, </span><span class="s4">0</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">135</span><span class="s2">, </span><span class="s4">95</span><span class="s2">, </span><span class="s4">95</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">135</span><span class="s2">, </span><span class="s4">95</span><span class="s2">, </span><span class="s4">135</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">135</span><span class="s2">, </span><span class="s4">95</span><span class="s2">, </span><span class="s4">175</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">135</span><span class="s2">, </span><span class="s4">95</span><span class="s2">, </span><span class="s4">215</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">135</span><span class="s2">, </span><span class="s4">95</span><span class="s2">, </span><span class="s4">255</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">135</span><span class="s2">, </span><span class="s4">135</span><span class="s2">, </span><span class="s4">0</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">135</span><span class="s2">, </span><span class="s4">135</span><span class="s2">, </span><span class="s4">95</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">135</span><span class="s2">, </span><span class="s4">135</span><span class="s2">, </span><span class="s4">135</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">135</span><span class="s2">, </span><span class="s4">135</span><span class="s2">, </span><span class="s4">175</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">135</span><span class="s2">, </span><span class="s4">135</span><span class="s2">, </span><span class="s4">215</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">135</span><span class="s2">, </span><span class="s4">135</span><span class="s2">, </span><span class="s4">255</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">135</span><span class="s2">, </span><span class="s4">175</span><span class="s2">, </span><span class="s4">0</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">135</span><span class="s2">, </span><span class="s4">175</span><span class="s2">, </span><span class="s4">95</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">135</span><span class="s2">, </span><span class="s4">175</span><span class="s2">, </span><span class="s4">135</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">135</span><span class="s2">, </span><span class="s4">175</span><span class="s2">, </span><span class="s4">175</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">135</span><span class="s2">, </span><span class="s4">175</span><span class="s2">, </span><span class="s4">215</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">135</span><span class="s2">, </span><span class="s4">175</span><span class="s2">, </span><span class="s4">255</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">135</span><span class="s2">, </span><span class="s4">215</span><span class="s2">, </span><span class="s4">0</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">135</span><span class="s2">, </span><span class="s4">215</span><span class="s2">, </span><span class="s4">95</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">135</span><span class="s2">, </span><span class="s4">215</span><span class="s2">, </span><span class="s4">135</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">135</span><span class="s2">, </span><span class="s4">215</span><span class="s2">, </span><span class="s4">175</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">135</span><span class="s2">, </span><span class="s4">215</span><span class="s2">, </span><span class="s4">215</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">135</span><span class="s2">, </span><span class="s4">215</span><span class="s2">, </span><span class="s4">255</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">135</span><span class="s2">, </span><span class="s4">255</span><span class="s2">, </span><span class="s4">0</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">135</span><span class="s2">, </span><span class="s4">255</span><span class="s2">, </span><span class="s4">95</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">135</span><span class="s2">, </span><span class="s4">255</span><span class="s2">, </span><span class="s4">135</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">135</span><span class="s2">, </span><span class="s4">255</span><span class="s2">, </span><span class="s4">175</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">135</span><span class="s2">, </span><span class="s4">255</span><span class="s2">, </span><span class="s4">215</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">135</span><span class="s2">, </span><span class="s4">255</span><span class="s2">, </span><span class="s4">255</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">175</span><span class="s2">, </span><span class="s4">0</span><span class="s2">, </span><span class="s4">0</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">175</span><span class="s2">, </span><span class="s4">0</span><span class="s2">, </span><span class="s4">95</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">175</span><span class="s2">, </span><span class="s4">0</span><span class="s2">, </span><span class="s4">135</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">175</span><span class="s2">, </span><span class="s4">0</span><span class="s2">, </span><span class="s4">175</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">175</span><span class="s2">, </span><span class="s4">0</span><span class="s2">, </span><span class="s4">215</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">175</span><span class="s2">, </span><span class="s4">0</span><span class="s2">, </span><span class="s4">255</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">175</span><span class="s2">, </span><span class="s4">95</span><span class="s2">, </span><span class="s4">0</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">175</span><span class="s2">, </span><span class="s4">95</span><span class="s2">, </span><span class="s4">95</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">175</span><span class="s2">, </span><span class="s4">95</span><span class="s2">, </span><span class="s4">135</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">175</span><span class="s2">, </span><span class="s4">95</span><span class="s2">, </span><span class="s4">175</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">175</span><span class="s2">, </span><span class="s4">95</span><span class="s2">, </span><span class="s4">215</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">175</span><span class="s2">, </span><span class="s4">95</span><span class="s2">, </span><span class="s4">255</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">175</span><span class="s2">, </span><span class="s4">135</span><span class="s2">, </span><span class="s4">0</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">175</span><span class="s2">, </span><span class="s4">135</span><span class="s2">, </span><span class="s4">95</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">175</span><span class="s2">, </span><span class="s4">135</span><span class="s2">, </span><span class="s4">135</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">175</span><span class="s2">, </span><span class="s4">135</span><span class="s2">, </span><span class="s4">175</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">175</span><span class="s2">, </span><span class="s4">135</span><span class="s2">, </span><span class="s4">215</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">175</span><span class="s2">, </span><span class="s4">135</span><span class="s2">, </span><span class="s4">255</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">175</span><span class="s2">, </span><span class="s4">175</span><span class="s2">, </span><span class="s4">0</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">175</span><span class="s2">, </span><span class="s4">175</span><span class="s2">, </span><span class="s4">95</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">175</span><span class="s2">, </span><span class="s4">175</span><span class="s2">, </span><span class="s4">135</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">175</span><span class="s2">, </span><span class="s4">175</span><span class="s2">, </span><span class="s4">175</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">175</span><span class="s2">, </span><span class="s4">175</span><span class="s2">, </span><span class="s4">215</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">175</span><span class="s2">, </span><span class="s4">175</span><span class="s2">, </span><span class="s4">255</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">175</span><span class="s2">, </span><span class="s4">215</span><span class="s2">, </span><span class="s4">0</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">175</span><span class="s2">, </span><span class="s4">215</span><span class="s2">, </span><span class="s4">95</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">175</span><span class="s2">, </span><span class="s4">215</span><span class="s2">, </span><span class="s4">135</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">175</span><span class="s2">, </span><span class="s4">215</span><span class="s2">, </span><span class="s4">175</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">175</span><span class="s2">, </span><span class="s4">215</span><span class="s2">, </span><span class="s4">215</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">175</span><span class="s2">, </span><span class="s4">215</span><span class="s2">, </span><span class="s4">255</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">175</span><span class="s2">, </span><span class="s4">255</span><span class="s2">, </span><span class="s4">0</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">175</span><span class="s2">, </span><span class="s4">255</span><span class="s2">, </span><span class="s4">95</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">175</span><span class="s2">, </span><span class="s4">255</span><span class="s2">, </span><span class="s4">135</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">175</span><span class="s2">, </span><span class="s4">255</span><span class="s2">, </span><span class="s4">175</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">175</span><span class="s2">, </span><span class="s4">255</span><span class="s2">, </span><span class="s4">215</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">175</span><span class="s2">, </span><span class="s4">255</span><span class="s2">, </span><span class="s4">255</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">215</span><span class="s2">, </span><span class="s4">0</span><span class="s2">, </span><span class="s4">0</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">215</span><span class="s2">, </span><span class="s4">0</span><span class="s2">, </span><span class="s4">95</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">215</span><span class="s2">, </span><span class="s4">0</span><span class="s2">, </span><span class="s4">135</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">215</span><span class="s2">, </span><span class="s4">0</span><span class="s2">, </span><span class="s4">175</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">215</span><span class="s2">, </span><span class="s4">0</span><span class="s2">, </span><span class="s4">215</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">215</span><span class="s2">, </span><span class="s4">0</span><span class="s2">, </span><span class="s4">255</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">215</span><span class="s2">, </span><span class="s4">95</span><span class="s2">, </span><span class="s4">0</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">215</span><span class="s2">, </span><span class="s4">95</span><span class="s2">, </span><span class="s4">95</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">215</span><span class="s2">, </span><span class="s4">95</span><span class="s2">, </span><span class="s4">135</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">215</span><span class="s2">, </span><span class="s4">95</span><span class="s2">, </span><span class="s4">175</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">215</span><span class="s2">, </span><span class="s4">95</span><span class="s2">, </span><span class="s4">215</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">215</span><span class="s2">, </span><span class="s4">95</span><span class="s2">, </span><span class="s4">255</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">215</span><span class="s2">, </span><span class="s4">135</span><span class="s2">, </span><span class="s4">0</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">215</span><span class="s2">, </span><span class="s4">135</span><span class="s2">, </span><span class="s4">95</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">215</span><span class="s2">, </span><span class="s4">135</span><span class="s2">, </span><span class="s4">135</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">215</span><span class="s2">, </span><span class="s4">135</span><span class="s2">, </span><span class="s4">175</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">215</span><span class="s2">, </span><span class="s4">135</span><span class="s2">, </span><span class="s4">215</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">215</span><span class="s2">, </span><span class="s4">135</span><span class="s2">, </span><span class="s4">255</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">215</span><span class="s2">, </span><span class="s4">175</span><span class="s2">, </span><span class="s4">0</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">215</span><span class="s2">, </span><span class="s4">175</span><span class="s2">, </span><span class="s4">95</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">215</span><span class="s2">, </span><span class="s4">175</span><span class="s2">, </span><span class="s4">135</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">215</span><span class="s2">, </span><span class="s4">175</span><span class="s2">, </span><span class="s4">175</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">215</span><span class="s2">, </span><span class="s4">175</span><span class="s2">, </span><span class="s4">215</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">215</span><span class="s2">, </span><span class="s4">175</span><span class="s2">, </span><span class="s4">255</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">215</span><span class="s2">, </span><span class="s4">215</span><span class="s2">, </span><span class="s4">0</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">215</span><span class="s2">, </span><span class="s4">215</span><span class="s2">, </span><span class="s4">95</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">215</span><span class="s2">, </span><span class="s4">215</span><span class="s2">, </span><span class="s4">135</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">215</span><span class="s2">, </span><span class="s4">215</span><span class="s2">, </span><span class="s4">175</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">215</span><span class="s2">, </span><span class="s4">215</span><span class="s2">, </span><span class="s4">215</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">215</span><span class="s2">, </span><span class="s4">215</span><span class="s2">, </span><span class="s4">255</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">215</span><span class="s2">, </span><span class="s4">255</span><span class="s2">, </span><span class="s4">0</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">215</span><span class="s2">, </span><span class="s4">255</span><span class="s2">, </span><span class="s4">95</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">215</span><span class="s2">, </span><span class="s4">255</span><span class="s2">, </span><span class="s4">135</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">215</span><span class="s2">, </span><span class="s4">255</span><span class="s2">, </span><span class="s4">175</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">215</span><span class="s2">, </span><span class="s4">255</span><span class="s2">, </span><span class="s4">215</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">215</span><span class="s2">, </span><span class="s4">255</span><span class="s2">, </span><span class="s4">255</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">255</span><span class="s2">, </span><span class="s4">0</span><span class="s2">, </span><span class="s4">0</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">255</span><span class="s2">, </span><span class="s4">0</span><span class="s2">, </span><span class="s4">95</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">255</span><span class="s2">, </span><span class="s4">0</span><span class="s2">, </span><span class="s4">135</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">255</span><span class="s2">, </span><span class="s4">0</span><span class="s2">, </span><span class="s4">175</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">255</span><span class="s2">, </span><span class="s4">0</span><span class="s2">, </span><span class="s4">215</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">255</span><span class="s2">, </span><span class="s4">0</span><span class="s2">, </span><span class="s4">255</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">255</span><span class="s2">, </span><span class="s4">95</span><span class="s2">, </span><span class="s4">0</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">255</span><span class="s2">, </span><span class="s4">95</span><span class="s2">, </span><span class="s4">95</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">255</span><span class="s2">, </span><span class="s4">95</span><span class="s2">, </span><span class="s4">135</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">255</span><span class="s2">, </span><span class="s4">95</span><span class="s2">, </span><span class="s4">175</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">255</span><span class="s2">, </span><span class="s4">95</span><span class="s2">, </span><span class="s4">215</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">255</span><span class="s2">, </span><span class="s4">95</span><span class="s2">, </span><span class="s4">255</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">255</span><span class="s2">, </span><span class="s4">135</span><span class="s2">, </span><span class="s4">0</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">255</span><span class="s2">, </span><span class="s4">135</span><span class="s2">, </span><span class="s4">95</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">255</span><span class="s2">, </span><span class="s4">135</span><span class="s2">, </span><span class="s4">135</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">255</span><span class="s2">, </span><span class="s4">135</span><span class="s2">, </span><span class="s4">175</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">255</span><span class="s2">, </span><span class="s4">135</span><span class="s2">, </span><span class="s4">215</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">255</span><span class="s2">, </span><span class="s4">135</span><span class="s2">, </span><span class="s4">255</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">255</span><span class="s2">, </span><span class="s4">175</span><span class="s2">, </span><span class="s4">0</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">255</span><span class="s2">, </span><span class="s4">175</span><span class="s2">, </span><span class="s4">95</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">255</span><span class="s2">, </span><span class="s4">175</span><span class="s2">, </span><span class="s4">135</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">255</span><span class="s2">, </span><span class="s4">175</span><span class="s2">, </span><span class="s4">175</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">255</span><span class="s2">, </span><span class="s4">175</span><span class="s2">, </span><span class="s4">215</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">255</span><span class="s2">, </span><span class="s4">175</span><span class="s2">, </span><span class="s4">255</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">255</span><span class="s2">, </span><span class="s4">215</span><span class="s2">, </span><span class="s4">0</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">255</span><span class="s2">, </span><span class="s4">215</span><span class="s2">, </span><span class="s4">95</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">255</span><span class="s2">, </span><span class="s4">215</span><span class="s2">, </span><span class="s4">135</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">255</span><span class="s2">, </span><span class="s4">215</span><span class="s2">, </span><span class="s4">175</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">255</span><span class="s2">, </span><span class="s4">215</span><span class="s2">, </span><span class="s4">215</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">255</span><span class="s2">, </span><span class="s4">215</span><span class="s2">, </span><span class="s4">255</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">255</span><span class="s2">, </span><span class="s4">255</span><span class="s2">, </span><span class="s4">0</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">255</span><span class="s2">, </span><span class="s4">255</span><span class="s2">, </span><span class="s4">95</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">255</span><span class="s2">, </span><span class="s4">255</span><span class="s2">, </span><span class="s4">135</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">255</span><span class="s2">, </span><span class="s4">255</span><span class="s2">, </span><span class="s4">175</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">255</span><span class="s2">, </span><span class="s4">255</span><span class="s2">, </span><span class="s4">215</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">255</span><span class="s2">, </span><span class="s4">255</span><span class="s2">, </span><span class="s4">255</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">8</span><span class="s2">, </span><span class="s4">8</span><span class="s2">, </span><span class="s4">8</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">18</span><span class="s2">, </span><span class="s4">18</span><span class="s2">, </span><span class="s4">18</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">28</span><span class="s2">, </span><span class="s4">28</span><span class="s2">, </span><span class="s4">28</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">38</span><span class="s2">, </span><span class="s4">38</span><span class="s2">, </span><span class="s4">38</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">48</span><span class="s2">, </span><span class="s4">48</span><span class="s2">, </span><span class="s4">48</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">58</span><span class="s2">, </span><span class="s4">58</span><span class="s2">, </span><span class="s4">58</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">68</span><span class="s2">, </span><span class="s4">68</span><span class="s2">, </span><span class="s4">68</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">78</span><span class="s2">, </span><span class="s4">78</span><span class="s2">, </span><span class="s4">78</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">88</span><span class="s2">, </span><span class="s4">88</span><span class="s2">, </span><span class="s4">88</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">98</span><span class="s2">, </span><span class="s4">98</span><span class="s2">, </span><span class="s4">98</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">108</span><span class="s2">, </span><span class="s4">108</span><span class="s2">, </span><span class="s4">108</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">118</span><span class="s2">, </span><span class="s4">118</span><span class="s2">, </span><span class="s4">118</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">128</span><span class="s2">, </span><span class="s4">128</span><span class="s2">, </span><span class="s4">128</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">138</span><span class="s2">, </span><span class="s4">138</span><span class="s2">, </span><span class="s4">138</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">148</span><span class="s2">, </span><span class="s4">148</span><span class="s2">, </span><span class="s4">148</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">158</span><span class="s2">, </span><span class="s4">158</span><span class="s2">, </span><span class="s4">158</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">168</span><span class="s2">, </span><span class="s4">168</span><span class="s2">, </span><span class="s4">168</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">178</span><span class="s2">, </span><span class="s4">178</span><span class="s2">, </span><span class="s4">178</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">188</span><span class="s2">, </span><span class="s4">188</span><span class="s2">, </span><span class="s4">188</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">198</span><span class="s2">, </span><span class="s4">198</span><span class="s2">, </span><span class="s4">198</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">208</span><span class="s2">, </span><span class="s4">208</span><span class="s2">, </span><span class="s4">208</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">218</span><span class="s2">, </span><span class="s4">218</span><span class="s2">, </span><span class="s4">218</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">228</span><span class="s2">, </span><span class="s4">228</span><span class="s2">, </span><span class="s4">228</span><span class="s2">),</span>
+        <span class="s2">(</span><span class="s4">238</span><span class="s2">, </span><span class="s4">238</span><span class="s2">, </span><span class="s4">238</span><span class="s2">),</span>
+    <span class="s2">]</span>
+<span class="s2">)</span>
+</pre>
+</body>
+</html>

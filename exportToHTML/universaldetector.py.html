@@ -1,0 +1,386 @@
+<html>
+<head>
+<title>universaldetector.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #7a7e85;}
+.s1 { color: #bcbec4;}
+.s2 { color: #5f826b; font-style: italic;}
+.s3 { color: #cf8e6d;}
+.s4 { color: #bcbec4;}
+.s5 { color: #2aacb8;}
+.s6 { color: #a5c261;}
+.s7 { color: #6aab73;}
+</style>
+</head>
+<body bgcolor="#1e1f22">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+universaldetector.py</font>
+</center></td></tr></table>
+<pre><span class="s0">######################## BEGIN LICENSE BLOCK ########################</span>
+<span class="s0"># The Original Code is Mozilla Universal charset detector code.</span>
+<span class="s0">#</span>
+<span class="s0"># The Initial Developer of the Original Code is</span>
+<span class="s0"># Netscape Communications Corporation.</span>
+<span class="s0"># Portions created by the Initial Developer are Copyright (C) 2001</span>
+<span class="s0"># the Initial Developer. All Rights Reserved.</span>
+<span class="s0">#</span>
+<span class="s0"># Contributor(s):</span>
+<span class="s0">#   Mark Pilgrim - port to Python</span>
+<span class="s0">#   Shy Shalom - original C code</span>
+<span class="s0">#</span>
+<span class="s0"># This library is free software; you can redistribute it and/or</span>
+<span class="s0"># modify it under the terms of the GNU Lesser General Public</span>
+<span class="s0"># License as published by the Free Software Foundation; either</span>
+<span class="s0"># version 2.1 of the License, or (at your option) any later version.</span>
+<span class="s0">#</span>
+<span class="s0"># This library is distributed in the hope that it will be useful,</span>
+<span class="s0"># but WITHOUT ANY WARRANTY; without even the implied warranty of</span>
+<span class="s0"># MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU</span>
+<span class="s0"># Lesser General Public License for more details.</span>
+<span class="s0">#</span>
+<span class="s0"># You should have received a copy of the GNU Lesser General Public</span>
+<span class="s0"># License along with this library; if not, write to the Free Software</span>
+<span class="s0"># Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA</span>
+<span class="s0"># 02110-1301  USA</span>
+<span class="s0">######################### END LICENSE BLOCK #########################</span>
+<span class="s2">&quot;&quot;&quot; 
+Module containing the UniversalDetector detector class, which is the primary 
+class a user of ``chardet`` should use. 
+ 
+:author: Mark Pilgrim (initial port to Python) 
+:author: Shy Shalom (original C code) 
+:author: Dan Blanchard (major refactoring for 3.0) 
+:author: Ian Cordasco 
+&quot;&quot;&quot;</span>
+
+
+<span class="s3">import </span><span class="s1">codecs</span>
+<span class="s3">import </span><span class="s1">logging</span>
+<span class="s3">import </span><span class="s1">re</span>
+<span class="s3">from </span><span class="s1">typing </span><span class="s3">import </span><span class="s1">List</span><span class="s4">, </span><span class="s1">Optional</span><span class="s4">, </span><span class="s1">Union</span>
+
+<span class="s3">from </span><span class="s4">.</span><span class="s1">charsetgroupprober </span><span class="s3">import </span><span class="s1">CharSetGroupProber</span>
+<span class="s3">from </span><span class="s4">.</span><span class="s1">charsetprober </span><span class="s3">import </span><span class="s1">CharSetProber</span>
+<span class="s3">from </span><span class="s4">.</span><span class="s1">enums </span><span class="s3">import </span><span class="s1">InputState</span><span class="s4">, </span><span class="s1">LanguageFilter</span><span class="s4">, </span><span class="s1">ProbingState</span>
+<span class="s3">from </span><span class="s4">.</span><span class="s1">escprober </span><span class="s3">import </span><span class="s1">EscCharSetProber</span>
+<span class="s3">from </span><span class="s4">.</span><span class="s1">latin1prober </span><span class="s3">import </span><span class="s1">Latin1Prober</span>
+<span class="s3">from </span><span class="s4">.</span><span class="s1">macromanprober </span><span class="s3">import </span><span class="s1">MacRomanProber</span>
+<span class="s3">from </span><span class="s4">.</span><span class="s1">mbcsgroupprober </span><span class="s3">import </span><span class="s1">MBCSGroupProber</span>
+<span class="s3">from </span><span class="s4">.</span><span class="s1">resultdict </span><span class="s3">import </span><span class="s1">ResultDict</span>
+<span class="s3">from </span><span class="s4">.</span><span class="s1">sbcsgroupprober </span><span class="s3">import </span><span class="s1">SBCSGroupProber</span>
+<span class="s3">from </span><span class="s4">.</span><span class="s1">utf1632prober </span><span class="s3">import </span><span class="s1">UTF1632Prober</span>
+
+
+<span class="s3">class </span><span class="s1">UniversalDetector</span><span class="s4">:</span>
+    <span class="s2">&quot;&quot;&quot; 
+    The ``UniversalDetector`` class underlies the ``chardet.detect`` function 
+    and coordinates all of the different charset probers. 
+ 
+    To get a ``dict`` containing an encoding and its confidence, you can simply 
+    run: 
+ 
+    .. code:: 
+ 
+            u = UniversalDetector() 
+            u.feed(some_bytes) 
+            u.close() 
+            detected = u.result 
+ 
+    &quot;&quot;&quot;</span>
+
+    <span class="s1">MINIMUM_THRESHOLD </span><span class="s4">= </span><span class="s5">0.20</span>
+    <span class="s1">HIGH_BYTE_DETECTOR </span><span class="s4">= </span><span class="s1">re</span><span class="s4">.</span><span class="s1">compile</span><span class="s4">(</span><span class="s6">b&quot;[</span><span class="s3">\x80</span><span class="s6">-</span><span class="s3">\xFF</span><span class="s6">]&quot;</span><span class="s4">)</span>
+    <span class="s1">ESC_DETECTOR </span><span class="s4">= </span><span class="s1">re</span><span class="s4">.</span><span class="s1">compile</span><span class="s4">(</span><span class="s6">b&quot;(</span><span class="s3">\033</span><span class="s6">|~{)&quot;</span><span class="s4">)</span>
+    <span class="s1">WIN_BYTE_DETECTOR </span><span class="s4">= </span><span class="s1">re</span><span class="s4">.</span><span class="s1">compile</span><span class="s4">(</span><span class="s6">b&quot;[</span><span class="s3">\x80</span><span class="s6">-</span><span class="s3">\x9F</span><span class="s6">]&quot;</span><span class="s4">)</span>
+    <span class="s1">ISO_WIN_MAP </span><span class="s4">= {</span>
+        <span class="s7">&quot;iso-8859-1&quot;</span><span class="s4">: </span><span class="s7">&quot;Windows-1252&quot;</span><span class="s4">,</span>
+        <span class="s7">&quot;iso-8859-2&quot;</span><span class="s4">: </span><span class="s7">&quot;Windows-1250&quot;</span><span class="s4">,</span>
+        <span class="s7">&quot;iso-8859-5&quot;</span><span class="s4">: </span><span class="s7">&quot;Windows-1251&quot;</span><span class="s4">,</span>
+        <span class="s7">&quot;iso-8859-6&quot;</span><span class="s4">: </span><span class="s7">&quot;Windows-1256&quot;</span><span class="s4">,</span>
+        <span class="s7">&quot;iso-8859-7&quot;</span><span class="s4">: </span><span class="s7">&quot;Windows-1253&quot;</span><span class="s4">,</span>
+        <span class="s7">&quot;iso-8859-8&quot;</span><span class="s4">: </span><span class="s7">&quot;Windows-1255&quot;</span><span class="s4">,</span>
+        <span class="s7">&quot;iso-8859-9&quot;</span><span class="s4">: </span><span class="s7">&quot;Windows-1254&quot;</span><span class="s4">,</span>
+        <span class="s7">&quot;iso-8859-13&quot;</span><span class="s4">: </span><span class="s7">&quot;Windows-1257&quot;</span><span class="s4">,</span>
+    <span class="s4">}</span>
+    <span class="s0"># Based on https://encoding.spec.whatwg.org/#names-and-labels</span>
+    <span class="s0"># but altered to match Python names for encodings and remove mappings</span>
+    <span class="s0"># that break tests.</span>
+    <span class="s1">LEGACY_MAP </span><span class="s4">= {</span>
+        <span class="s7">&quot;ascii&quot;</span><span class="s4">: </span><span class="s7">&quot;Windows-1252&quot;</span><span class="s4">,</span>
+        <span class="s7">&quot;iso-8859-1&quot;</span><span class="s4">: </span><span class="s7">&quot;Windows-1252&quot;</span><span class="s4">,</span>
+        <span class="s7">&quot;tis-620&quot;</span><span class="s4">: </span><span class="s7">&quot;ISO-8859-11&quot;</span><span class="s4">,</span>
+        <span class="s7">&quot;iso-8859-9&quot;</span><span class="s4">: </span><span class="s7">&quot;Windows-1254&quot;</span><span class="s4">,</span>
+        <span class="s7">&quot;gb2312&quot;</span><span class="s4">: </span><span class="s7">&quot;GB18030&quot;</span><span class="s4">,</span>
+        <span class="s7">&quot;euc-kr&quot;</span><span class="s4">: </span><span class="s7">&quot;CP949&quot;</span><span class="s4">,</span>
+        <span class="s7">&quot;utf-16le&quot;</span><span class="s4">: </span><span class="s7">&quot;UTF-16&quot;</span><span class="s4">,</span>
+    <span class="s4">}</span>
+
+    <span class="s3">def </span><span class="s1">__init__</span><span class="s4">(</span>
+        <span class="s1">self</span><span class="s4">,</span>
+        <span class="s1">lang_filter</span><span class="s4">: </span><span class="s1">LanguageFilter </span><span class="s4">= </span><span class="s1">LanguageFilter</span><span class="s4">.</span><span class="s1">ALL</span><span class="s4">,</span>
+        <span class="s1">should_rename_legacy</span><span class="s4">: </span><span class="s1">bool </span><span class="s4">= </span><span class="s3">False</span><span class="s4">,</span>
+    <span class="s4">) </span><span class="s1">-&gt; </span><span class="s3">None</span><span class="s4">:</span>
+        <span class="s1">self</span><span class="s4">.</span><span class="s1">_esc_charset_prober</span><span class="s4">: </span><span class="s1">Optional</span><span class="s4">[</span><span class="s1">EscCharSetProber</span><span class="s4">] = </span><span class="s3">None</span>
+        <span class="s1">self</span><span class="s4">.</span><span class="s1">_utf1632_prober</span><span class="s4">: </span><span class="s1">Optional</span><span class="s4">[</span><span class="s1">UTF1632Prober</span><span class="s4">] = </span><span class="s3">None</span>
+        <span class="s1">self</span><span class="s4">.</span><span class="s1">_charset_probers</span><span class="s4">: </span><span class="s1">List</span><span class="s4">[</span><span class="s1">CharSetProber</span><span class="s4">] = []</span>
+        <span class="s1">self</span><span class="s4">.</span><span class="s1">result</span><span class="s4">: </span><span class="s1">ResultDict </span><span class="s4">= {</span>
+            <span class="s7">&quot;encoding&quot;</span><span class="s4">: </span><span class="s3">None</span><span class="s4">,</span>
+            <span class="s7">&quot;confidence&quot;</span><span class="s4">: </span><span class="s5">0.0</span><span class="s4">,</span>
+            <span class="s7">&quot;language&quot;</span><span class="s4">: </span><span class="s3">None</span><span class="s4">,</span>
+        <span class="s4">}</span>
+        <span class="s1">self</span><span class="s4">.</span><span class="s1">done </span><span class="s4">= </span><span class="s3">False</span>
+        <span class="s1">self</span><span class="s4">.</span><span class="s1">_got_data </span><span class="s4">= </span><span class="s3">False</span>
+        <span class="s1">self</span><span class="s4">.</span><span class="s1">_input_state </span><span class="s4">= </span><span class="s1">InputState</span><span class="s4">.</span><span class="s1">PURE_ASCII</span>
+        <span class="s1">self</span><span class="s4">.</span><span class="s1">_last_char </span><span class="s4">= </span><span class="s6">b&quot;&quot;</span>
+        <span class="s1">self</span><span class="s4">.</span><span class="s1">lang_filter </span><span class="s4">= </span><span class="s1">lang_filter</span>
+        <span class="s1">self</span><span class="s4">.</span><span class="s1">logger </span><span class="s4">= </span><span class="s1">logging</span><span class="s4">.</span><span class="s1">getLogger</span><span class="s4">(</span><span class="s1">__name__</span><span class="s4">)</span>
+        <span class="s1">self</span><span class="s4">.</span><span class="s1">_has_win_bytes </span><span class="s4">= </span><span class="s3">False</span>
+        <span class="s1">self</span><span class="s4">.</span><span class="s1">should_rename_legacy </span><span class="s4">= </span><span class="s1">should_rename_legacy</span>
+        <span class="s1">self</span><span class="s4">.</span><span class="s1">reset</span><span class="s4">()</span>
+
+    <span class="s4">@</span><span class="s1">property</span>
+    <span class="s3">def </span><span class="s1">input_state</span><span class="s4">(</span><span class="s1">self</span><span class="s4">) </span><span class="s1">-&gt; int</span><span class="s4">:</span>
+        <span class="s3">return </span><span class="s1">self</span><span class="s4">.</span><span class="s1">_input_state</span>
+
+    <span class="s4">@</span><span class="s1">property</span>
+    <span class="s3">def </span><span class="s1">has_win_bytes</span><span class="s4">(</span><span class="s1">self</span><span class="s4">) </span><span class="s1">-&gt; bool</span><span class="s4">:</span>
+        <span class="s3">return </span><span class="s1">self</span><span class="s4">.</span><span class="s1">_has_win_bytes</span>
+
+    <span class="s4">@</span><span class="s1">property</span>
+    <span class="s3">def </span><span class="s1">charset_probers</span><span class="s4">(</span><span class="s1">self</span><span class="s4">) </span><span class="s1">-&gt; List</span><span class="s4">[</span><span class="s1">CharSetProber</span><span class="s4">]:</span>
+        <span class="s3">return </span><span class="s1">self</span><span class="s4">.</span><span class="s1">_charset_probers</span>
+
+    <span class="s3">def </span><span class="s1">reset</span><span class="s4">(</span><span class="s1">self</span><span class="s4">) </span><span class="s1">-&gt; </span><span class="s3">None</span><span class="s4">:</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Reset the UniversalDetector and all of its probers back to their 
+        initial states.  This is called by ``__init__``, so you only need to 
+        call this directly in between analyses of different documents. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">self</span><span class="s4">.</span><span class="s1">result </span><span class="s4">= {</span><span class="s7">&quot;encoding&quot;</span><span class="s4">: </span><span class="s3">None</span><span class="s4">, </span><span class="s7">&quot;confidence&quot;</span><span class="s4">: </span><span class="s5">0.0</span><span class="s4">, </span><span class="s7">&quot;language&quot;</span><span class="s4">: </span><span class="s3">None</span><span class="s4">}</span>
+        <span class="s1">self</span><span class="s4">.</span><span class="s1">done </span><span class="s4">= </span><span class="s3">False</span>
+        <span class="s1">self</span><span class="s4">.</span><span class="s1">_got_data </span><span class="s4">= </span><span class="s3">False</span>
+        <span class="s1">self</span><span class="s4">.</span><span class="s1">_has_win_bytes </span><span class="s4">= </span><span class="s3">False</span>
+        <span class="s1">self</span><span class="s4">.</span><span class="s1">_input_state </span><span class="s4">= </span><span class="s1">InputState</span><span class="s4">.</span><span class="s1">PURE_ASCII</span>
+        <span class="s1">self</span><span class="s4">.</span><span class="s1">_last_char </span><span class="s4">= </span><span class="s6">b&quot;&quot;</span>
+        <span class="s3">if </span><span class="s1">self</span><span class="s4">.</span><span class="s1">_esc_charset_prober</span><span class="s4">:</span>
+            <span class="s1">self</span><span class="s4">.</span><span class="s1">_esc_charset_prober</span><span class="s4">.</span><span class="s1">reset</span><span class="s4">()</span>
+        <span class="s3">if </span><span class="s1">self</span><span class="s4">.</span><span class="s1">_utf1632_prober</span><span class="s4">:</span>
+            <span class="s1">self</span><span class="s4">.</span><span class="s1">_utf1632_prober</span><span class="s4">.</span><span class="s1">reset</span><span class="s4">()</span>
+        <span class="s3">for </span><span class="s1">prober </span><span class="s3">in </span><span class="s1">self</span><span class="s4">.</span><span class="s1">_charset_probers</span><span class="s4">:</span>
+            <span class="s1">prober</span><span class="s4">.</span><span class="s1">reset</span><span class="s4">()</span>
+
+    <span class="s3">def </span><span class="s1">feed</span><span class="s4">(</span><span class="s1">self</span><span class="s4">, </span><span class="s1">byte_str</span><span class="s4">: </span><span class="s1">Union</span><span class="s4">[</span><span class="s1">bytes</span><span class="s4">, </span><span class="s1">bytearray</span><span class="s4">]) </span><span class="s1">-&gt; </span><span class="s3">None</span><span class="s4">:</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Takes a chunk of a document and feeds it through all of the relevant 
+        charset probers. 
+ 
+        After calling ``feed``, you can check the value of the ``done`` 
+        attribute to see if you need to continue feeding the 
+        ``UniversalDetector`` more data, or if it has made a prediction 
+        (in the ``result`` attribute). 
+ 
+        .. note:: 
+           You should always call ``close`` when you're done feeding in your 
+           document if ``done`` is not already ``True``. 
+        &quot;&quot;&quot;</span>
+        <span class="s3">if </span><span class="s1">self</span><span class="s4">.</span><span class="s1">done</span><span class="s4">:</span>
+            <span class="s3">return</span>
+
+        <span class="s3">if not </span><span class="s1">byte_str</span><span class="s4">:</span>
+            <span class="s3">return</span>
+
+        <span class="s3">if not </span><span class="s1">isinstance</span><span class="s4">(</span><span class="s1">byte_str</span><span class="s4">, </span><span class="s1">bytearray</span><span class="s4">):</span>
+            <span class="s1">byte_str </span><span class="s4">= </span><span class="s1">bytearray</span><span class="s4">(</span><span class="s1">byte_str</span><span class="s4">)</span>
+
+        <span class="s0"># First check for known BOMs, since these are guaranteed to be correct</span>
+        <span class="s3">if not </span><span class="s1">self</span><span class="s4">.</span><span class="s1">_got_data</span><span class="s4">:</span>
+            <span class="s0"># If the data starts with BOM, we know it is UTF</span>
+            <span class="s3">if </span><span class="s1">byte_str</span><span class="s4">.</span><span class="s1">startswith</span><span class="s4">(</span><span class="s1">codecs</span><span class="s4">.</span><span class="s1">BOM_UTF8</span><span class="s4">):</span>
+                <span class="s0"># EF BB BF  UTF-8 with BOM</span>
+                <span class="s1">self</span><span class="s4">.</span><span class="s1">result </span><span class="s4">= {</span>
+                    <span class="s7">&quot;encoding&quot;</span><span class="s4">: </span><span class="s7">&quot;UTF-8-SIG&quot;</span><span class="s4">,</span>
+                    <span class="s7">&quot;confidence&quot;</span><span class="s4">: </span><span class="s5">1.0</span><span class="s4">,</span>
+                    <span class="s7">&quot;language&quot;</span><span class="s4">: </span><span class="s7">&quot;&quot;</span><span class="s4">,</span>
+                <span class="s4">}</span>
+            <span class="s3">elif </span><span class="s1">byte_str</span><span class="s4">.</span><span class="s1">startswith</span><span class="s4">((</span><span class="s1">codecs</span><span class="s4">.</span><span class="s1">BOM_UTF32_LE</span><span class="s4">, </span><span class="s1">codecs</span><span class="s4">.</span><span class="s1">BOM_UTF32_BE</span><span class="s4">)):</span>
+                <span class="s0"># FF FE 00 00  UTF-32, little-endian BOM</span>
+                <span class="s0"># 00 00 FE FF  UTF-32, big-endian BOM</span>
+                <span class="s1">self</span><span class="s4">.</span><span class="s1">result </span><span class="s4">= {</span><span class="s7">&quot;encoding&quot;</span><span class="s4">: </span><span class="s7">&quot;UTF-32&quot;</span><span class="s4">, </span><span class="s7">&quot;confidence&quot;</span><span class="s4">: </span><span class="s5">1.0</span><span class="s4">, </span><span class="s7">&quot;language&quot;</span><span class="s4">: </span><span class="s7">&quot;&quot;</span><span class="s4">}</span>
+            <span class="s3">elif </span><span class="s1">byte_str</span><span class="s4">.</span><span class="s1">startswith</span><span class="s4">(</span><span class="s6">b&quot;</span><span class="s3">\xFE\xFF\x00\x00</span><span class="s6">&quot;</span><span class="s4">):</span>
+                <span class="s0"># FE FF 00 00  UCS-4, unusual octet order BOM (3412)</span>
+                <span class="s1">self</span><span class="s4">.</span><span class="s1">result </span><span class="s4">= {</span>
+                    <span class="s0"># TODO: This encoding is not supported by Python. Should remove?</span>
+                    <span class="s7">&quot;encoding&quot;</span><span class="s4">: </span><span class="s7">&quot;X-ISO-10646-UCS-4-3412&quot;</span><span class="s4">,</span>
+                    <span class="s7">&quot;confidence&quot;</span><span class="s4">: </span><span class="s5">1.0</span><span class="s4">,</span>
+                    <span class="s7">&quot;language&quot;</span><span class="s4">: </span><span class="s7">&quot;&quot;</span><span class="s4">,</span>
+                <span class="s4">}</span>
+            <span class="s3">elif </span><span class="s1">byte_str</span><span class="s4">.</span><span class="s1">startswith</span><span class="s4">(</span><span class="s6">b&quot;</span><span class="s3">\x00\x00\xFF\xFE</span><span class="s6">&quot;</span><span class="s4">):</span>
+                <span class="s0"># 00 00 FF FE  UCS-4, unusual octet order BOM (2143)</span>
+                <span class="s1">self</span><span class="s4">.</span><span class="s1">result </span><span class="s4">= {</span>
+                    <span class="s0"># TODO: This encoding is not supported by Python. Should remove?</span>
+                    <span class="s7">&quot;encoding&quot;</span><span class="s4">: </span><span class="s7">&quot;X-ISO-10646-UCS-4-2143&quot;</span><span class="s4">,</span>
+                    <span class="s7">&quot;confidence&quot;</span><span class="s4">: </span><span class="s5">1.0</span><span class="s4">,</span>
+                    <span class="s7">&quot;language&quot;</span><span class="s4">: </span><span class="s7">&quot;&quot;</span><span class="s4">,</span>
+                <span class="s4">}</span>
+            <span class="s3">elif </span><span class="s1">byte_str</span><span class="s4">.</span><span class="s1">startswith</span><span class="s4">((</span><span class="s1">codecs</span><span class="s4">.</span><span class="s1">BOM_LE</span><span class="s4">, </span><span class="s1">codecs</span><span class="s4">.</span><span class="s1">BOM_BE</span><span class="s4">)):</span>
+                <span class="s0"># FF FE  UTF-16, little endian BOM</span>
+                <span class="s0"># FE FF  UTF-16, big endian BOM</span>
+                <span class="s1">self</span><span class="s4">.</span><span class="s1">result </span><span class="s4">= {</span><span class="s7">&quot;encoding&quot;</span><span class="s4">: </span><span class="s7">&quot;UTF-16&quot;</span><span class="s4">, </span><span class="s7">&quot;confidence&quot;</span><span class="s4">: </span><span class="s5">1.0</span><span class="s4">, </span><span class="s7">&quot;language&quot;</span><span class="s4">: </span><span class="s7">&quot;&quot;</span><span class="s4">}</span>
+
+            <span class="s1">self</span><span class="s4">.</span><span class="s1">_got_data </span><span class="s4">= </span><span class="s3">True</span>
+            <span class="s3">if </span><span class="s1">self</span><span class="s4">.</span><span class="s1">result</span><span class="s4">[</span><span class="s7">&quot;encoding&quot;</span><span class="s4">] </span><span class="s3">is not None</span><span class="s4">:</span>
+                <span class="s1">self</span><span class="s4">.</span><span class="s1">done </span><span class="s4">= </span><span class="s3">True</span>
+                <span class="s3">return</span>
+
+        <span class="s0"># If none of those matched and we've only see ASCII so far, check</span>
+        <span class="s0"># for high bytes and escape sequences</span>
+        <span class="s3">if </span><span class="s1">self</span><span class="s4">.</span><span class="s1">_input_state </span><span class="s4">== </span><span class="s1">InputState</span><span class="s4">.</span><span class="s1">PURE_ASCII</span><span class="s4">:</span>
+            <span class="s3">if </span><span class="s1">self</span><span class="s4">.</span><span class="s1">HIGH_BYTE_DETECTOR</span><span class="s4">.</span><span class="s1">search</span><span class="s4">(</span><span class="s1">byte_str</span><span class="s4">):</span>
+                <span class="s1">self</span><span class="s4">.</span><span class="s1">_input_state </span><span class="s4">= </span><span class="s1">InputState</span><span class="s4">.</span><span class="s1">HIGH_BYTE</span>
+            <span class="s3">elif </span><span class="s4">(</span>
+                <span class="s1">self</span><span class="s4">.</span><span class="s1">_input_state </span><span class="s4">== </span><span class="s1">InputState</span><span class="s4">.</span><span class="s1">PURE_ASCII</span>
+                <span class="s3">and </span><span class="s1">self</span><span class="s4">.</span><span class="s1">ESC_DETECTOR</span><span class="s4">.</span><span class="s1">search</span><span class="s4">(</span><span class="s1">self</span><span class="s4">.</span><span class="s1">_last_char </span><span class="s4">+ </span><span class="s1">byte_str</span><span class="s4">)</span>
+            <span class="s4">):</span>
+                <span class="s1">self</span><span class="s4">.</span><span class="s1">_input_state </span><span class="s4">= </span><span class="s1">InputState</span><span class="s4">.</span><span class="s1">ESC_ASCII</span>
+
+        <span class="s1">self</span><span class="s4">.</span><span class="s1">_last_char </span><span class="s4">= </span><span class="s1">byte_str</span><span class="s4">[-</span><span class="s5">1</span><span class="s4">:]</span>
+
+        <span class="s0"># next we will look to see if it is appears to be either a UTF-16 or</span>
+        <span class="s0"># UTF-32 encoding</span>
+        <span class="s3">if not </span><span class="s1">self</span><span class="s4">.</span><span class="s1">_utf1632_prober</span><span class="s4">:</span>
+            <span class="s1">self</span><span class="s4">.</span><span class="s1">_utf1632_prober </span><span class="s4">= </span><span class="s1">UTF1632Prober</span><span class="s4">()</span>
+
+        <span class="s3">if </span><span class="s1">self</span><span class="s4">.</span><span class="s1">_utf1632_prober</span><span class="s4">.</span><span class="s1">state </span><span class="s4">== </span><span class="s1">ProbingState</span><span class="s4">.</span><span class="s1">DETECTING</span><span class="s4">:</span>
+            <span class="s3">if </span><span class="s1">self</span><span class="s4">.</span><span class="s1">_utf1632_prober</span><span class="s4">.</span><span class="s1">feed</span><span class="s4">(</span><span class="s1">byte_str</span><span class="s4">) == </span><span class="s1">ProbingState</span><span class="s4">.</span><span class="s1">FOUND_IT</span><span class="s4">:</span>
+                <span class="s1">self</span><span class="s4">.</span><span class="s1">result </span><span class="s4">= {</span>
+                    <span class="s7">&quot;encoding&quot;</span><span class="s4">: </span><span class="s1">self</span><span class="s4">.</span><span class="s1">_utf1632_prober</span><span class="s4">.</span><span class="s1">charset_name</span><span class="s4">,</span>
+                    <span class="s7">&quot;confidence&quot;</span><span class="s4">: </span><span class="s1">self</span><span class="s4">.</span><span class="s1">_utf1632_prober</span><span class="s4">.</span><span class="s1">get_confidence</span><span class="s4">(),</span>
+                    <span class="s7">&quot;language&quot;</span><span class="s4">: </span><span class="s7">&quot;&quot;</span><span class="s4">,</span>
+                <span class="s4">}</span>
+                <span class="s1">self</span><span class="s4">.</span><span class="s1">done </span><span class="s4">= </span><span class="s3">True</span>
+                <span class="s3">return</span>
+
+        <span class="s0"># If we've seen escape sequences, use the EscCharSetProber, which</span>
+        <span class="s0"># uses a simple state machine to check for known escape sequences in</span>
+        <span class="s0"># HZ and ISO-2022 encodings, since those are the only encodings that</span>
+        <span class="s0"># use such sequences.</span>
+        <span class="s3">if </span><span class="s1">self</span><span class="s4">.</span><span class="s1">_input_state </span><span class="s4">== </span><span class="s1">InputState</span><span class="s4">.</span><span class="s1">ESC_ASCII</span><span class="s4">:</span>
+            <span class="s3">if not </span><span class="s1">self</span><span class="s4">.</span><span class="s1">_esc_charset_prober</span><span class="s4">:</span>
+                <span class="s1">self</span><span class="s4">.</span><span class="s1">_esc_charset_prober </span><span class="s4">= </span><span class="s1">EscCharSetProber</span><span class="s4">(</span><span class="s1">self</span><span class="s4">.</span><span class="s1">lang_filter</span><span class="s4">)</span>
+            <span class="s3">if </span><span class="s1">self</span><span class="s4">.</span><span class="s1">_esc_charset_prober</span><span class="s4">.</span><span class="s1">feed</span><span class="s4">(</span><span class="s1">byte_str</span><span class="s4">) == </span><span class="s1">ProbingState</span><span class="s4">.</span><span class="s1">FOUND_IT</span><span class="s4">:</span>
+                <span class="s1">self</span><span class="s4">.</span><span class="s1">result </span><span class="s4">= {</span>
+                    <span class="s7">&quot;encoding&quot;</span><span class="s4">: </span><span class="s1">self</span><span class="s4">.</span><span class="s1">_esc_charset_prober</span><span class="s4">.</span><span class="s1">charset_name</span><span class="s4">,</span>
+                    <span class="s7">&quot;confidence&quot;</span><span class="s4">: </span><span class="s1">self</span><span class="s4">.</span><span class="s1">_esc_charset_prober</span><span class="s4">.</span><span class="s1">get_confidence</span><span class="s4">(),</span>
+                    <span class="s7">&quot;language&quot;</span><span class="s4">: </span><span class="s1">self</span><span class="s4">.</span><span class="s1">_esc_charset_prober</span><span class="s4">.</span><span class="s1">language</span><span class="s4">,</span>
+                <span class="s4">}</span>
+                <span class="s1">self</span><span class="s4">.</span><span class="s1">done </span><span class="s4">= </span><span class="s3">True</span>
+        <span class="s0"># If we've seen high bytes (i.e., those with values greater than 127),</span>
+        <span class="s0"># we need to do more complicated checks using all our multi-byte and</span>
+        <span class="s0"># single-byte probers that are left.  The single-byte probers</span>
+        <span class="s0"># use character bigram distributions to determine the encoding, whereas</span>
+        <span class="s0"># the multi-byte probers use a combination of character unigram and</span>
+        <span class="s0"># bigram distributions.</span>
+        <span class="s3">elif </span><span class="s1">self</span><span class="s4">.</span><span class="s1">_input_state </span><span class="s4">== </span><span class="s1">InputState</span><span class="s4">.</span><span class="s1">HIGH_BYTE</span><span class="s4">:</span>
+            <span class="s3">if not </span><span class="s1">self</span><span class="s4">.</span><span class="s1">_charset_probers</span><span class="s4">:</span>
+                <span class="s1">self</span><span class="s4">.</span><span class="s1">_charset_probers </span><span class="s4">= [</span><span class="s1">MBCSGroupProber</span><span class="s4">(</span><span class="s1">self</span><span class="s4">.</span><span class="s1">lang_filter</span><span class="s4">)]</span>
+                <span class="s0"># If we're checking non-CJK encodings, use single-byte prober</span>
+                <span class="s3">if </span><span class="s1">self</span><span class="s4">.</span><span class="s1">lang_filter </span><span class="s4">&amp; </span><span class="s1">LanguageFilter</span><span class="s4">.</span><span class="s1">NON_CJK</span><span class="s4">:</span>
+                    <span class="s1">self</span><span class="s4">.</span><span class="s1">_charset_probers</span><span class="s4">.</span><span class="s1">append</span><span class="s4">(</span><span class="s1">SBCSGroupProber</span><span class="s4">())</span>
+                <span class="s1">self</span><span class="s4">.</span><span class="s1">_charset_probers</span><span class="s4">.</span><span class="s1">append</span><span class="s4">(</span><span class="s1">Latin1Prober</span><span class="s4">())</span>
+                <span class="s1">self</span><span class="s4">.</span><span class="s1">_charset_probers</span><span class="s4">.</span><span class="s1">append</span><span class="s4">(</span><span class="s1">MacRomanProber</span><span class="s4">())</span>
+            <span class="s3">for </span><span class="s1">prober </span><span class="s3">in </span><span class="s1">self</span><span class="s4">.</span><span class="s1">_charset_probers</span><span class="s4">:</span>
+                <span class="s3">if </span><span class="s1">prober</span><span class="s4">.</span><span class="s1">feed</span><span class="s4">(</span><span class="s1">byte_str</span><span class="s4">) == </span><span class="s1">ProbingState</span><span class="s4">.</span><span class="s1">FOUND_IT</span><span class="s4">:</span>
+                    <span class="s1">self</span><span class="s4">.</span><span class="s1">result </span><span class="s4">= {</span>
+                        <span class="s7">&quot;encoding&quot;</span><span class="s4">: </span><span class="s1">prober</span><span class="s4">.</span><span class="s1">charset_name</span><span class="s4">,</span>
+                        <span class="s7">&quot;confidence&quot;</span><span class="s4">: </span><span class="s1">prober</span><span class="s4">.</span><span class="s1">get_confidence</span><span class="s4">(),</span>
+                        <span class="s7">&quot;language&quot;</span><span class="s4">: </span><span class="s1">prober</span><span class="s4">.</span><span class="s1">language</span><span class="s4">,</span>
+                    <span class="s4">}</span>
+                    <span class="s1">self</span><span class="s4">.</span><span class="s1">done </span><span class="s4">= </span><span class="s3">True</span>
+                    <span class="s3">break</span>
+            <span class="s3">if </span><span class="s1">self</span><span class="s4">.</span><span class="s1">WIN_BYTE_DETECTOR</span><span class="s4">.</span><span class="s1">search</span><span class="s4">(</span><span class="s1">byte_str</span><span class="s4">):</span>
+                <span class="s1">self</span><span class="s4">.</span><span class="s1">_has_win_bytes </span><span class="s4">= </span><span class="s3">True</span>
+
+    <span class="s3">def </span><span class="s1">close</span><span class="s4">(</span><span class="s1">self</span><span class="s4">) </span><span class="s1">-&gt; ResultDict</span><span class="s4">:</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Stop analyzing the current document and come up with a final 
+        prediction. 
+ 
+        :returns:  The ``result`` attribute, a ``dict`` with the keys 
+                   `encoding`, `confidence`, and `language`. 
+        &quot;&quot;&quot;</span>
+        <span class="s0"># Don't bother with checks if we're already done</span>
+        <span class="s3">if </span><span class="s1">self</span><span class="s4">.</span><span class="s1">done</span><span class="s4">:</span>
+            <span class="s3">return </span><span class="s1">self</span><span class="s4">.</span><span class="s1">result</span>
+        <span class="s1">self</span><span class="s4">.</span><span class="s1">done </span><span class="s4">= </span><span class="s3">True</span>
+
+        <span class="s3">if not </span><span class="s1">self</span><span class="s4">.</span><span class="s1">_got_data</span><span class="s4">:</span>
+            <span class="s1">self</span><span class="s4">.</span><span class="s1">logger</span><span class="s4">.</span><span class="s1">debug</span><span class="s4">(</span><span class="s7">&quot;no data received!&quot;</span><span class="s4">)</span>
+
+        <span class="s0"># Default to ASCII if it is all we've seen so far</span>
+        <span class="s3">elif </span><span class="s1">self</span><span class="s4">.</span><span class="s1">_input_state </span><span class="s4">== </span><span class="s1">InputState</span><span class="s4">.</span><span class="s1">PURE_ASCII</span><span class="s4">:</span>
+            <span class="s1">self</span><span class="s4">.</span><span class="s1">result </span><span class="s4">= {</span><span class="s7">&quot;encoding&quot;</span><span class="s4">: </span><span class="s7">&quot;ascii&quot;</span><span class="s4">, </span><span class="s7">&quot;confidence&quot;</span><span class="s4">: </span><span class="s5">1.0</span><span class="s4">, </span><span class="s7">&quot;language&quot;</span><span class="s4">: </span><span class="s7">&quot;&quot;</span><span class="s4">}</span>
+
+        <span class="s0"># If we have seen non-ASCII, return the best that met MINIMUM_THRESHOLD</span>
+        <span class="s3">elif </span><span class="s1">self</span><span class="s4">.</span><span class="s1">_input_state </span><span class="s4">== </span><span class="s1">InputState</span><span class="s4">.</span><span class="s1">HIGH_BYTE</span><span class="s4">:</span>
+            <span class="s1">prober_confidence </span><span class="s4">= </span><span class="s3">None</span>
+            <span class="s1">max_prober_confidence </span><span class="s4">= </span><span class="s5">0.0</span>
+            <span class="s1">max_prober </span><span class="s4">= </span><span class="s3">None</span>
+            <span class="s3">for </span><span class="s1">prober </span><span class="s3">in </span><span class="s1">self</span><span class="s4">.</span><span class="s1">_charset_probers</span><span class="s4">:</span>
+                <span class="s3">if not </span><span class="s1">prober</span><span class="s4">:</span>
+                    <span class="s3">continue</span>
+                <span class="s1">prober_confidence </span><span class="s4">= </span><span class="s1">prober</span><span class="s4">.</span><span class="s1">get_confidence</span><span class="s4">()</span>
+                <span class="s3">if </span><span class="s1">prober_confidence </span><span class="s4">&gt; </span><span class="s1">max_prober_confidence</span><span class="s4">:</span>
+                    <span class="s1">max_prober_confidence </span><span class="s4">= </span><span class="s1">prober_confidence</span>
+                    <span class="s1">max_prober </span><span class="s4">= </span><span class="s1">prober</span>
+            <span class="s3">if </span><span class="s1">max_prober </span><span class="s3">and </span><span class="s4">(</span><span class="s1">max_prober_confidence </span><span class="s4">&gt; </span><span class="s1">self</span><span class="s4">.</span><span class="s1">MINIMUM_THRESHOLD</span><span class="s4">):</span>
+                <span class="s1">charset_name </span><span class="s4">= </span><span class="s1">max_prober</span><span class="s4">.</span><span class="s1">charset_name</span>
+                <span class="s3">assert </span><span class="s1">charset_name </span><span class="s3">is not None</span>
+                <span class="s1">lower_charset_name </span><span class="s4">= </span><span class="s1">charset_name</span><span class="s4">.</span><span class="s1">lower</span><span class="s4">()</span>
+                <span class="s1">confidence </span><span class="s4">= </span><span class="s1">max_prober</span><span class="s4">.</span><span class="s1">get_confidence</span><span class="s4">()</span>
+                <span class="s0"># Use Windows encoding name instead of ISO-8859 if we saw any</span>
+                <span class="s0"># extra Windows-specific bytes</span>
+                <span class="s3">if </span><span class="s1">lower_charset_name</span><span class="s4">.</span><span class="s1">startswith</span><span class="s4">(</span><span class="s7">&quot;iso-8859&quot;</span><span class="s4">):</span>
+                    <span class="s3">if </span><span class="s1">self</span><span class="s4">.</span><span class="s1">_has_win_bytes</span><span class="s4">:</span>
+                        <span class="s1">charset_name </span><span class="s4">= </span><span class="s1">self</span><span class="s4">.</span><span class="s1">ISO_WIN_MAP</span><span class="s4">.</span><span class="s1">get</span><span class="s4">(</span>
+                            <span class="s1">lower_charset_name</span><span class="s4">, </span><span class="s1">charset_name</span>
+                        <span class="s4">)</span>
+                <span class="s0"># Rename legacy encodings with superset encodings if asked</span>
+                <span class="s3">if </span><span class="s1">self</span><span class="s4">.</span><span class="s1">should_rename_legacy</span><span class="s4">:</span>
+                    <span class="s1">charset_name </span><span class="s4">= </span><span class="s1">self</span><span class="s4">.</span><span class="s1">LEGACY_MAP</span><span class="s4">.</span><span class="s1">get</span><span class="s4">(</span>
+                        <span class="s4">(</span><span class="s1">charset_name </span><span class="s3">or </span><span class="s7">&quot;&quot;</span><span class="s4">).</span><span class="s1">lower</span><span class="s4">(), </span><span class="s1">charset_name</span>
+                    <span class="s4">)</span>
+                <span class="s1">self</span><span class="s4">.</span><span class="s1">result </span><span class="s4">= {</span>
+                    <span class="s7">&quot;encoding&quot;</span><span class="s4">: </span><span class="s1">charset_name</span><span class="s4">,</span>
+                    <span class="s7">&quot;confidence&quot;</span><span class="s4">: </span><span class="s1">confidence</span><span class="s4">,</span>
+                    <span class="s7">&quot;language&quot;</span><span class="s4">: </span><span class="s1">max_prober</span><span class="s4">.</span><span class="s1">language</span><span class="s4">,</span>
+                <span class="s4">}</span>
+
+        <span class="s0"># Log all prober confidences if none met MINIMUM_THRESHOLD</span>
+        <span class="s3">if </span><span class="s1">self</span><span class="s4">.</span><span class="s1">logger</span><span class="s4">.</span><span class="s1">getEffectiveLevel</span><span class="s4">() &lt;= </span><span class="s1">logging</span><span class="s4">.</span><span class="s1">DEBUG</span><span class="s4">:</span>
+            <span class="s3">if </span><span class="s1">self</span><span class="s4">.</span><span class="s1">result</span><span class="s4">[</span><span class="s7">&quot;encoding&quot;</span><span class="s4">] </span><span class="s3">is None</span><span class="s4">:</span>
+                <span class="s1">self</span><span class="s4">.</span><span class="s1">logger</span><span class="s4">.</span><span class="s1">debug</span><span class="s4">(</span><span class="s7">&quot;no probers hit minimum threshold&quot;</span><span class="s4">)</span>
+                <span class="s3">for </span><span class="s1">group_prober </span><span class="s3">in </span><span class="s1">self</span><span class="s4">.</span><span class="s1">_charset_probers</span><span class="s4">:</span>
+                    <span class="s3">if not </span><span class="s1">group_prober</span><span class="s4">:</span>
+                        <span class="s3">continue</span>
+                    <span class="s3">if </span><span class="s1">isinstance</span><span class="s4">(</span><span class="s1">group_prober</span><span class="s4">, </span><span class="s1">CharSetGroupProber</span><span class="s4">):</span>
+                        <span class="s3">for </span><span class="s1">prober </span><span class="s3">in </span><span class="s1">group_prober</span><span class="s4">.</span><span class="s1">probers</span><span class="s4">:</span>
+                            <span class="s1">self</span><span class="s4">.</span><span class="s1">logger</span><span class="s4">.</span><span class="s1">debug</span><span class="s4">(</span>
+                                <span class="s7">&quot;%s %s confidence = %s&quot;</span><span class="s4">,</span>
+                                <span class="s1">prober</span><span class="s4">.</span><span class="s1">charset_name</span><span class="s4">,</span>
+                                <span class="s1">prober</span><span class="s4">.</span><span class="s1">language</span><span class="s4">,</span>
+                                <span class="s1">prober</span><span class="s4">.</span><span class="s1">get_confidence</span><span class="s4">(),</span>
+                            <span class="s4">)</span>
+                    <span class="s3">else</span><span class="s4">:</span>
+                        <span class="s1">self</span><span class="s4">.</span><span class="s1">logger</span><span class="s4">.</span><span class="s1">debug</span><span class="s4">(</span>
+                            <span class="s7">&quot;%s %s confidence = %s&quot;</span><span class="s4">,</span>
+                            <span class="s1">group_prober</span><span class="s4">.</span><span class="s1">charset_name</span><span class="s4">,</span>
+                            <span class="s1">group_prober</span><span class="s4">.</span><span class="s1">language</span><span class="s4">,</span>
+                            <span class="s1">group_prober</span><span class="s4">.</span><span class="s1">get_confidence</span><span class="s4">(),</span>
+                        <span class="s4">)</span>
+        <span class="s3">return </span><span class="s1">self</span><span class="s4">.</span><span class="s1">result</span>
+</pre>
+</body>
+</html>

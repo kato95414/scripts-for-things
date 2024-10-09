@@ -1,0 +1,75 @@
+<html>
+<head>
+<title>screen.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cf8e6d;}
+.s1 { color: #bcbec4;}
+.s2 { color: #bcbec4;}
+.s3 { color: #5f826b; font-style: italic;}
+.s4 { color: #6aab73;}
+</style>
+</head>
+<body bgcolor="#1e1f22">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+screen.py</font>
+</center></td></tr></table>
+<pre><span class="s0">from </span><span class="s1">typing </span><span class="s0">import </span><span class="s1">Optional</span><span class="s2">, </span><span class="s1">TYPE_CHECKING</span>
+
+<span class="s0">from </span><span class="s2">.</span><span class="s1">segment </span><span class="s0">import </span><span class="s1">Segment</span>
+<span class="s0">from </span><span class="s2">.</span><span class="s1">style </span><span class="s0">import </span><span class="s1">StyleType</span>
+<span class="s0">from </span><span class="s2">.</span><span class="s1">_loop </span><span class="s0">import </span><span class="s1">loop_last</span>
+
+
+<span class="s0">if </span><span class="s1">TYPE_CHECKING</span><span class="s2">:</span>
+    <span class="s0">from </span><span class="s2">.</span><span class="s1">console </span><span class="s0">import </span><span class="s2">(</span>
+        <span class="s1">Console</span><span class="s2">,</span>
+        <span class="s1">ConsoleOptions</span><span class="s2">,</span>
+        <span class="s1">RenderResult</span><span class="s2">,</span>
+        <span class="s1">RenderableType</span><span class="s2">,</span>
+        <span class="s1">Group</span><span class="s2">,</span>
+    <span class="s2">)</span>
+
+
+<span class="s0">class </span><span class="s1">Screen</span><span class="s2">:</span>
+    <span class="s3">&quot;&quot;&quot;A renderable that fills the terminal screen and crops excess. 
+ 
+    Args: 
+        renderable (RenderableType): Child renderable. 
+        style (StyleType, optional): Optional background style. Defaults to None. 
+    &quot;&quot;&quot;</span>
+
+    <span class="s1">renderable</span><span class="s2">: </span><span class="s4">&quot;RenderableType&quot;</span>
+
+    <span class="s0">def </span><span class="s1">__init__</span><span class="s2">(</span>
+        <span class="s1">self</span><span class="s2">,</span>
+        <span class="s2">*</span><span class="s1">renderables</span><span class="s2">: </span><span class="s4">&quot;RenderableType&quot;</span><span class="s2">,</span>
+        <span class="s1">style</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">StyleType</span><span class="s2">] = </span><span class="s0">None</span><span class="s2">,</span>
+        <span class="s1">application_mode</span><span class="s2">: </span><span class="s1">bool </span><span class="s2">= </span><span class="s0">False</span><span class="s2">,</span>
+    <span class="s2">) </span><span class="s1">-&gt; </span><span class="s0">None</span><span class="s2">:</span>
+        <span class="s0">from </span><span class="s1">pip</span><span class="s2">.</span><span class="s1">_vendor</span><span class="s2">.</span><span class="s1">rich</span><span class="s2">.</span><span class="s1">console </span><span class="s0">import </span><span class="s1">Group</span>
+
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">renderable </span><span class="s2">= </span><span class="s1">Group</span><span class="s2">(*</span><span class="s1">renderables</span><span class="s2">)</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">style </span><span class="s2">= </span><span class="s1">style</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">application_mode </span><span class="s2">= </span><span class="s1">application_mode</span>
+
+    <span class="s0">def </span><span class="s1">__rich_console__</span><span class="s2">(</span>
+        <span class="s1">self</span><span class="s2">, </span><span class="s1">console</span><span class="s2">: </span><span class="s4">&quot;Console&quot;</span><span class="s2">, </span><span class="s1">options</span><span class="s2">: </span><span class="s4">&quot;ConsoleOptions&quot;</span>
+    <span class="s2">) </span><span class="s1">-&gt; </span><span class="s4">&quot;RenderResult&quot;</span><span class="s2">:</span>
+        <span class="s1">width</span><span class="s2">, </span><span class="s1">height </span><span class="s2">= </span><span class="s1">options</span><span class="s2">.</span><span class="s1">size</span>
+        <span class="s1">style </span><span class="s2">= </span><span class="s1">console</span><span class="s2">.</span><span class="s1">get_style</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">style</span><span class="s2">) </span><span class="s0">if </span><span class="s1">self</span><span class="s2">.</span><span class="s1">style </span><span class="s0">else None</span>
+        <span class="s1">render_options </span><span class="s2">= </span><span class="s1">options</span><span class="s2">.</span><span class="s1">update</span><span class="s2">(</span><span class="s1">width</span><span class="s2">=</span><span class="s1">width</span><span class="s2">, </span><span class="s1">height</span><span class="s2">=</span><span class="s1">height</span><span class="s2">)</span>
+        <span class="s1">lines </span><span class="s2">= </span><span class="s1">console</span><span class="s2">.</span><span class="s1">render_lines</span><span class="s2">(</span>
+            <span class="s1">self</span><span class="s2">.</span><span class="s1">renderable </span><span class="s0">or </span><span class="s4">&quot;&quot;</span><span class="s2">, </span><span class="s1">render_options</span><span class="s2">, </span><span class="s1">style</span><span class="s2">=</span><span class="s1">style</span><span class="s2">, </span><span class="s1">pad</span><span class="s2">=</span><span class="s0">True</span>
+        <span class="s2">)</span>
+        <span class="s1">lines </span><span class="s2">= </span><span class="s1">Segment</span><span class="s2">.</span><span class="s1">set_shape</span><span class="s2">(</span><span class="s1">lines</span><span class="s2">, </span><span class="s1">width</span><span class="s2">, </span><span class="s1">height</span><span class="s2">, </span><span class="s1">style</span><span class="s2">=</span><span class="s1">style</span><span class="s2">)</span>
+        <span class="s1">new_line </span><span class="s2">= </span><span class="s1">Segment</span><span class="s2">(</span><span class="s4">&quot;</span><span class="s0">\n\r</span><span class="s4">&quot;</span><span class="s2">) </span><span class="s0">if </span><span class="s1">self</span><span class="s2">.</span><span class="s1">application_mode </span><span class="s0">else </span><span class="s1">Segment</span><span class="s2">.</span><span class="s1">line</span><span class="s2">()</span>
+        <span class="s0">for </span><span class="s1">last</span><span class="s2">, </span><span class="s1">line </span><span class="s0">in </span><span class="s1">loop_last</span><span class="s2">(</span><span class="s1">lines</span><span class="s2">):</span>
+            <span class="s0">yield from </span><span class="s1">line</span>
+            <span class="s0">if not </span><span class="s1">last</span><span class="s2">:</span>
+                <span class="s0">yield </span><span class="s1">new_line</span>
+</pre>
+</body>
+</html>

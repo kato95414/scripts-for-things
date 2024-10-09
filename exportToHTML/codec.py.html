@@ -1,0 +1,135 @@
+<html>
+<head>
+<title>codec.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cf8e6d;}
+.s1 { color: #bcbec4;}
+.s2 { color: #bcbec4;}
+.s3 { color: #6aab73;}
+.s4 { color: #a5c261;}
+.s5 { color: #2aacb8;}
+.s6 { color: #7a7e85;}
+</style>
+</head>
+<body bgcolor="#1e1f22">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+codec.py</font>
+</center></td></tr></table>
+<pre><span class="s0">from </span><span class="s2">.</span><span class="s1">core </span><span class="s0">import </span><span class="s1">encode</span><span class="s2">, </span><span class="s1">decode</span><span class="s2">, </span><span class="s1">alabel</span><span class="s2">, </span><span class="s1">ulabel</span><span class="s2">, </span><span class="s1">IDNAError</span>
+<span class="s0">import </span><span class="s1">codecs</span>
+<span class="s0">import </span><span class="s1">re</span>
+<span class="s0">from </span><span class="s1">typing </span><span class="s0">import </span><span class="s1">Tuple</span><span class="s2">, </span><span class="s1">Optional</span>
+
+<span class="s1">_unicode_dots_re </span><span class="s2">= </span><span class="s1">re</span><span class="s2">.</span><span class="s1">compile</span><span class="s2">(</span><span class="s3">'[</span><span class="s0">\u002e\u3002\uff0e\uff61</span><span class="s3">]'</span><span class="s2">)</span>
+
+<span class="s0">class </span><span class="s1">Codec</span><span class="s2">(</span><span class="s1">codecs</span><span class="s2">.</span><span class="s1">Codec</span><span class="s2">):</span>
+
+    <span class="s0">def </span><span class="s1">encode</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">data</span><span class="s2">: </span><span class="s1">str</span><span class="s2">, </span><span class="s1">errors</span><span class="s2">: </span><span class="s1">str </span><span class="s2">= </span><span class="s3">'strict'</span><span class="s2">) </span><span class="s1">-&gt; Tuple</span><span class="s2">[</span><span class="s1">bytes</span><span class="s2">, </span><span class="s1">int</span><span class="s2">]:</span>
+        <span class="s0">if </span><span class="s1">errors </span><span class="s2">!= </span><span class="s3">'strict'</span><span class="s2">:</span>
+            <span class="s0">raise </span><span class="s1">IDNAError</span><span class="s2">(</span><span class="s3">'Unsupported error handling </span><span class="s0">\&quot;</span><span class="s3">{}</span><span class="s0">\&quot;</span><span class="s3">'</span><span class="s2">.</span><span class="s1">format</span><span class="s2">(</span><span class="s1">errors</span><span class="s2">))</span>
+
+        <span class="s0">if not </span><span class="s1">data</span><span class="s2">:</span>
+            <span class="s0">return </span><span class="s4">b&quot;&quot;</span><span class="s2">, </span><span class="s5">0</span>
+
+        <span class="s0">return </span><span class="s1">encode</span><span class="s2">(</span><span class="s1">data</span><span class="s2">), </span><span class="s1">len</span><span class="s2">(</span><span class="s1">data</span><span class="s2">)</span>
+
+    <span class="s0">def </span><span class="s1">decode</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">data</span><span class="s2">: </span><span class="s1">bytes</span><span class="s2">, </span><span class="s1">errors</span><span class="s2">: </span><span class="s1">str </span><span class="s2">= </span><span class="s3">'strict'</span><span class="s2">) </span><span class="s1">-&gt; Tuple</span><span class="s2">[</span><span class="s1">str</span><span class="s2">, </span><span class="s1">int</span><span class="s2">]:</span>
+        <span class="s0">if </span><span class="s1">errors </span><span class="s2">!= </span><span class="s3">'strict'</span><span class="s2">:</span>
+            <span class="s0">raise </span><span class="s1">IDNAError</span><span class="s2">(</span><span class="s3">'Unsupported error handling </span><span class="s0">\&quot;</span><span class="s3">{}</span><span class="s0">\&quot;</span><span class="s3">'</span><span class="s2">.</span><span class="s1">format</span><span class="s2">(</span><span class="s1">errors</span><span class="s2">))</span>
+
+        <span class="s0">if not </span><span class="s1">data</span><span class="s2">:</span>
+            <span class="s0">return </span><span class="s3">''</span><span class="s2">, </span><span class="s5">0</span>
+
+        <span class="s0">return </span><span class="s1">decode</span><span class="s2">(</span><span class="s1">data</span><span class="s2">), </span><span class="s1">len</span><span class="s2">(</span><span class="s1">data</span><span class="s2">)</span>
+
+<span class="s0">class </span><span class="s1">IncrementalEncoder</span><span class="s2">(</span><span class="s1">codecs</span><span class="s2">.</span><span class="s1">BufferedIncrementalEncoder</span><span class="s2">):</span>
+    <span class="s0">def </span><span class="s1">_buffer_encode</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">data</span><span class="s2">: </span><span class="s1">str</span><span class="s2">, </span><span class="s1">errors</span><span class="s2">: </span><span class="s1">str</span><span class="s2">, </span><span class="s1">final</span><span class="s2">: </span><span class="s1">bool</span><span class="s2">) </span><span class="s1">-&gt; Tuple</span><span class="s2">[</span><span class="s1">str</span><span class="s2">, </span><span class="s1">int</span><span class="s2">]:  </span><span class="s6"># type: ignore</span>
+        <span class="s0">if </span><span class="s1">errors </span><span class="s2">!= </span><span class="s3">'strict'</span><span class="s2">:</span>
+            <span class="s0">raise </span><span class="s1">IDNAError</span><span class="s2">(</span><span class="s3">'Unsupported error handling </span><span class="s0">\&quot;</span><span class="s3">{}</span><span class="s0">\&quot;</span><span class="s3">'</span><span class="s2">.</span><span class="s1">format</span><span class="s2">(</span><span class="s1">errors</span><span class="s2">))</span>
+
+        <span class="s0">if not </span><span class="s1">data</span><span class="s2">:</span>
+            <span class="s0">return </span><span class="s3">&quot;&quot;</span><span class="s2">, </span><span class="s5">0</span>
+
+        <span class="s1">labels </span><span class="s2">= </span><span class="s1">_unicode_dots_re</span><span class="s2">.</span><span class="s1">split</span><span class="s2">(</span><span class="s1">data</span><span class="s2">)</span>
+        <span class="s1">trailing_dot </span><span class="s2">= </span><span class="s3">''</span>
+        <span class="s0">if </span><span class="s1">labels</span><span class="s2">:</span>
+            <span class="s0">if not </span><span class="s1">labels</span><span class="s2">[-</span><span class="s5">1</span><span class="s2">]:</span>
+                <span class="s1">trailing_dot </span><span class="s2">= </span><span class="s3">'.'</span>
+                <span class="s0">del </span><span class="s1">labels</span><span class="s2">[-</span><span class="s5">1</span><span class="s2">]</span>
+            <span class="s0">elif not </span><span class="s1">final</span><span class="s2">:</span>
+                <span class="s6"># Keep potentially unfinished label until the next call</span>
+                <span class="s0">del </span><span class="s1">labels</span><span class="s2">[-</span><span class="s5">1</span><span class="s2">]</span>
+                <span class="s0">if </span><span class="s1">labels</span><span class="s2">:</span>
+                    <span class="s1">trailing_dot </span><span class="s2">= </span><span class="s3">'.'</span>
+
+        <span class="s1">result </span><span class="s2">= []</span>
+        <span class="s1">size </span><span class="s2">= </span><span class="s5">0</span>
+        <span class="s0">for </span><span class="s1">label </span><span class="s0">in </span><span class="s1">labels</span><span class="s2">:</span>
+            <span class="s1">result</span><span class="s2">.</span><span class="s1">append</span><span class="s2">(</span><span class="s1">alabel</span><span class="s2">(</span><span class="s1">label</span><span class="s2">))</span>
+            <span class="s0">if </span><span class="s1">size</span><span class="s2">:</span>
+                <span class="s1">size </span><span class="s2">+= </span><span class="s5">1</span>
+            <span class="s1">size </span><span class="s2">+= </span><span class="s1">len</span><span class="s2">(</span><span class="s1">label</span><span class="s2">)</span>
+
+        <span class="s6"># Join with U+002E</span>
+        <span class="s1">result_str </span><span class="s2">= </span><span class="s3">'.'</span><span class="s2">.</span><span class="s1">join</span><span class="s2">(</span><span class="s1">result</span><span class="s2">) + </span><span class="s1">trailing_dot  </span><span class="s6"># type: ignore</span>
+        <span class="s1">size </span><span class="s2">+= </span><span class="s1">len</span><span class="s2">(</span><span class="s1">trailing_dot</span><span class="s2">)</span>
+        <span class="s0">return </span><span class="s1">result_str</span><span class="s2">, </span><span class="s1">size</span>
+
+<span class="s0">class </span><span class="s1">IncrementalDecoder</span><span class="s2">(</span><span class="s1">codecs</span><span class="s2">.</span><span class="s1">BufferedIncrementalDecoder</span><span class="s2">):</span>
+    <span class="s0">def </span><span class="s1">_buffer_decode</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">data</span><span class="s2">: </span><span class="s1">str</span><span class="s2">, </span><span class="s1">errors</span><span class="s2">: </span><span class="s1">str</span><span class="s2">, </span><span class="s1">final</span><span class="s2">: </span><span class="s1">bool</span><span class="s2">) </span><span class="s1">-&gt; Tuple</span><span class="s2">[</span><span class="s1">str</span><span class="s2">, </span><span class="s1">int</span><span class="s2">]:  </span><span class="s6"># type: ignore</span>
+        <span class="s0">if </span><span class="s1">errors </span><span class="s2">!= </span><span class="s3">'strict'</span><span class="s2">:</span>
+            <span class="s0">raise </span><span class="s1">IDNAError</span><span class="s2">(</span><span class="s3">'Unsupported error handling </span><span class="s0">\&quot;</span><span class="s3">{}</span><span class="s0">\&quot;</span><span class="s3">'</span><span class="s2">.</span><span class="s1">format</span><span class="s2">(</span><span class="s1">errors</span><span class="s2">))</span>
+
+        <span class="s0">if not </span><span class="s1">data</span><span class="s2">:</span>
+            <span class="s0">return </span><span class="s2">(</span><span class="s3">''</span><span class="s2">, </span><span class="s5">0</span><span class="s2">)</span>
+
+        <span class="s1">labels </span><span class="s2">= </span><span class="s1">_unicode_dots_re</span><span class="s2">.</span><span class="s1">split</span><span class="s2">(</span><span class="s1">data</span><span class="s2">)</span>
+        <span class="s1">trailing_dot </span><span class="s2">= </span><span class="s3">''</span>
+        <span class="s0">if </span><span class="s1">labels</span><span class="s2">:</span>
+            <span class="s0">if not </span><span class="s1">labels</span><span class="s2">[-</span><span class="s5">1</span><span class="s2">]:</span>
+                <span class="s1">trailing_dot </span><span class="s2">= </span><span class="s3">'.'</span>
+                <span class="s0">del </span><span class="s1">labels</span><span class="s2">[-</span><span class="s5">1</span><span class="s2">]</span>
+            <span class="s0">elif not </span><span class="s1">final</span><span class="s2">:</span>
+                <span class="s6"># Keep potentially unfinished label until the next call</span>
+                <span class="s0">del </span><span class="s1">labels</span><span class="s2">[-</span><span class="s5">1</span><span class="s2">]</span>
+                <span class="s0">if </span><span class="s1">labels</span><span class="s2">:</span>
+                    <span class="s1">trailing_dot </span><span class="s2">= </span><span class="s3">'.'</span>
+
+        <span class="s1">result </span><span class="s2">= []</span>
+        <span class="s1">size </span><span class="s2">= </span><span class="s5">0</span>
+        <span class="s0">for </span><span class="s1">label </span><span class="s0">in </span><span class="s1">labels</span><span class="s2">:</span>
+            <span class="s1">result</span><span class="s2">.</span><span class="s1">append</span><span class="s2">(</span><span class="s1">ulabel</span><span class="s2">(</span><span class="s1">label</span><span class="s2">))</span>
+            <span class="s0">if </span><span class="s1">size</span><span class="s2">:</span>
+                <span class="s1">size </span><span class="s2">+= </span><span class="s5">1</span>
+            <span class="s1">size </span><span class="s2">+= </span><span class="s1">len</span><span class="s2">(</span><span class="s1">label</span><span class="s2">)</span>
+
+        <span class="s1">result_str </span><span class="s2">= </span><span class="s3">'.'</span><span class="s2">.</span><span class="s1">join</span><span class="s2">(</span><span class="s1">result</span><span class="s2">) + </span><span class="s1">trailing_dot</span>
+        <span class="s1">size </span><span class="s2">+= </span><span class="s1">len</span><span class="s2">(</span><span class="s1">trailing_dot</span><span class="s2">)</span>
+        <span class="s0">return </span><span class="s2">(</span><span class="s1">result_str</span><span class="s2">, </span><span class="s1">size</span><span class="s2">)</span>
+
+
+<span class="s0">class </span><span class="s1">StreamWriter</span><span class="s2">(</span><span class="s1">Codec</span><span class="s2">, </span><span class="s1">codecs</span><span class="s2">.</span><span class="s1">StreamWriter</span><span class="s2">):</span>
+    <span class="s0">pass</span>
+
+
+<span class="s0">class </span><span class="s1">StreamReader</span><span class="s2">(</span><span class="s1">Codec</span><span class="s2">, </span><span class="s1">codecs</span><span class="s2">.</span><span class="s1">StreamReader</span><span class="s2">):</span>
+    <span class="s0">pass</span>
+
+
+<span class="s0">def </span><span class="s1">getregentry</span><span class="s2">() </span><span class="s1">-&gt; codecs</span><span class="s2">.</span><span class="s1">CodecInfo</span><span class="s2">:</span>
+    <span class="s6"># Compatibility as a search_function for codecs.register()</span>
+    <span class="s0">return </span><span class="s1">codecs</span><span class="s2">.</span><span class="s1">CodecInfo</span><span class="s2">(</span>
+        <span class="s1">name</span><span class="s2">=</span><span class="s3">'idna'</span><span class="s2">,</span>
+        <span class="s1">encode</span><span class="s2">=</span><span class="s1">Codec</span><span class="s2">().</span><span class="s1">encode</span><span class="s2">,  </span><span class="s6"># type: ignore</span>
+        <span class="s1">decode</span><span class="s2">=</span><span class="s1">Codec</span><span class="s2">().</span><span class="s1">decode</span><span class="s2">,  </span><span class="s6"># type: ignore</span>
+        <span class="s1">incrementalencoder</span><span class="s2">=</span><span class="s1">IncrementalEncoder</span><span class="s2">,</span>
+        <span class="s1">incrementaldecoder</span><span class="s2">=</span><span class="s1">IncrementalDecoder</span><span class="s2">,</span>
+        <span class="s1">streamwriter</span><span class="s2">=</span><span class="s1">StreamWriter</span><span class="s2">,</span>
+        <span class="s1">streamreader</span><span class="s2">=</span><span class="s1">StreamReader</span><span class="s2">,</span>
+    <span class="s2">)</span>
+</pre>
+</body>
+</html>

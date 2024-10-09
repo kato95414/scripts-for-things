@@ -1,0 +1,76 @@
+<html>
+<head>
+<title>intranges.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #5f826b; font-style: italic;}
+.s1 { color: #bcbec4;}
+.s2 { color: #cf8e6d;}
+.s3 { color: #bcbec4;}
+.s4 { color: #2aacb8;}
+.s5 { color: #7a7e85;}
+</style>
+</head>
+<body bgcolor="#1e1f22">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+intranges.py</font>
+</center></td></tr></table>
+<pre><span class="s0">&quot;&quot;&quot; 
+Given a list of integers, made up of (hopefully) a small number of long runs 
+of consecutive integers, compute a representation of the form 
+((start1, end1), (start2, end2) ...). Then answer the question &quot;was x present 
+in the original list?&quot; in time O(log(# runs)). 
+&quot;&quot;&quot;</span>
+
+<span class="s2">import </span><span class="s1">bisect</span>
+<span class="s2">from </span><span class="s1">typing </span><span class="s2">import </span><span class="s1">List</span><span class="s3">, </span><span class="s1">Tuple</span>
+
+<span class="s2">def </span><span class="s1">intranges_from_list</span><span class="s3">(</span><span class="s1">list_</span><span class="s3">: </span><span class="s1">List</span><span class="s3">[</span><span class="s1">int</span><span class="s3">]) </span><span class="s1">-&gt; Tuple</span><span class="s3">[</span><span class="s1">int</span><span class="s3">, ...]:</span>
+    <span class="s0">&quot;&quot;&quot;Represent a list of integers as a sequence of ranges: 
+    ((start_0, end_0), (start_1, end_1), ...), such that the original 
+    integers are exactly those x such that start_i &lt;= x &lt; end_i for some i. 
+ 
+    Ranges are encoded as single integers (start &lt;&lt; 32 | end), not as tuples. 
+    &quot;&quot;&quot;</span>
+
+    <span class="s1">sorted_list </span><span class="s3">= </span><span class="s1">sorted</span><span class="s3">(</span><span class="s1">list_</span><span class="s3">)</span>
+    <span class="s1">ranges </span><span class="s3">= []</span>
+    <span class="s1">last_write </span><span class="s3">= -</span><span class="s4">1</span>
+    <span class="s2">for </span><span class="s1">i </span><span class="s2">in </span><span class="s1">range</span><span class="s3">(</span><span class="s1">len</span><span class="s3">(</span><span class="s1">sorted_list</span><span class="s3">)):</span>
+        <span class="s2">if </span><span class="s1">i</span><span class="s3">+</span><span class="s4">1 </span><span class="s3">&lt; </span><span class="s1">len</span><span class="s3">(</span><span class="s1">sorted_list</span><span class="s3">):</span>
+            <span class="s2">if </span><span class="s1">sorted_list</span><span class="s3">[</span><span class="s1">i</span><span class="s3">] == </span><span class="s1">sorted_list</span><span class="s3">[</span><span class="s1">i</span><span class="s3">+</span><span class="s4">1</span><span class="s3">]-</span><span class="s4">1</span><span class="s3">:</span>
+                <span class="s2">continue</span>
+        <span class="s1">current_range </span><span class="s3">= </span><span class="s1">sorted_list</span><span class="s3">[</span><span class="s1">last_write</span><span class="s3">+</span><span class="s4">1</span><span class="s3">:</span><span class="s1">i</span><span class="s3">+</span><span class="s4">1</span><span class="s3">]</span>
+        <span class="s1">ranges</span><span class="s3">.</span><span class="s1">append</span><span class="s3">(</span><span class="s1">_encode_range</span><span class="s3">(</span><span class="s1">current_range</span><span class="s3">[</span><span class="s4">0</span><span class="s3">], </span><span class="s1">current_range</span><span class="s3">[-</span><span class="s4">1</span><span class="s3">] + </span><span class="s4">1</span><span class="s3">))</span>
+        <span class="s1">last_write </span><span class="s3">= </span><span class="s1">i</span>
+
+    <span class="s2">return </span><span class="s1">tuple</span><span class="s3">(</span><span class="s1">ranges</span><span class="s3">)</span>
+
+<span class="s2">def </span><span class="s1">_encode_range</span><span class="s3">(</span><span class="s1">start</span><span class="s3">: </span><span class="s1">int</span><span class="s3">, </span><span class="s1">end</span><span class="s3">: </span><span class="s1">int</span><span class="s3">) </span><span class="s1">-&gt; int</span><span class="s3">:</span>
+    <span class="s2">return </span><span class="s3">(</span><span class="s1">start </span><span class="s3">&lt;&lt; </span><span class="s4">32</span><span class="s3">) | </span><span class="s1">end</span>
+
+<span class="s2">def </span><span class="s1">_decode_range</span><span class="s3">(</span><span class="s1">r</span><span class="s3">: </span><span class="s1">int</span><span class="s3">) </span><span class="s1">-&gt; Tuple</span><span class="s3">[</span><span class="s1">int</span><span class="s3">, </span><span class="s1">int</span><span class="s3">]:</span>
+    <span class="s2">return </span><span class="s3">(</span><span class="s1">r </span><span class="s3">&gt;&gt; </span><span class="s4">32</span><span class="s3">), (</span><span class="s1">r </span><span class="s3">&amp; ((</span><span class="s4">1 </span><span class="s3">&lt;&lt; </span><span class="s4">32</span><span class="s3">) - </span><span class="s4">1</span><span class="s3">))</span>
+
+
+<span class="s2">def </span><span class="s1">intranges_contain</span><span class="s3">(</span><span class="s1">int_</span><span class="s3">: </span><span class="s1">int</span><span class="s3">, </span><span class="s1">ranges</span><span class="s3">: </span><span class="s1">Tuple</span><span class="s3">[</span><span class="s1">int</span><span class="s3">, ...]) </span><span class="s1">-&gt; bool</span><span class="s3">:</span>
+    <span class="s0">&quot;&quot;&quot;Determine if `int_` falls into one of the ranges in `ranges`.&quot;&quot;&quot;</span>
+    <span class="s1">tuple_ </span><span class="s3">= </span><span class="s1">_encode_range</span><span class="s3">(</span><span class="s1">int_</span><span class="s3">, </span><span class="s4">0</span><span class="s3">)</span>
+    <span class="s1">pos </span><span class="s3">= </span><span class="s1">bisect</span><span class="s3">.</span><span class="s1">bisect_left</span><span class="s3">(</span><span class="s1">ranges</span><span class="s3">, </span><span class="s1">tuple_</span><span class="s3">)</span>
+    <span class="s5"># we could be immediately ahead of a tuple (start, end)</span>
+    <span class="s5"># with start &lt; int_ &lt;= end</span>
+    <span class="s2">if </span><span class="s1">pos </span><span class="s3">&gt; </span><span class="s4">0</span><span class="s3">:</span>
+        <span class="s1">left</span><span class="s3">, </span><span class="s1">right </span><span class="s3">= </span><span class="s1">_decode_range</span><span class="s3">(</span><span class="s1">ranges</span><span class="s3">[</span><span class="s1">pos</span><span class="s3">-</span><span class="s4">1</span><span class="s3">])</span>
+        <span class="s2">if </span><span class="s1">left </span><span class="s3">&lt;= </span><span class="s1">int_ </span><span class="s3">&lt; </span><span class="s1">right</span><span class="s3">:</span>
+            <span class="s2">return True</span>
+    <span class="s5"># or we could be immediately behind a tuple (int_, end)</span>
+    <span class="s2">if </span><span class="s1">pos </span><span class="s3">&lt; </span><span class="s1">len</span><span class="s3">(</span><span class="s1">ranges</span><span class="s3">):</span>
+        <span class="s1">left</span><span class="s3">, </span><span class="s1">_ </span><span class="s3">= </span><span class="s1">_decode_range</span><span class="s3">(</span><span class="s1">ranges</span><span class="s3">[</span><span class="s1">pos</span><span class="s3">])</span>
+        <span class="s2">if </span><span class="s1">left </span><span class="s3">== </span><span class="s1">int_</span><span class="s3">:</span>
+            <span class="s2">return True</span>
+    <span class="s2">return False</span>
+</pre>
+</body>
+</html>

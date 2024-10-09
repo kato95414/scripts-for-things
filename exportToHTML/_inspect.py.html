@@ -1,0 +1,293 @@
+<html>
+<head>
+<title>_inspect.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cf8e6d;}
+.s1 { color: #bcbec4;}
+.s2 { color: #bcbec4;}
+.s3 { color: #5f826b; font-style: italic;}
+.s4 { color: #6aab73;}
+.s5 { color: #2aacb8;}
+.s6 { color: #7a7e85;}
+</style>
+</head>
+<body bgcolor="#1e1f22">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+_inspect.py</font>
+</center></td></tr></table>
+<pre><span class="s0">from </span><span class="s1">__future__ </span><span class="s0">import </span><span class="s1">absolute_import</span>
+
+<span class="s0">import </span><span class="s1">inspect</span>
+<span class="s0">from </span><span class="s1">inspect </span><span class="s0">import </span><span class="s1">cleandoc</span><span class="s2">, </span><span class="s1">getdoc</span><span class="s2">, </span><span class="s1">getfile</span><span class="s2">, </span><span class="s1">isclass</span><span class="s2">, </span><span class="s1">ismodule</span><span class="s2">, </span><span class="s1">signature</span>
+<span class="s0">from </span><span class="s1">typing </span><span class="s0">import </span><span class="s1">Any</span><span class="s2">, </span><span class="s1">Collection</span><span class="s2">, </span><span class="s1">Iterable</span><span class="s2">, </span><span class="s1">Optional</span><span class="s2">, </span><span class="s1">Tuple</span><span class="s2">, </span><span class="s1">Type</span><span class="s2">, </span><span class="s1">Union</span>
+
+<span class="s0">from </span><span class="s2">.</span><span class="s1">console </span><span class="s0">import </span><span class="s1">Group</span><span class="s2">, </span><span class="s1">RenderableType</span>
+<span class="s0">from </span><span class="s2">.</span><span class="s1">control </span><span class="s0">import </span><span class="s1">escape_control_codes</span>
+<span class="s0">from </span><span class="s2">.</span><span class="s1">highlighter </span><span class="s0">import </span><span class="s1">ReprHighlighter</span>
+<span class="s0">from </span><span class="s2">.</span><span class="s1">jupyter </span><span class="s0">import </span><span class="s1">JupyterMixin</span>
+<span class="s0">from </span><span class="s2">.</span><span class="s1">panel </span><span class="s0">import </span><span class="s1">Panel</span>
+<span class="s0">from </span><span class="s2">.</span><span class="s1">pretty </span><span class="s0">import </span><span class="s1">Pretty</span>
+<span class="s0">from </span><span class="s2">.</span><span class="s1">table </span><span class="s0">import </span><span class="s1">Table</span>
+<span class="s0">from </span><span class="s2">.</span><span class="s1">text </span><span class="s0">import </span><span class="s1">Text</span><span class="s2">, </span><span class="s1">TextType</span>
+
+
+<span class="s0">def </span><span class="s1">_first_paragraph</span><span class="s2">(</span><span class="s1">doc</span><span class="s2">: </span><span class="s1">str</span><span class="s2">) </span><span class="s1">-&gt; str</span><span class="s2">:</span>
+    <span class="s3">&quot;&quot;&quot;Get the first paragraph from a docstring.&quot;&quot;&quot;</span>
+    <span class="s1">paragraph</span><span class="s2">, </span><span class="s1">_</span><span class="s2">, </span><span class="s1">_ </span><span class="s2">= </span><span class="s1">doc</span><span class="s2">.</span><span class="s1">partition</span><span class="s2">(</span><span class="s4">&quot;</span><span class="s0">\n\n</span><span class="s4">&quot;</span><span class="s2">)</span>
+    <span class="s0">return </span><span class="s1">paragraph</span>
+
+
+<span class="s0">class </span><span class="s1">Inspect</span><span class="s2">(</span><span class="s1">JupyterMixin</span><span class="s2">):</span>
+    <span class="s3">&quot;&quot;&quot;A renderable to inspect any Python Object. 
+ 
+    Args: 
+        obj (Any): An object to inspect. 
+        title (str, optional): Title to display over inspect result, or None use type. Defaults to None. 
+        help (bool, optional): Show full help text rather than just first paragraph. Defaults to False. 
+        methods (bool, optional): Enable inspection of callables. Defaults to False. 
+        docs (bool, optional): Also render doc strings. Defaults to True. 
+        private (bool, optional): Show private attributes (beginning with underscore). Defaults to False. 
+        dunder (bool, optional): Show attributes starting with double underscore. Defaults to False. 
+        sort (bool, optional): Sort attributes alphabetically. Defaults to True. 
+        all (bool, optional): Show all attributes. Defaults to False. 
+        value (bool, optional): Pretty print value of object. Defaults to True. 
+    &quot;&quot;&quot;</span>
+
+    <span class="s0">def </span><span class="s1">__init__</span><span class="s2">(</span>
+        <span class="s1">self</span><span class="s2">,</span>
+        <span class="s1">obj</span><span class="s2">: </span><span class="s1">Any</span><span class="s2">,</span>
+        <span class="s2">*,</span>
+        <span class="s1">title</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">TextType</span><span class="s2">] = </span><span class="s0">None</span><span class="s2">,</span>
+        <span class="s1">help</span><span class="s2">: </span><span class="s1">bool </span><span class="s2">= </span><span class="s0">False</span><span class="s2">,</span>
+        <span class="s1">methods</span><span class="s2">: </span><span class="s1">bool </span><span class="s2">= </span><span class="s0">False</span><span class="s2">,</span>
+        <span class="s1">docs</span><span class="s2">: </span><span class="s1">bool </span><span class="s2">= </span><span class="s0">True</span><span class="s2">,</span>
+        <span class="s1">private</span><span class="s2">: </span><span class="s1">bool </span><span class="s2">= </span><span class="s0">False</span><span class="s2">,</span>
+        <span class="s1">dunder</span><span class="s2">: </span><span class="s1">bool </span><span class="s2">= </span><span class="s0">False</span><span class="s2">,</span>
+        <span class="s1">sort</span><span class="s2">: </span><span class="s1">bool </span><span class="s2">= </span><span class="s0">True</span><span class="s2">,</span>
+        <span class="s1">all</span><span class="s2">: </span><span class="s1">bool </span><span class="s2">= </span><span class="s0">True</span><span class="s2">,</span>
+        <span class="s1">value</span><span class="s2">: </span><span class="s1">bool </span><span class="s2">= </span><span class="s0">True</span><span class="s2">,</span>
+    <span class="s2">) </span><span class="s1">-&gt; </span><span class="s0">None</span><span class="s2">:</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">highlighter </span><span class="s2">= </span><span class="s1">ReprHighlighter</span><span class="s2">()</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">obj </span><span class="s2">= </span><span class="s1">obj</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">title </span><span class="s2">= </span><span class="s1">title </span><span class="s0">or </span><span class="s1">self</span><span class="s2">.</span><span class="s1">_make_title</span><span class="s2">(</span><span class="s1">obj</span><span class="s2">)</span>
+        <span class="s0">if </span><span class="s1">all</span><span class="s2">:</span>
+            <span class="s1">methods </span><span class="s2">= </span><span class="s1">private </span><span class="s2">= </span><span class="s1">dunder </span><span class="s2">= </span><span class="s0">True</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">help </span><span class="s2">= </span><span class="s1">help</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">methods </span><span class="s2">= </span><span class="s1">methods</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">docs </span><span class="s2">= </span><span class="s1">docs </span><span class="s0">or </span><span class="s1">help</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">private </span><span class="s2">= </span><span class="s1">private </span><span class="s0">or </span><span class="s1">dunder</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">dunder </span><span class="s2">= </span><span class="s1">dunder</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">sort </span><span class="s2">= </span><span class="s1">sort</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">value </span><span class="s2">= </span><span class="s1">value</span>
+
+    <span class="s0">def </span><span class="s1">_make_title</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">obj</span><span class="s2">: </span><span class="s1">Any</span><span class="s2">) </span><span class="s1">-&gt; Text</span><span class="s2">:</span>
+        <span class="s3">&quot;&quot;&quot;Make a default title.&quot;&quot;&quot;</span>
+        <span class="s1">title_str </span><span class="s2">= (</span>
+            <span class="s1">str</span><span class="s2">(</span><span class="s1">obj</span><span class="s2">)</span>
+            <span class="s0">if </span><span class="s2">(</span><span class="s1">isclass</span><span class="s2">(</span><span class="s1">obj</span><span class="s2">) </span><span class="s0">or </span><span class="s1">callable</span><span class="s2">(</span><span class="s1">obj</span><span class="s2">) </span><span class="s0">or </span><span class="s1">ismodule</span><span class="s2">(</span><span class="s1">obj</span><span class="s2">))</span>
+            <span class="s0">else </span><span class="s1">str</span><span class="s2">(</span><span class="s1">type</span><span class="s2">(</span><span class="s1">obj</span><span class="s2">))</span>
+        <span class="s2">)</span>
+        <span class="s1">title_text </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">highlighter</span><span class="s2">(</span><span class="s1">title_str</span><span class="s2">)</span>
+        <span class="s0">return </span><span class="s1">title_text</span>
+
+    <span class="s0">def </span><span class="s1">__rich__</span><span class="s2">(</span><span class="s1">self</span><span class="s2">) </span><span class="s1">-&gt; Panel</span><span class="s2">:</span>
+        <span class="s0">return </span><span class="s1">Panel</span><span class="s2">.</span><span class="s1">fit</span><span class="s2">(</span>
+            <span class="s1">Group</span><span class="s2">(*</span><span class="s1">self</span><span class="s2">.</span><span class="s1">_render</span><span class="s2">()),</span>
+            <span class="s1">title</span><span class="s2">=</span><span class="s1">self</span><span class="s2">.</span><span class="s1">title</span><span class="s2">,</span>
+            <span class="s1">border_style</span><span class="s2">=</span><span class="s4">&quot;scope.border&quot;</span><span class="s2">,</span>
+            <span class="s1">padding</span><span class="s2">=(</span><span class="s5">0</span><span class="s2">, </span><span class="s5">1</span><span class="s2">),</span>
+        <span class="s2">)</span>
+
+    <span class="s0">def </span><span class="s1">_get_signature</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">name</span><span class="s2">: </span><span class="s1">str</span><span class="s2">, </span><span class="s1">obj</span><span class="s2">: </span><span class="s1">Any</span><span class="s2">) </span><span class="s1">-&gt; Optional</span><span class="s2">[</span><span class="s1">Text</span><span class="s2">]:</span>
+        <span class="s3">&quot;&quot;&quot;Get a signature for a callable.&quot;&quot;&quot;</span>
+        <span class="s0">try</span><span class="s2">:</span>
+            <span class="s1">_signature </span><span class="s2">= </span><span class="s1">str</span><span class="s2">(</span><span class="s1">signature</span><span class="s2">(</span><span class="s1">obj</span><span class="s2">)) + </span><span class="s4">&quot;:&quot;</span>
+        <span class="s0">except </span><span class="s1">ValueError</span><span class="s2">:</span>
+            <span class="s1">_signature </span><span class="s2">= </span><span class="s4">&quot;(...)&quot;</span>
+        <span class="s0">except </span><span class="s1">TypeError</span><span class="s2">:</span>
+            <span class="s0">return None</span>
+
+        <span class="s1">source_filename</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">str</span><span class="s2">] = </span><span class="s0">None</span>
+        <span class="s0">try</span><span class="s2">:</span>
+            <span class="s1">source_filename </span><span class="s2">= </span><span class="s1">getfile</span><span class="s2">(</span><span class="s1">obj</span><span class="s2">)</span>
+        <span class="s0">except </span><span class="s2">(</span><span class="s1">OSError</span><span class="s2">, </span><span class="s1">TypeError</span><span class="s2">):</span>
+            <span class="s6"># OSError is raised if obj has no source file, e.g. when defined in REPL.</span>
+            <span class="s0">pass</span>
+
+        <span class="s1">callable_name </span><span class="s2">= </span><span class="s1">Text</span><span class="s2">(</span><span class="s1">name</span><span class="s2">, </span><span class="s1">style</span><span class="s2">=</span><span class="s4">&quot;inspect.callable&quot;</span><span class="s2">)</span>
+        <span class="s0">if </span><span class="s1">source_filename</span><span class="s2">:</span>
+            <span class="s1">callable_name</span><span class="s2">.</span><span class="s1">stylize</span><span class="s2">(</span><span class="s4">f&quot;link file://</span><span class="s0">{</span><span class="s1">source_filename</span><span class="s0">}</span><span class="s4">&quot;</span><span class="s2">)</span>
+        <span class="s1">signature_text </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">highlighter</span><span class="s2">(</span><span class="s1">_signature</span><span class="s2">)</span>
+
+        <span class="s1">qualname </span><span class="s2">= </span><span class="s1">name </span><span class="s0">or </span><span class="s1">getattr</span><span class="s2">(</span><span class="s1">obj</span><span class="s2">, </span><span class="s4">&quot;__qualname__&quot;</span><span class="s2">, </span><span class="s1">name</span><span class="s2">)</span>
+
+        <span class="s6"># If obj is a module, there may be classes (which are callable) to display</span>
+        <span class="s0">if </span><span class="s1">inspect</span><span class="s2">.</span><span class="s1">isclass</span><span class="s2">(</span><span class="s1">obj</span><span class="s2">):</span>
+            <span class="s1">prefix </span><span class="s2">= </span><span class="s4">&quot;class&quot;</span>
+        <span class="s0">elif </span><span class="s1">inspect</span><span class="s2">.</span><span class="s1">iscoroutinefunction</span><span class="s2">(</span><span class="s1">obj</span><span class="s2">):</span>
+            <span class="s1">prefix </span><span class="s2">= </span><span class="s4">&quot;async def&quot;</span>
+        <span class="s0">else</span><span class="s2">:</span>
+            <span class="s1">prefix </span><span class="s2">= </span><span class="s4">&quot;def&quot;</span>
+
+        <span class="s1">qual_signature </span><span class="s2">= </span><span class="s1">Text</span><span class="s2">.</span><span class="s1">assemble</span><span class="s2">(</span>
+            <span class="s2">(</span><span class="s4">f&quot;</span><span class="s0">{</span><span class="s1">prefix</span><span class="s0">} </span><span class="s4">&quot;</span><span class="s2">, </span><span class="s4">f&quot;inspect.</span><span class="s0">{</span><span class="s1">prefix</span><span class="s2">.</span><span class="s1">replace</span><span class="s2">(</span><span class="s4">' '</span><span class="s2">, </span><span class="s4">'_'</span><span class="s2">)</span><span class="s0">}</span><span class="s4">&quot;</span><span class="s2">),</span>
+            <span class="s2">(</span><span class="s1">qualname</span><span class="s2">, </span><span class="s4">&quot;inspect.callable&quot;</span><span class="s2">),</span>
+            <span class="s1">signature_text</span><span class="s2">,</span>
+        <span class="s2">)</span>
+
+        <span class="s0">return </span><span class="s1">qual_signature</span>
+
+    <span class="s0">def </span><span class="s1">_render</span><span class="s2">(</span><span class="s1">self</span><span class="s2">) </span><span class="s1">-&gt; Iterable</span><span class="s2">[</span><span class="s1">RenderableType</span><span class="s2">]:</span>
+        <span class="s3">&quot;&quot;&quot;Render object.&quot;&quot;&quot;</span>
+
+        <span class="s0">def </span><span class="s1">sort_items</span><span class="s2">(</span><span class="s1">item</span><span class="s2">: </span><span class="s1">Tuple</span><span class="s2">[</span><span class="s1">str</span><span class="s2">, </span><span class="s1">Any</span><span class="s2">]) </span><span class="s1">-&gt; Tuple</span><span class="s2">[</span><span class="s1">bool</span><span class="s2">, </span><span class="s1">str</span><span class="s2">]:</span>
+            <span class="s1">key</span><span class="s2">, (</span><span class="s1">_error</span><span class="s2">, </span><span class="s1">value</span><span class="s2">) = </span><span class="s1">item</span>
+            <span class="s0">return </span><span class="s2">(</span><span class="s1">callable</span><span class="s2">(</span><span class="s1">value</span><span class="s2">), </span><span class="s1">key</span><span class="s2">.</span><span class="s1">strip</span><span class="s2">(</span><span class="s4">&quot;_&quot;</span><span class="s2">).</span><span class="s1">lower</span><span class="s2">())</span>
+
+        <span class="s0">def </span><span class="s1">safe_getattr</span><span class="s2">(</span><span class="s1">attr_name</span><span class="s2">: </span><span class="s1">str</span><span class="s2">) </span><span class="s1">-&gt; Tuple</span><span class="s2">[</span><span class="s1">Any</span><span class="s2">, </span><span class="s1">Any</span><span class="s2">]:</span>
+            <span class="s3">&quot;&quot;&quot;Get attribute or any exception.&quot;&quot;&quot;</span>
+            <span class="s0">try</span><span class="s2">:</span>
+                <span class="s0">return </span><span class="s2">(</span><span class="s0">None</span><span class="s2">, </span><span class="s1">getattr</span><span class="s2">(</span><span class="s1">obj</span><span class="s2">, </span><span class="s1">attr_name</span><span class="s2">))</span>
+            <span class="s0">except </span><span class="s1">Exception </span><span class="s0">as </span><span class="s1">error</span><span class="s2">:</span>
+                <span class="s0">return </span><span class="s2">(</span><span class="s1">error</span><span class="s2">, </span><span class="s0">None</span><span class="s2">)</span>
+
+        <span class="s1">obj </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">obj</span>
+        <span class="s1">keys </span><span class="s2">= </span><span class="s1">dir</span><span class="s2">(</span><span class="s1">obj</span><span class="s2">)</span>
+        <span class="s1">total_items </span><span class="s2">= </span><span class="s1">len</span><span class="s2">(</span><span class="s1">keys</span><span class="s2">)</span>
+        <span class="s0">if not </span><span class="s1">self</span><span class="s2">.</span><span class="s1">dunder</span><span class="s2">:</span>
+            <span class="s1">keys </span><span class="s2">= [</span><span class="s1">key </span><span class="s0">for </span><span class="s1">key </span><span class="s0">in </span><span class="s1">keys </span><span class="s0">if not </span><span class="s1">key</span><span class="s2">.</span><span class="s1">startswith</span><span class="s2">(</span><span class="s4">&quot;__&quot;</span><span class="s2">)]</span>
+        <span class="s0">if not </span><span class="s1">self</span><span class="s2">.</span><span class="s1">private</span><span class="s2">:</span>
+            <span class="s1">keys </span><span class="s2">= [</span><span class="s1">key </span><span class="s0">for </span><span class="s1">key </span><span class="s0">in </span><span class="s1">keys </span><span class="s0">if not </span><span class="s1">key</span><span class="s2">.</span><span class="s1">startswith</span><span class="s2">(</span><span class="s4">&quot;_&quot;</span><span class="s2">)]</span>
+        <span class="s1">not_shown_count </span><span class="s2">= </span><span class="s1">total_items </span><span class="s2">- </span><span class="s1">len</span><span class="s2">(</span><span class="s1">keys</span><span class="s2">)</span>
+        <span class="s1">items </span><span class="s2">= [(</span><span class="s1">key</span><span class="s2">, </span><span class="s1">safe_getattr</span><span class="s2">(</span><span class="s1">key</span><span class="s2">)) </span><span class="s0">for </span><span class="s1">key </span><span class="s0">in </span><span class="s1">keys</span><span class="s2">]</span>
+        <span class="s0">if </span><span class="s1">self</span><span class="s2">.</span><span class="s1">sort</span><span class="s2">:</span>
+            <span class="s1">items</span><span class="s2">.</span><span class="s1">sort</span><span class="s2">(</span><span class="s1">key</span><span class="s2">=</span><span class="s1">sort_items</span><span class="s2">)</span>
+
+        <span class="s1">items_table </span><span class="s2">= </span><span class="s1">Table</span><span class="s2">.</span><span class="s1">grid</span><span class="s2">(</span><span class="s1">padding</span><span class="s2">=(</span><span class="s5">0</span><span class="s2">, </span><span class="s5">1</span><span class="s2">), </span><span class="s1">expand</span><span class="s2">=</span><span class="s0">False</span><span class="s2">)</span>
+        <span class="s1">items_table</span><span class="s2">.</span><span class="s1">add_column</span><span class="s2">(</span><span class="s1">justify</span><span class="s2">=</span><span class="s4">&quot;right&quot;</span><span class="s2">)</span>
+        <span class="s1">add_row </span><span class="s2">= </span><span class="s1">items_table</span><span class="s2">.</span><span class="s1">add_row</span>
+        <span class="s1">highlighter </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">highlighter</span>
+
+        <span class="s0">if </span><span class="s1">callable</span><span class="s2">(</span><span class="s1">obj</span><span class="s2">):</span>
+            <span class="s1">signature </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">_get_signature</span><span class="s2">(</span><span class="s4">&quot;&quot;</span><span class="s2">, </span><span class="s1">obj</span><span class="s2">)</span>
+            <span class="s0">if </span><span class="s1">signature </span><span class="s0">is not None</span><span class="s2">:</span>
+                <span class="s0">yield </span><span class="s1">signature</span>
+                <span class="s0">yield </span><span class="s4">&quot;&quot;</span>
+
+        <span class="s0">if </span><span class="s1">self</span><span class="s2">.</span><span class="s1">docs</span><span class="s2">:</span>
+            <span class="s1">_doc </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">_get_formatted_doc</span><span class="s2">(</span><span class="s1">obj</span><span class="s2">)</span>
+            <span class="s0">if </span><span class="s1">_doc </span><span class="s0">is not None</span><span class="s2">:</span>
+                <span class="s1">doc_text </span><span class="s2">= </span><span class="s1">Text</span><span class="s2">(</span><span class="s1">_doc</span><span class="s2">, </span><span class="s1">style</span><span class="s2">=</span><span class="s4">&quot;inspect.help&quot;</span><span class="s2">)</span>
+                <span class="s1">doc_text </span><span class="s2">= </span><span class="s1">highlighter</span><span class="s2">(</span><span class="s1">doc_text</span><span class="s2">)</span>
+                <span class="s0">yield </span><span class="s1">doc_text</span>
+                <span class="s0">yield </span><span class="s4">&quot;&quot;</span>
+
+        <span class="s0">if </span><span class="s1">self</span><span class="s2">.</span><span class="s1">value </span><span class="s0">and not </span><span class="s2">(</span><span class="s1">isclass</span><span class="s2">(</span><span class="s1">obj</span><span class="s2">) </span><span class="s0">or </span><span class="s1">callable</span><span class="s2">(</span><span class="s1">obj</span><span class="s2">) </span><span class="s0">or </span><span class="s1">ismodule</span><span class="s2">(</span><span class="s1">obj</span><span class="s2">)):</span>
+            <span class="s0">yield </span><span class="s1">Panel</span><span class="s2">(</span>
+                <span class="s1">Pretty</span><span class="s2">(</span><span class="s1">obj</span><span class="s2">, </span><span class="s1">indent_guides</span><span class="s2">=</span><span class="s0">True</span><span class="s2">, </span><span class="s1">max_length</span><span class="s2">=</span><span class="s5">10</span><span class="s2">, </span><span class="s1">max_string</span><span class="s2">=</span><span class="s5">60</span><span class="s2">),</span>
+                <span class="s1">border_style</span><span class="s2">=</span><span class="s4">&quot;inspect.value.border&quot;</span><span class="s2">,</span>
+            <span class="s2">)</span>
+            <span class="s0">yield </span><span class="s4">&quot;&quot;</span>
+
+        <span class="s0">for </span><span class="s1">key</span><span class="s2">, (</span><span class="s1">error</span><span class="s2">, </span><span class="s1">value</span><span class="s2">) </span><span class="s0">in </span><span class="s1">items</span><span class="s2">:</span>
+            <span class="s1">key_text </span><span class="s2">= </span><span class="s1">Text</span><span class="s2">.</span><span class="s1">assemble</span><span class="s2">(</span>
+                <span class="s2">(</span>
+                    <span class="s1">key</span><span class="s2">,</span>
+                    <span class="s4">&quot;inspect.attr.dunder&quot; </span><span class="s0">if </span><span class="s1">key</span><span class="s2">.</span><span class="s1">startswith</span><span class="s2">(</span><span class="s4">&quot;__&quot;</span><span class="s2">) </span><span class="s0">else </span><span class="s4">&quot;inspect.attr&quot;</span><span class="s2">,</span>
+                <span class="s2">),</span>
+                <span class="s2">(</span><span class="s4">&quot; =&quot;</span><span class="s2">, </span><span class="s4">&quot;inspect.equals&quot;</span><span class="s2">),</span>
+            <span class="s2">)</span>
+            <span class="s0">if </span><span class="s1">error </span><span class="s0">is not None</span><span class="s2">:</span>
+                <span class="s1">warning </span><span class="s2">= </span><span class="s1">key_text</span><span class="s2">.</span><span class="s1">copy</span><span class="s2">()</span>
+                <span class="s1">warning</span><span class="s2">.</span><span class="s1">stylize</span><span class="s2">(</span><span class="s4">&quot;inspect.error&quot;</span><span class="s2">)</span>
+                <span class="s1">add_row</span><span class="s2">(</span><span class="s1">warning</span><span class="s2">, </span><span class="s1">highlighter</span><span class="s2">(</span><span class="s1">repr</span><span class="s2">(</span><span class="s1">error</span><span class="s2">)))</span>
+                <span class="s0">continue</span>
+
+            <span class="s0">if </span><span class="s1">callable</span><span class="s2">(</span><span class="s1">value</span><span class="s2">):</span>
+                <span class="s0">if not </span><span class="s1">self</span><span class="s2">.</span><span class="s1">methods</span><span class="s2">:</span>
+                    <span class="s0">continue</span>
+
+                <span class="s1">_signature_text </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">_get_signature</span><span class="s2">(</span><span class="s1">key</span><span class="s2">, </span><span class="s1">value</span><span class="s2">)</span>
+                <span class="s0">if </span><span class="s1">_signature_text </span><span class="s0">is None</span><span class="s2">:</span>
+                    <span class="s1">add_row</span><span class="s2">(</span><span class="s1">key_text</span><span class="s2">, </span><span class="s1">Pretty</span><span class="s2">(</span><span class="s1">value</span><span class="s2">, </span><span class="s1">highlighter</span><span class="s2">=</span><span class="s1">highlighter</span><span class="s2">))</span>
+                <span class="s0">else</span><span class="s2">:</span>
+                    <span class="s0">if </span><span class="s1">self</span><span class="s2">.</span><span class="s1">docs</span><span class="s2">:</span>
+                        <span class="s1">docs </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">_get_formatted_doc</span><span class="s2">(</span><span class="s1">value</span><span class="s2">)</span>
+                        <span class="s0">if </span><span class="s1">docs </span><span class="s0">is not None</span><span class="s2">:</span>
+                            <span class="s1">_signature_text</span><span class="s2">.</span><span class="s1">append</span><span class="s2">(</span><span class="s4">&quot;</span><span class="s0">\n</span><span class="s4">&quot; </span><span class="s0">if </span><span class="s4">&quot;</span><span class="s0">\n</span><span class="s4">&quot; </span><span class="s0">in </span><span class="s1">docs </span><span class="s0">else </span><span class="s4">&quot; &quot;</span><span class="s2">)</span>
+                            <span class="s1">doc </span><span class="s2">= </span><span class="s1">highlighter</span><span class="s2">(</span><span class="s1">docs</span><span class="s2">)</span>
+                            <span class="s1">doc</span><span class="s2">.</span><span class="s1">stylize</span><span class="s2">(</span><span class="s4">&quot;inspect.doc&quot;</span><span class="s2">)</span>
+                            <span class="s1">_signature_text</span><span class="s2">.</span><span class="s1">append</span><span class="s2">(</span><span class="s1">doc</span><span class="s2">)</span>
+
+                    <span class="s1">add_row</span><span class="s2">(</span><span class="s1">key_text</span><span class="s2">, </span><span class="s1">_signature_text</span><span class="s2">)</span>
+            <span class="s0">else</span><span class="s2">:</span>
+                <span class="s1">add_row</span><span class="s2">(</span><span class="s1">key_text</span><span class="s2">, </span><span class="s1">Pretty</span><span class="s2">(</span><span class="s1">value</span><span class="s2">, </span><span class="s1">highlighter</span><span class="s2">=</span><span class="s1">highlighter</span><span class="s2">))</span>
+        <span class="s0">if </span><span class="s1">items_table</span><span class="s2">.</span><span class="s1">row_count</span><span class="s2">:</span>
+            <span class="s0">yield </span><span class="s1">items_table</span>
+        <span class="s0">elif </span><span class="s1">not_shown_count</span><span class="s2">:</span>
+            <span class="s0">yield </span><span class="s1">Text</span><span class="s2">.</span><span class="s1">from_markup</span><span class="s2">(</span>
+                <span class="s4">f&quot;[b cyan]</span><span class="s0">{</span><span class="s1">not_shown_count</span><span class="s0">}</span><span class="s4">[/][i] attribute(s) not shown.[/i] &quot;</span>
+                <span class="s4">f&quot;Run [b][magenta]inspect[/]([not b]inspect[/])[/b] for options.&quot;</span>
+            <span class="s2">)</span>
+
+    <span class="s0">def </span><span class="s1">_get_formatted_doc</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">object_</span><span class="s2">: </span><span class="s1">Any</span><span class="s2">) </span><span class="s1">-&gt; Optional</span><span class="s2">[</span><span class="s1">str</span><span class="s2">]:</span>
+        <span class="s3">&quot;&quot;&quot; 
+        Extract the docstring of an object, process it and returns it. 
+        The processing consists in cleaning up the doctring's indentation, 
+        taking only its 1st paragraph if `self.help` is not True, 
+        and escape its control codes. 
+ 
+        Args: 
+            object_ (Any): the object to get the docstring from. 
+ 
+        Returns: 
+            Optional[str]: the processed docstring, or None if no docstring was found. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">docs </span><span class="s2">= </span><span class="s1">getdoc</span><span class="s2">(</span><span class="s1">object_</span><span class="s2">)</span>
+        <span class="s0">if </span><span class="s1">docs </span><span class="s0">is None</span><span class="s2">:</span>
+            <span class="s0">return None</span>
+        <span class="s1">docs </span><span class="s2">= </span><span class="s1">cleandoc</span><span class="s2">(</span><span class="s1">docs</span><span class="s2">).</span><span class="s1">strip</span><span class="s2">()</span>
+        <span class="s0">if not </span><span class="s1">self</span><span class="s2">.</span><span class="s1">help</span><span class="s2">:</span>
+            <span class="s1">docs </span><span class="s2">= </span><span class="s1">_first_paragraph</span><span class="s2">(</span><span class="s1">docs</span><span class="s2">)</span>
+        <span class="s0">return </span><span class="s1">escape_control_codes</span><span class="s2">(</span><span class="s1">docs</span><span class="s2">)</span>
+
+
+<span class="s0">def </span><span class="s1">get_object_types_mro</span><span class="s2">(</span><span class="s1">obj</span><span class="s2">: </span><span class="s1">Union</span><span class="s2">[</span><span class="s1">object</span><span class="s2">, </span><span class="s1">Type</span><span class="s2">[</span><span class="s1">Any</span><span class="s2">]]) </span><span class="s1">-&gt; Tuple</span><span class="s2">[</span><span class="s1">type</span><span class="s2">, ...]:</span>
+    <span class="s3">&quot;&quot;&quot;Returns the MRO of an object's class, or of the object itself if it's a class.&quot;&quot;&quot;</span>
+    <span class="s0">if not </span><span class="s1">hasattr</span><span class="s2">(</span><span class="s1">obj</span><span class="s2">, </span><span class="s4">&quot;__mro__&quot;</span><span class="s2">):</span>
+        <span class="s6"># N.B. we cannot use `if type(obj) is type` here because it doesn't work with</span>
+        <span class="s6"># some types of classes, such as the ones that use abc.ABCMeta.</span>
+        <span class="s1">obj </span><span class="s2">= </span><span class="s1">type</span><span class="s2">(</span><span class="s1">obj</span><span class="s2">)</span>
+    <span class="s0">return </span><span class="s1">getattr</span><span class="s2">(</span><span class="s1">obj</span><span class="s2">, </span><span class="s4">&quot;__mro__&quot;</span><span class="s2">, ())</span>
+
+
+<span class="s0">def </span><span class="s1">get_object_types_mro_as_strings</span><span class="s2">(</span><span class="s1">obj</span><span class="s2">: </span><span class="s1">object</span><span class="s2">) </span><span class="s1">-&gt; Collection</span><span class="s2">[</span><span class="s1">str</span><span class="s2">]:</span>
+    <span class="s3">&quot;&quot;&quot; 
+    Returns the MRO of an object's class as full qualified names, or of the object itself if it's a class. 
+ 
+    Examples: 
+        `object_types_mro_as_strings(JSONDecoder)` will return `['json.decoder.JSONDecoder', 'builtins.object']` 
+    &quot;&quot;&quot;</span>
+    <span class="s0">return </span><span class="s2">[</span>
+        <span class="s4">f'</span><span class="s0">{</span><span class="s1">getattr</span><span class="s2">(</span><span class="s1">type_</span><span class="s2">, </span><span class="s4">&quot;__module__&quot;</span><span class="s2">, </span><span class="s4">&quot;&quot;</span><span class="s2">)</span><span class="s0">}</span><span class="s4">.</span><span class="s0">{</span><span class="s1">getattr</span><span class="s2">(</span><span class="s1">type_</span><span class="s2">, </span><span class="s4">&quot;__qualname__&quot;</span><span class="s2">, </span><span class="s4">&quot;&quot;</span><span class="s2">)</span><span class="s0">}</span><span class="s4">'</span>
+        <span class="s0">for </span><span class="s1">type_ </span><span class="s0">in </span><span class="s1">get_object_types_mro</span><span class="s2">(</span><span class="s1">obj</span><span class="s2">)</span>
+    <span class="s2">]</span>
+
+
+<span class="s0">def </span><span class="s1">is_object_one_of_types</span><span class="s2">(</span>
+    <span class="s1">obj</span><span class="s2">: </span><span class="s1">object</span><span class="s2">, </span><span class="s1">fully_qualified_types_names</span><span class="s2">: </span><span class="s1">Collection</span><span class="s2">[</span><span class="s1">str</span><span class="s2">]</span>
+<span class="s2">) </span><span class="s1">-&gt; bool</span><span class="s2">:</span>
+    <span class="s3">&quot;&quot;&quot; 
+    Returns `True` if the given object's class (or the object itself, if it's a class) has one of the 
+    fully qualified names in its MRO. 
+    &quot;&quot;&quot;</span>
+    <span class="s0">for </span><span class="s1">type_name </span><span class="s0">in </span><span class="s1">get_object_types_mro_as_strings</span><span class="s2">(</span><span class="s1">obj</span><span class="s2">):</span>
+        <span class="s0">if </span><span class="s1">type_name </span><span class="s0">in </span><span class="s1">fully_qualified_types_names</span><span class="s2">:</span>
+            <span class="s0">return True</span>
+    <span class="s0">return False</span>
+</pre>
+</body>
+</html>

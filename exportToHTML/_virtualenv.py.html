@@ -1,0 +1,125 @@
+<html>
+<head>
+<title>_virtualenv.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #5f826b; font-style: italic;}
+.s1 { color: #bcbec4;}
+.s2 { color: #cf8e6d;}
+.s3 { color: #bcbec4;}
+.s4 { color: #6aab73;}
+.s5 { color: #7a7e85;}
+.s6 { color: #2aacb8;}
+</style>
+</head>
+<body bgcolor="#1e1f22">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+_virtualenv.py</font>
+</center></td></tr></table>
+<pre><span class="s0">&quot;&quot;&quot;Patches that are applied at runtime to the virtual environment.&quot;&quot;&quot;</span>
+
+<span class="s2">from </span><span class="s1">__future__ </span><span class="s2">import </span><span class="s1">annotations</span>
+
+<span class="s2">import </span><span class="s1">os</span>
+<span class="s2">import </span><span class="s1">sys</span>
+<span class="s2">from </span><span class="s1">contextlib </span><span class="s2">import </span><span class="s1">suppress</span>
+
+<span class="s1">VIRTUALENV_PATCH_FILE </span><span class="s3">= </span><span class="s1">os</span><span class="s3">.</span><span class="s1">path</span><span class="s3">.</span><span class="s1">join</span><span class="s3">(</span><span class="s1">__file__</span><span class="s3">)</span>
+
+
+<span class="s2">def </span><span class="s1">patch_dist</span><span class="s3">(</span><span class="s1">dist</span><span class="s3">):</span>
+    <span class="s4">&quot;&quot;&quot; 
+    Distutils allows user to configure some arguments via a configuration file: 
+    https://docs.python.org/3/install/index.html#distutils-configuration-files. 
+ 
+    Some of this arguments though don't make sense in context of the virtual environment files, let's fix them up. 
+    &quot;&quot;&quot;  </span><span class="s5"># noqa: D205</span>
+    <span class="s5"># we cannot allow some install config as that would get packages installed outside of the virtual environment</span>
+    <span class="s1">old_parse_config_files </span><span class="s3">= </span><span class="s1">dist</span><span class="s3">.</span><span class="s1">Distribution</span><span class="s3">.</span><span class="s1">parse_config_files</span>
+
+    <span class="s2">def </span><span class="s1">parse_config_files</span><span class="s3">(</span><span class="s1">self</span><span class="s3">, *</span><span class="s1">args</span><span class="s3">, **</span><span class="s1">kwargs</span><span class="s3">):</span>
+        <span class="s1">result </span><span class="s3">= </span><span class="s1">old_parse_config_files</span><span class="s3">(</span><span class="s1">self</span><span class="s3">, *</span><span class="s1">args</span><span class="s3">, **</span><span class="s1">kwargs</span><span class="s3">)</span>
+        <span class="s1">install </span><span class="s3">= </span><span class="s1">self</span><span class="s3">.</span><span class="s1">get_option_dict</span><span class="s3">(</span><span class="s4">&quot;install&quot;</span><span class="s3">)</span>
+
+        <span class="s2">if </span><span class="s4">&quot;prefix&quot; </span><span class="s2">in </span><span class="s1">install</span><span class="s3">:  </span><span class="s5"># the prefix governs where to install the libraries</span>
+            <span class="s1">install</span><span class="s3">[</span><span class="s4">&quot;prefix&quot;</span><span class="s3">] = </span><span class="s1">VIRTUALENV_PATCH_FILE</span><span class="s3">, </span><span class="s1">os</span><span class="s3">.</span><span class="s1">path</span><span class="s3">.</span><span class="s1">abspath</span><span class="s3">(</span><span class="s1">sys</span><span class="s3">.</span><span class="s1">prefix</span><span class="s3">)</span>
+        <span class="s2">for </span><span class="s1">base </span><span class="s2">in </span><span class="s3">(</span><span class="s4">&quot;purelib&quot;</span><span class="s3">, </span><span class="s4">&quot;platlib&quot;</span><span class="s3">, </span><span class="s4">&quot;headers&quot;</span><span class="s3">, </span><span class="s4">&quot;scripts&quot;</span><span class="s3">, </span><span class="s4">&quot;data&quot;</span><span class="s3">):</span>
+            <span class="s1">key </span><span class="s3">= </span><span class="s4">f&quot;install_</span><span class="s2">{</span><span class="s1">base</span><span class="s2">}</span><span class="s4">&quot;</span>
+            <span class="s2">if </span><span class="s1">key </span><span class="s2">in </span><span class="s1">install</span><span class="s3">:  </span><span class="s5"># do not allow global configs to hijack venv paths</span>
+                <span class="s1">install</span><span class="s3">.</span><span class="s1">pop</span><span class="s3">(</span><span class="s1">key</span><span class="s3">, </span><span class="s2">None</span><span class="s3">)</span>
+        <span class="s2">return </span><span class="s1">result</span>
+
+    <span class="s1">dist</span><span class="s3">.</span><span class="s1">Distribution</span><span class="s3">.</span><span class="s1">parse_config_files </span><span class="s3">= </span><span class="s1">parse_config_files</span>
+
+
+<span class="s5"># Import hook that patches some modules to ignore configuration values that break package installation in case</span>
+<span class="s5"># of virtual environments.</span>
+<span class="s1">_DISTUTILS_PATCH </span><span class="s3">= </span><span class="s4">&quot;distutils.dist&quot;</span><span class="s3">, </span><span class="s4">&quot;setuptools.dist&quot;</span>
+<span class="s5"># https://docs.python.org/3/library/importlib.html#setting-up-an-importer</span>
+
+
+<span class="s2">class </span><span class="s1">_Finder</span><span class="s3">:</span>
+    <span class="s0">&quot;&quot;&quot;A meta path finder that allows patching the imported distutils modules.&quot;&quot;&quot;</span>
+
+    <span class="s1">fullname </span><span class="s3">= </span><span class="s2">None</span>
+
+    <span class="s5"># lock[0] is threading.Lock(), but initialized lazily to avoid importing threading very early at startup,</span>
+    <span class="s5"># because there are gevent-based applications that need to be first to import threading by themselves.</span>
+    <span class="s5"># See https://github.com/pypa/virtualenv/issues/1895 for details.</span>
+    <span class="s1">lock </span><span class="s3">= []  </span><span class="s5"># noqa: RUF012</span>
+
+    <span class="s2">def </span><span class="s1">find_spec</span><span class="s3">(</span><span class="s1">self</span><span class="s3">, </span><span class="s1">fullname</span><span class="s3">, </span><span class="s1">path</span><span class="s3">, </span><span class="s1">target</span><span class="s3">=</span><span class="s2">None</span><span class="s3">):  </span><span class="s5"># noqa: ARG002</span>
+        <span class="s2">if </span><span class="s1">fullname </span><span class="s2">in </span><span class="s1">_DISTUTILS_PATCH </span><span class="s2">and </span><span class="s1">self</span><span class="s3">.</span><span class="s1">fullname </span><span class="s2">is None</span><span class="s3">:</span>
+            <span class="s5"># initialize lock[0] lazily</span>
+            <span class="s2">if </span><span class="s1">len</span><span class="s3">(</span><span class="s1">self</span><span class="s3">.</span><span class="s1">lock</span><span class="s3">) == </span><span class="s6">0</span><span class="s3">:</span>
+                <span class="s2">import </span><span class="s1">threading</span>
+
+                <span class="s1">lock </span><span class="s3">= </span><span class="s1">threading</span><span class="s3">.</span><span class="s1">Lock</span><span class="s3">()</span>
+                <span class="s5"># there is possibility that two threads T1 and T2 are simultaneously running into find_spec,</span>
+                <span class="s5"># observing .lock as empty, and further going into hereby initialization. However due to the GIL,</span>
+                <span class="s5"># list.append() operation is atomic and this way only one of the threads will &quot;win&quot; to put the lock</span>
+                <span class="s5"># - that every thread will use - into .lock[0].</span>
+                <span class="s5"># https://docs.python.org/3/faq/library.html#what-kinds-of-global-value-mutation-are-thread-safe</span>
+                <span class="s1">self</span><span class="s3">.</span><span class="s1">lock</span><span class="s3">.</span><span class="s1">append</span><span class="s3">(</span><span class="s1">lock</span><span class="s3">)</span>
+
+            <span class="s2">from </span><span class="s1">functools </span><span class="s2">import </span><span class="s1">partial</span>
+            <span class="s2">from </span><span class="s1">importlib</span><span class="s3">.</span><span class="s1">util </span><span class="s2">import </span><span class="s1">find_spec</span>
+
+            <span class="s2">with </span><span class="s1">self</span><span class="s3">.</span><span class="s1">lock</span><span class="s3">[</span><span class="s6">0</span><span class="s3">]:</span>
+                <span class="s1">self</span><span class="s3">.</span><span class="s1">fullname </span><span class="s3">= </span><span class="s1">fullname</span>
+                <span class="s2">try</span><span class="s3">:</span>
+                    <span class="s1">spec </span><span class="s3">= </span><span class="s1">find_spec</span><span class="s3">(</span><span class="s1">fullname</span><span class="s3">, </span><span class="s1">path</span><span class="s3">)</span>
+                    <span class="s2">if </span><span class="s1">spec </span><span class="s2">is not None</span><span class="s3">:</span>
+                        <span class="s5"># https://www.python.org/dev/peps/pep-0451/#how-loading-will-work</span>
+                        <span class="s1">is_new_api </span><span class="s3">= </span><span class="s1">hasattr</span><span class="s3">(</span><span class="s1">spec</span><span class="s3">.</span><span class="s1">loader</span><span class="s3">, </span><span class="s4">&quot;exec_module&quot;</span><span class="s3">)</span>
+                        <span class="s1">func_name </span><span class="s3">= </span><span class="s4">&quot;exec_module&quot; </span><span class="s2">if </span><span class="s1">is_new_api </span><span class="s2">else </span><span class="s4">&quot;load_module&quot;</span>
+                        <span class="s1">old </span><span class="s3">= </span><span class="s1">getattr</span><span class="s3">(</span><span class="s1">spec</span><span class="s3">.</span><span class="s1">loader</span><span class="s3">, </span><span class="s1">func_name</span><span class="s3">)</span>
+                        <span class="s1">func </span><span class="s3">= </span><span class="s1">self</span><span class="s3">.</span><span class="s1">exec_module </span><span class="s2">if </span><span class="s1">is_new_api </span><span class="s2">else </span><span class="s1">self</span><span class="s3">.</span><span class="s1">load_module</span>
+                        <span class="s2">if </span><span class="s1">old </span><span class="s2">is not </span><span class="s1">func</span><span class="s3">:</span>
+                            <span class="s2">with </span><span class="s1">suppress</span><span class="s3">(</span><span class="s1">AttributeError</span><span class="s3">):  </span><span class="s5"># C-Extension loaders are r/o such as zipimporter with &lt;3.7</span>
+                                <span class="s1">setattr</span><span class="s3">(</span><span class="s1">spec</span><span class="s3">.</span><span class="s1">loader</span><span class="s3">, </span><span class="s1">func_name</span><span class="s3">, </span><span class="s1">partial</span><span class="s3">(</span><span class="s1">func</span><span class="s3">, </span><span class="s1">old</span><span class="s3">))</span>
+                        <span class="s2">return </span><span class="s1">spec</span>
+                <span class="s2">finally</span><span class="s3">:</span>
+                    <span class="s1">self</span><span class="s3">.</span><span class="s1">fullname </span><span class="s3">= </span><span class="s2">None</span>
+        <span class="s2">return None</span>
+
+    <span class="s3">@</span><span class="s1">staticmethod</span>
+    <span class="s2">def </span><span class="s1">exec_module</span><span class="s3">(</span><span class="s1">old</span><span class="s3">, </span><span class="s1">module</span><span class="s3">):</span>
+        <span class="s1">old</span><span class="s3">(</span><span class="s1">module</span><span class="s3">)</span>
+        <span class="s2">if </span><span class="s1">module</span><span class="s3">.</span><span class="s1">__name__ </span><span class="s2">in </span><span class="s1">_DISTUTILS_PATCH</span><span class="s3">:</span>
+            <span class="s1">patch_dist</span><span class="s3">(</span><span class="s1">module</span><span class="s3">)</span>
+
+    <span class="s3">@</span><span class="s1">staticmethod</span>
+    <span class="s2">def </span><span class="s1">load_module</span><span class="s3">(</span><span class="s1">old</span><span class="s3">, </span><span class="s1">name</span><span class="s3">):</span>
+        <span class="s1">module </span><span class="s3">= </span><span class="s1">old</span><span class="s3">(</span><span class="s1">name</span><span class="s3">)</span>
+        <span class="s2">if </span><span class="s1">module</span><span class="s3">.</span><span class="s1">__name__ </span><span class="s2">in </span><span class="s1">_DISTUTILS_PATCH</span><span class="s3">:</span>
+            <span class="s1">patch_dist</span><span class="s3">(</span><span class="s1">module</span><span class="s3">)</span>
+        <span class="s2">return </span><span class="s1">module</span>
+
+
+<span class="s1">sys</span><span class="s3">.</span><span class="s1">meta_path</span><span class="s3">.</span><span class="s1">insert</span><span class="s3">(</span><span class="s6">0</span><span class="s3">, </span><span class="s1">_Finder</span><span class="s3">())</span>
+</pre>
+</body>
+</html>

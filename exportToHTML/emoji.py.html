@@ -1,0 +1,119 @@
+<html>
+<head>
+<title>emoji.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cf8e6d;}
+.s1 { color: #bcbec4;}
+.s2 { color: #bcbec4;}
+.s3 { color: #2aacb8;}
+.s4 { color: #7a7e85;}
+.s5 { color: #6aab73;}
+.s6 { color: #5f826b; font-style: italic;}
+</style>
+</head>
+<body bgcolor="#1e1f22">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+emoji.py</font>
+</center></td></tr></table>
+<pre><span class="s0">import </span><span class="s1">sys</span>
+<span class="s0">from </span><span class="s1">typing </span><span class="s0">import </span><span class="s1">TYPE_CHECKING</span><span class="s2">, </span><span class="s1">Optional</span><span class="s2">, </span><span class="s1">Union</span>
+
+<span class="s0">from </span><span class="s2">.</span><span class="s1">jupyter </span><span class="s0">import </span><span class="s1">JupyterMixin</span>
+<span class="s0">from </span><span class="s2">.</span><span class="s1">segment </span><span class="s0">import </span><span class="s1">Segment</span>
+<span class="s0">from </span><span class="s2">.</span><span class="s1">style </span><span class="s0">import </span><span class="s1">Style</span>
+<span class="s0">from </span><span class="s2">.</span><span class="s1">_emoji_codes </span><span class="s0">import </span><span class="s1">EMOJI</span>
+<span class="s0">from </span><span class="s2">.</span><span class="s1">_emoji_replace </span><span class="s0">import </span><span class="s1">_emoji_replace</span>
+
+<span class="s0">if </span><span class="s1">sys</span><span class="s2">.</span><span class="s1">version_info </span><span class="s2">&gt;= (</span><span class="s3">3</span><span class="s2">, </span><span class="s3">8</span><span class="s2">):</span>
+    <span class="s0">from </span><span class="s1">typing </span><span class="s0">import </span><span class="s1">Literal</span>
+<span class="s0">else</span><span class="s2">:</span>
+    <span class="s0">from </span><span class="s1">pip</span><span class="s2">.</span><span class="s1">_vendor</span><span class="s2">.</span><span class="s1">typing_extensions </span><span class="s0">import </span><span class="s1">Literal  </span><span class="s4"># pragma: no cover</span>
+
+
+<span class="s0">if </span><span class="s1">TYPE_CHECKING</span><span class="s2">:</span>
+    <span class="s0">from </span><span class="s2">.</span><span class="s1">console </span><span class="s0">import </span><span class="s1">Console</span><span class="s2">, </span><span class="s1">ConsoleOptions</span><span class="s2">, </span><span class="s1">RenderResult</span>
+
+
+<span class="s1">EmojiVariant </span><span class="s2">= </span><span class="s1">Literal</span><span class="s2">[</span><span class="s5">&quot;emoji&quot;</span><span class="s2">, </span><span class="s5">&quot;text&quot;</span><span class="s2">]</span>
+
+
+<span class="s0">class </span><span class="s1">NoEmoji</span><span class="s2">(</span><span class="s1">Exception</span><span class="s2">):</span>
+    <span class="s6">&quot;&quot;&quot;No emoji by that name.&quot;&quot;&quot;</span>
+
+
+<span class="s0">class </span><span class="s1">Emoji</span><span class="s2">(</span><span class="s1">JupyterMixin</span><span class="s2">):</span>
+    <span class="s1">__slots__ </span><span class="s2">= [</span><span class="s5">&quot;name&quot;</span><span class="s2">, </span><span class="s5">&quot;style&quot;</span><span class="s2">, </span><span class="s5">&quot;_char&quot;</span><span class="s2">, </span><span class="s5">&quot;variant&quot;</span><span class="s2">]</span>
+
+    <span class="s1">VARIANTS </span><span class="s2">= {</span><span class="s5">&quot;text&quot;</span><span class="s2">: </span><span class="s5">&quot;</span><span class="s0">\uFE0E</span><span class="s5">&quot;</span><span class="s2">, </span><span class="s5">&quot;emoji&quot;</span><span class="s2">: </span><span class="s5">&quot;</span><span class="s0">\uFE0F</span><span class="s5">&quot;</span><span class="s2">}</span>
+
+    <span class="s0">def </span><span class="s1">__init__</span><span class="s2">(</span>
+        <span class="s1">self</span><span class="s2">,</span>
+        <span class="s1">name</span><span class="s2">: </span><span class="s1">str</span><span class="s2">,</span>
+        <span class="s1">style</span><span class="s2">: </span><span class="s1">Union</span><span class="s2">[</span><span class="s1">str</span><span class="s2">, </span><span class="s1">Style</span><span class="s2">] = </span><span class="s5">&quot;none&quot;</span><span class="s2">,</span>
+        <span class="s1">variant</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">EmojiVariant</span><span class="s2">] = </span><span class="s0">None</span><span class="s2">,</span>
+    <span class="s2">) </span><span class="s1">-&gt; </span><span class="s0">None</span><span class="s2">:</span>
+        <span class="s6">&quot;&quot;&quot;A single emoji character. 
+ 
+        Args: 
+            name (str): Name of emoji. 
+            style (Union[str, Style], optional): Optional style. Defaults to None. 
+ 
+        Raises: 
+            NoEmoji: If the emoji doesn't exist. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">name </span><span class="s2">= </span><span class="s1">name</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">style </span><span class="s2">= </span><span class="s1">style</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">variant </span><span class="s2">= </span><span class="s1">variant</span>
+        <span class="s0">try</span><span class="s2">:</span>
+            <span class="s1">self</span><span class="s2">.</span><span class="s1">_char </span><span class="s2">= </span><span class="s1">EMOJI</span><span class="s2">[</span><span class="s1">name</span><span class="s2">]</span>
+        <span class="s0">except </span><span class="s1">KeyError</span><span class="s2">:</span>
+            <span class="s0">raise </span><span class="s1">NoEmoji</span><span class="s2">(</span><span class="s5">f&quot;No emoji called </span><span class="s0">{</span><span class="s1">name</span><span class="s0">!r}</span><span class="s5">&quot;</span><span class="s2">)</span>
+        <span class="s0">if </span><span class="s1">variant </span><span class="s0">is not None</span><span class="s2">:</span>
+            <span class="s1">self</span><span class="s2">.</span><span class="s1">_char </span><span class="s2">+= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">VARIANTS</span><span class="s2">.</span><span class="s1">get</span><span class="s2">(</span><span class="s1">variant</span><span class="s2">, </span><span class="s5">&quot;&quot;</span><span class="s2">)</span>
+
+    <span class="s2">@</span><span class="s1">classmethod</span>
+    <span class="s0">def </span><span class="s1">replace</span><span class="s2">(</span><span class="s1">cls</span><span class="s2">, </span><span class="s1">text</span><span class="s2">: </span><span class="s1">str</span><span class="s2">) </span><span class="s1">-&gt; str</span><span class="s2">:</span>
+        <span class="s6">&quot;&quot;&quot;Replace emoji markup with corresponding unicode characters. 
+ 
+        Args: 
+            text (str): A string with emojis codes, e.g. &quot;Hello :smiley:!&quot; 
+ 
+        Returns: 
+            str: A string with emoji codes replaces with actual emoji. 
+        &quot;&quot;&quot;</span>
+        <span class="s0">return </span><span class="s1">_emoji_replace</span><span class="s2">(</span><span class="s1">text</span><span class="s2">)</span>
+
+    <span class="s0">def </span><span class="s1">__repr__</span><span class="s2">(</span><span class="s1">self</span><span class="s2">) </span><span class="s1">-&gt; str</span><span class="s2">:</span>
+        <span class="s0">return </span><span class="s5">f&quot;&lt;emoji </span><span class="s0">{</span><span class="s1">self</span><span class="s2">.</span><span class="s1">name</span><span class="s0">!r}</span><span class="s5">&gt;&quot;</span>
+
+    <span class="s0">def </span><span class="s1">__str__</span><span class="s2">(</span><span class="s1">self</span><span class="s2">) </span><span class="s1">-&gt; str</span><span class="s2">:</span>
+        <span class="s0">return </span><span class="s1">self</span><span class="s2">.</span><span class="s1">_char</span>
+
+    <span class="s0">def </span><span class="s1">__rich_console__</span><span class="s2">(</span>
+        <span class="s1">self</span><span class="s2">, </span><span class="s1">console</span><span class="s2">: </span><span class="s5">&quot;Console&quot;</span><span class="s2">, </span><span class="s1">options</span><span class="s2">: </span><span class="s5">&quot;ConsoleOptions&quot;</span>
+    <span class="s2">) </span><span class="s1">-&gt; </span><span class="s5">&quot;RenderResult&quot;</span><span class="s2">:</span>
+        <span class="s0">yield </span><span class="s1">Segment</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">_char</span><span class="s2">, </span><span class="s1">console</span><span class="s2">.</span><span class="s1">get_style</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">style</span><span class="s2">))</span>
+
+
+<span class="s0">if </span><span class="s1">__name__ </span><span class="s2">== </span><span class="s5">&quot;__main__&quot;</span><span class="s2">:  </span><span class="s4"># pragma: no cover</span>
+    <span class="s0">import </span><span class="s1">sys</span>
+
+    <span class="s0">from </span><span class="s1">pip</span><span class="s2">.</span><span class="s1">_vendor</span><span class="s2">.</span><span class="s1">rich</span><span class="s2">.</span><span class="s1">columns </span><span class="s0">import </span><span class="s1">Columns</span>
+    <span class="s0">from </span><span class="s1">pip</span><span class="s2">.</span><span class="s1">_vendor</span><span class="s2">.</span><span class="s1">rich</span><span class="s2">.</span><span class="s1">console </span><span class="s0">import </span><span class="s1">Console</span>
+
+    <span class="s1">console </span><span class="s2">= </span><span class="s1">Console</span><span class="s2">(</span><span class="s1">record</span><span class="s2">=</span><span class="s0">True</span><span class="s2">)</span>
+
+    <span class="s1">columns </span><span class="s2">= </span><span class="s1">Columns</span><span class="s2">(</span>
+        <span class="s2">(</span><span class="s5">f&quot;:</span><span class="s0">{</span><span class="s1">name</span><span class="s0">}</span><span class="s5">: </span><span class="s0">{</span><span class="s1">name</span><span class="s0">}</span><span class="s5">&quot; </span><span class="s0">for </span><span class="s1">name </span><span class="s0">in </span><span class="s1">sorted</span><span class="s2">(</span><span class="s1">EMOJI</span><span class="s2">.</span><span class="s1">keys</span><span class="s2">()) </span><span class="s0">if </span><span class="s5">&quot;</span><span class="s0">\u200D</span><span class="s5">&quot; </span><span class="s0">not in </span><span class="s1">name</span><span class="s2">),</span>
+        <span class="s1">column_first</span><span class="s2">=</span><span class="s0">True</span><span class="s2">,</span>
+    <span class="s2">)</span>
+
+    <span class="s1">console</span><span class="s2">.</span><span class="s1">print</span><span class="s2">(</span><span class="s1">columns</span><span class="s2">)</span>
+    <span class="s0">if </span><span class="s1">len</span><span class="s2">(</span><span class="s1">sys</span><span class="s2">.</span><span class="s1">argv</span><span class="s2">) &gt; </span><span class="s3">1</span><span class="s2">:</span>
+        <span class="s1">console</span><span class="s2">.</span><span class="s1">save_html</span><span class="s2">(</span><span class="s1">sys</span><span class="s2">.</span><span class="s1">argv</span><span class="s2">[</span><span class="s3">1</span><span class="s2">])</span>
+</pre>
+</body>
+</html>

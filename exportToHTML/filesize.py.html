@@ -1,0 +1,112 @@
+<html>
+<head>
+<title>filesize.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #7a7e85;}
+.s1 { color: #bcbec4;}
+.s2 { color: #5f826b; font-style: italic;}
+.s3 { color: #bcbec4;}
+.s4 { color: #6aab73;}
+.s5 { color: #cf8e6d;}
+.s6 { color: #2aacb8;}
+</style>
+</head>
+<body bgcolor="#1e1f22">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+filesize.py</font>
+</center></td></tr></table>
+<pre><span class="s0"># coding: utf-8</span>
+<span class="s2">&quot;&quot;&quot;Functions for reporting filesizes. Borrowed from https://github.com/PyFilesystem/pyfilesystem2 
+ 
+The functions declared in this module should cover the different 
+use cases needed to generate a string representation of a file size 
+using several different units. Since there are many standards regarding 
+file size units, three different functions have been implemented. 
+ 
+See Also: 
+    * `Wikipedia: Binary prefix &lt;https://en.wikipedia.org/wiki/Binary_prefix&gt;`_ 
+ 
+&quot;&quot;&quot;</span>
+
+<span class="s1">__all__ </span><span class="s3">= [</span><span class="s4">&quot;decimal&quot;</span><span class="s3">]</span>
+
+<span class="s5">from </span><span class="s1">typing </span><span class="s5">import </span><span class="s1">Iterable</span><span class="s3">, </span><span class="s1">List</span><span class="s3">, </span><span class="s1">Optional</span><span class="s3">, </span><span class="s1">Tuple</span>
+
+
+<span class="s5">def </span><span class="s1">_to_str</span><span class="s3">(</span>
+    <span class="s1">size</span><span class="s3">: </span><span class="s1">int</span><span class="s3">,</span>
+    <span class="s1">suffixes</span><span class="s3">: </span><span class="s1">Iterable</span><span class="s3">[</span><span class="s1">str</span><span class="s3">],</span>
+    <span class="s1">base</span><span class="s3">: </span><span class="s1">int</span><span class="s3">,</span>
+    <span class="s3">*,</span>
+    <span class="s1">precision</span><span class="s3">: </span><span class="s1">Optional</span><span class="s3">[</span><span class="s1">int</span><span class="s3">] = </span><span class="s6">1</span><span class="s3">,</span>
+    <span class="s1">separator</span><span class="s3">: </span><span class="s1">Optional</span><span class="s3">[</span><span class="s1">str</span><span class="s3">] = </span><span class="s4">&quot; &quot;</span><span class="s3">,</span>
+<span class="s3">) </span><span class="s1">-&gt; str</span><span class="s3">:</span>
+    <span class="s5">if </span><span class="s1">size </span><span class="s3">== </span><span class="s6">1</span><span class="s3">:</span>
+        <span class="s5">return </span><span class="s4">&quot;1 byte&quot;</span>
+    <span class="s5">elif </span><span class="s1">size </span><span class="s3">&lt; </span><span class="s1">base</span><span class="s3">:</span>
+        <span class="s5">return </span><span class="s4">&quot;{:,} bytes&quot;</span><span class="s3">.</span><span class="s1">format</span><span class="s3">(</span><span class="s1">size</span><span class="s3">)</span>
+
+    <span class="s5">for </span><span class="s1">i</span><span class="s3">, </span><span class="s1">suffix </span><span class="s5">in </span><span class="s1">enumerate</span><span class="s3">(</span><span class="s1">suffixes</span><span class="s3">, </span><span class="s6">2</span><span class="s3">):  </span><span class="s0"># noqa: B007</span>
+        <span class="s1">unit </span><span class="s3">= </span><span class="s1">base</span><span class="s3">**</span><span class="s1">i</span>
+        <span class="s5">if </span><span class="s1">size </span><span class="s3">&lt; </span><span class="s1">unit</span><span class="s3">:</span>
+            <span class="s5">break</span>
+    <span class="s5">return </span><span class="s4">&quot;{:,.{precision}f}{separator}{}&quot;</span><span class="s3">.</span><span class="s1">format</span><span class="s3">(</span>
+        <span class="s3">(</span><span class="s1">base </span><span class="s3">* </span><span class="s1">size </span><span class="s3">/ </span><span class="s1">unit</span><span class="s3">),</span>
+        <span class="s1">suffix</span><span class="s3">,</span>
+        <span class="s1">precision</span><span class="s3">=</span><span class="s1">precision</span><span class="s3">,</span>
+        <span class="s1">separator</span><span class="s3">=</span><span class="s1">separator</span><span class="s3">,</span>
+    <span class="s3">)</span>
+
+
+<span class="s5">def </span><span class="s1">pick_unit_and_suffix</span><span class="s3">(</span><span class="s1">size</span><span class="s3">: </span><span class="s1">int</span><span class="s3">, </span><span class="s1">suffixes</span><span class="s3">: </span><span class="s1">List</span><span class="s3">[</span><span class="s1">str</span><span class="s3">], </span><span class="s1">base</span><span class="s3">: </span><span class="s1">int</span><span class="s3">) </span><span class="s1">-&gt; Tuple</span><span class="s3">[</span><span class="s1">int</span><span class="s3">, </span><span class="s1">str</span><span class="s3">]:</span>
+    <span class="s2">&quot;&quot;&quot;Pick a suffix and base for the given size.&quot;&quot;&quot;</span>
+    <span class="s5">for </span><span class="s1">i</span><span class="s3">, </span><span class="s1">suffix </span><span class="s5">in </span><span class="s1">enumerate</span><span class="s3">(</span><span class="s1">suffixes</span><span class="s3">):</span>
+        <span class="s1">unit </span><span class="s3">= </span><span class="s1">base</span><span class="s3">**</span><span class="s1">i</span>
+        <span class="s5">if </span><span class="s1">size </span><span class="s3">&lt; </span><span class="s1">unit </span><span class="s3">* </span><span class="s1">base</span><span class="s3">:</span>
+            <span class="s5">break</span>
+    <span class="s5">return </span><span class="s1">unit</span><span class="s3">, </span><span class="s1">suffix</span>
+
+
+<span class="s5">def </span><span class="s1">decimal</span><span class="s3">(</span>
+    <span class="s1">size</span><span class="s3">: </span><span class="s1">int</span><span class="s3">,</span>
+    <span class="s3">*,</span>
+    <span class="s1">precision</span><span class="s3">: </span><span class="s1">Optional</span><span class="s3">[</span><span class="s1">int</span><span class="s3">] = </span><span class="s6">1</span><span class="s3">,</span>
+    <span class="s1">separator</span><span class="s3">: </span><span class="s1">Optional</span><span class="s3">[</span><span class="s1">str</span><span class="s3">] = </span><span class="s4">&quot; &quot;</span><span class="s3">,</span>
+<span class="s3">) </span><span class="s1">-&gt; str</span><span class="s3">:</span>
+    <span class="s2">&quot;&quot;&quot;Convert a filesize in to a string (powers of 1000, SI prefixes). 
+ 
+    In this convention, ``1000 B = 1 kB``. 
+ 
+    This is typically the format used to advertise the storage 
+    capacity of USB flash drives and the like (*256 MB* meaning 
+    actually a storage capacity of more than *256 000 000 B*), 
+    or used by **Mac OS X** since v10.6 to report file sizes. 
+ 
+    Arguments: 
+        int (size): A file size. 
+        int (precision): The number of decimal places to include (default = 1). 
+        str (separator): The string to separate the value from the units (default = &quot; &quot;). 
+ 
+    Returns: 
+        `str`: A string containing a abbreviated file size and units. 
+ 
+    Example: 
+        &gt;&gt;&gt; filesize.decimal(30000) 
+        '30.0 kB' 
+        &gt;&gt;&gt; filesize.decimal(30000, precision=2, separator=&quot;&quot;) 
+        '30.00kB' 
+ 
+    &quot;&quot;&quot;</span>
+    <span class="s5">return </span><span class="s1">_to_str</span><span class="s3">(</span>
+        <span class="s1">size</span><span class="s3">,</span>
+        <span class="s3">(</span><span class="s4">&quot;kB&quot;</span><span class="s3">, </span><span class="s4">&quot;MB&quot;</span><span class="s3">, </span><span class="s4">&quot;GB&quot;</span><span class="s3">, </span><span class="s4">&quot;TB&quot;</span><span class="s3">, </span><span class="s4">&quot;PB&quot;</span><span class="s3">, </span><span class="s4">&quot;EB&quot;</span><span class="s3">, </span><span class="s4">&quot;ZB&quot;</span><span class="s3">, </span><span class="s4">&quot;YB&quot;</span><span class="s3">),</span>
+        <span class="s6">1000</span><span class="s3">,</span>
+        <span class="s1">precision</span><span class="s3">=</span><span class="s1">precision</span><span class="s3">,</span>
+        <span class="s1">separator</span><span class="s3">=</span><span class="s1">separator</span><span class="s3">,</span>
+    <span class="s3">)</span>
+</pre>
+</body>
+</html>

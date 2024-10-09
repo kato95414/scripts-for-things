@@ -1,0 +1,95 @@
+<html>
+<head>
+<title>_windows.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cf8e6d;}
+.s1 { color: #bcbec4;}
+.s2 { color: #bcbec4;}
+.s3 { color: #5f826b; font-style: italic;}
+.s4 { color: #6aab73;}
+.s5 { color: #7a7e85;}
+.s6 { color: #2aacb8;}
+</style>
+</head>
+<body bgcolor="#1e1f22">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+_windows.py</font>
+</center></td></tr></table>
+<pre><span class="s0">import </span><span class="s1">sys</span>
+<span class="s0">from </span><span class="s1">dataclasses </span><span class="s0">import </span><span class="s1">dataclass</span>
+
+
+<span class="s2">@</span><span class="s1">dataclass</span>
+<span class="s0">class </span><span class="s1">WindowsConsoleFeatures</span><span class="s2">:</span>
+    <span class="s3">&quot;&quot;&quot;Windows features available.&quot;&quot;&quot;</span>
+
+    <span class="s1">vt</span><span class="s2">: </span><span class="s1">bool </span><span class="s2">= </span><span class="s0">False</span>
+    <span class="s4">&quot;&quot;&quot;The console supports VT codes.&quot;&quot;&quot;</span>
+    <span class="s1">truecolor</span><span class="s2">: </span><span class="s1">bool </span><span class="s2">= </span><span class="s0">False</span>
+    <span class="s4">&quot;&quot;&quot;The console supports truecolor.&quot;&quot;&quot;</span>
+
+
+<span class="s0">try</span><span class="s2">:</span>
+    <span class="s0">import </span><span class="s1">ctypes</span>
+    <span class="s0">from </span><span class="s1">ctypes </span><span class="s0">import </span><span class="s1">LibraryLoader</span>
+
+    <span class="s0">if </span><span class="s1">sys</span><span class="s2">.</span><span class="s1">platform </span><span class="s2">== </span><span class="s4">&quot;win32&quot;</span><span class="s2">:</span>
+        <span class="s1">windll </span><span class="s2">= </span><span class="s1">LibraryLoader</span><span class="s2">(</span><span class="s1">ctypes</span><span class="s2">.</span><span class="s1">WinDLL</span><span class="s2">)</span>
+    <span class="s0">else</span><span class="s2">:</span>
+        <span class="s1">windll </span><span class="s2">= </span><span class="s0">None</span>
+        <span class="s0">raise </span><span class="s1">ImportError</span><span class="s2">(</span><span class="s4">&quot;Not windows&quot;</span><span class="s2">)</span>
+
+    <span class="s0">from </span><span class="s1">pip</span><span class="s2">.</span><span class="s1">_vendor</span><span class="s2">.</span><span class="s1">rich</span><span class="s2">.</span><span class="s1">_win32_console </span><span class="s0">import </span><span class="s2">(</span>
+        <span class="s1">ENABLE_VIRTUAL_TERMINAL_PROCESSING</span><span class="s2">,</span>
+        <span class="s1">GetConsoleMode</span><span class="s2">,</span>
+        <span class="s1">GetStdHandle</span><span class="s2">,</span>
+        <span class="s1">LegacyWindowsError</span><span class="s2">,</span>
+    <span class="s2">)</span>
+
+<span class="s0">except </span><span class="s2">(</span><span class="s1">AttributeError</span><span class="s2">, </span><span class="s1">ImportError</span><span class="s2">, </span><span class="s1">ValueError</span><span class="s2">):</span>
+
+    <span class="s5"># Fallback if we can't load the Windows DLL</span>
+    <span class="s0">def </span><span class="s1">get_windows_console_features</span><span class="s2">() </span><span class="s1">-&gt; WindowsConsoleFeatures</span><span class="s2">:</span>
+        <span class="s1">features </span><span class="s2">= </span><span class="s1">WindowsConsoleFeatures</span><span class="s2">()</span>
+        <span class="s0">return </span><span class="s1">features</span>
+
+<span class="s0">else</span><span class="s2">:</span>
+
+    <span class="s0">def </span><span class="s1">get_windows_console_features</span><span class="s2">() </span><span class="s1">-&gt; WindowsConsoleFeatures</span><span class="s2">:</span>
+        <span class="s3">&quot;&quot;&quot;Get windows console features. 
+ 
+        Returns: 
+            WindowsConsoleFeatures: An instance of WindowsConsoleFeatures. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">handle </span><span class="s2">= </span><span class="s1">GetStdHandle</span><span class="s2">()</span>
+        <span class="s0">try</span><span class="s2">:</span>
+            <span class="s1">console_mode </span><span class="s2">= </span><span class="s1">GetConsoleMode</span><span class="s2">(</span><span class="s1">handle</span><span class="s2">)</span>
+            <span class="s1">success </span><span class="s2">= </span><span class="s0">True</span>
+        <span class="s0">except </span><span class="s1">LegacyWindowsError</span><span class="s2">:</span>
+            <span class="s1">console_mode </span><span class="s2">= </span><span class="s6">0</span>
+            <span class="s1">success </span><span class="s2">= </span><span class="s0">False</span>
+        <span class="s1">vt </span><span class="s2">= </span><span class="s1">bool</span><span class="s2">(</span><span class="s1">success </span><span class="s0">and </span><span class="s1">console_mode </span><span class="s2">&amp; </span><span class="s1">ENABLE_VIRTUAL_TERMINAL_PROCESSING</span><span class="s2">)</span>
+        <span class="s1">truecolor </span><span class="s2">= </span><span class="s0">False</span>
+        <span class="s0">if </span><span class="s1">vt</span><span class="s2">:</span>
+            <span class="s1">win_version </span><span class="s2">= </span><span class="s1">sys</span><span class="s2">.</span><span class="s1">getwindowsversion</span><span class="s2">()</span>
+            <span class="s1">truecolor </span><span class="s2">= </span><span class="s1">win_version</span><span class="s2">.</span><span class="s1">major </span><span class="s2">&gt; </span><span class="s6">10 </span><span class="s0">or </span><span class="s2">(</span>
+                <span class="s1">win_version</span><span class="s2">.</span><span class="s1">major </span><span class="s2">== </span><span class="s6">10 </span><span class="s0">and </span><span class="s1">win_version</span><span class="s2">.</span><span class="s1">build </span><span class="s2">&gt;= </span><span class="s6">15063</span>
+            <span class="s2">)</span>
+        <span class="s1">features </span><span class="s2">= </span><span class="s1">WindowsConsoleFeatures</span><span class="s2">(</span><span class="s1">vt</span><span class="s2">=</span><span class="s1">vt</span><span class="s2">, </span><span class="s1">truecolor</span><span class="s2">=</span><span class="s1">truecolor</span><span class="s2">)</span>
+        <span class="s0">return </span><span class="s1">features</span>
+
+
+<span class="s0">if </span><span class="s1">__name__ </span><span class="s2">== </span><span class="s4">&quot;__main__&quot;</span><span class="s2">:</span>
+    <span class="s0">import </span><span class="s1">platform</span>
+
+    <span class="s1">features </span><span class="s2">= </span><span class="s1">get_windows_console_features</span><span class="s2">()</span>
+    <span class="s0">from </span><span class="s1">pip</span><span class="s2">.</span><span class="s1">_vendor</span><span class="s2">.</span><span class="s1">rich </span><span class="s0">import </span><span class="s1">print</span>
+
+    <span class="s1">print</span><span class="s2">(</span><span class="s4">f'platform=&quot;</span><span class="s0">{</span><span class="s1">platform</span><span class="s2">.</span><span class="s1">system</span><span class="s2">()</span><span class="s0">}</span><span class="s4">&quot;'</span><span class="s2">)</span>
+    <span class="s1">print</span><span class="s2">(</span><span class="s1">repr</span><span class="s2">(</span><span class="s1">features</span><span class="s2">))</span>
+</pre>
+</body>
+</html>

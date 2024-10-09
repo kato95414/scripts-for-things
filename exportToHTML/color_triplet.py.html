@@ -1,0 +1,60 @@
+<html>
+<head>
+<title>color_triplet.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cf8e6d;}
+.s1 { color: #bcbec4;}
+.s2 { color: #bcbec4;}
+.s3 { color: #5f826b; font-style: italic;}
+.s4 { color: #6aab73;}
+.s5 { color: #2aacb8;}
+</style>
+</head>
+<body bgcolor="#1e1f22">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+color_triplet.py</font>
+</center></td></tr></table>
+<pre><span class="s0">from </span><span class="s1">typing </span><span class="s0">import </span><span class="s1">NamedTuple</span><span class="s2">, </span><span class="s1">Tuple</span>
+
+
+<span class="s0">class </span><span class="s1">ColorTriplet</span><span class="s2">(</span><span class="s1">NamedTuple</span><span class="s2">):</span>
+    <span class="s3">&quot;&quot;&quot;The red, green, and blue components of a color.&quot;&quot;&quot;</span>
+
+    <span class="s1">red</span><span class="s2">: </span><span class="s1">int</span>
+    <span class="s4">&quot;&quot;&quot;Red component in 0 to 255 range.&quot;&quot;&quot;</span>
+    <span class="s1">green</span><span class="s2">: </span><span class="s1">int</span>
+    <span class="s4">&quot;&quot;&quot;Green component in 0 to 255 range.&quot;&quot;&quot;</span>
+    <span class="s1">blue</span><span class="s2">: </span><span class="s1">int</span>
+    <span class="s4">&quot;&quot;&quot;Blue component in 0 to 255 range.&quot;&quot;&quot;</span>
+
+    <span class="s2">@</span><span class="s1">property</span>
+    <span class="s0">def </span><span class="s1">hex</span><span class="s2">(</span><span class="s1">self</span><span class="s2">) </span><span class="s1">-&gt; str</span><span class="s2">:</span>
+        <span class="s3">&quot;&quot;&quot;get the color triplet in CSS style.&quot;&quot;&quot;</span>
+        <span class="s1">red</span><span class="s2">, </span><span class="s1">green</span><span class="s2">, </span><span class="s1">blue </span><span class="s2">= </span><span class="s1">self</span>
+        <span class="s0">return </span><span class="s4">f&quot;#</span><span class="s0">{</span><span class="s1">red</span><span class="s0">:</span><span class="s4">02x</span><span class="s0">}{</span><span class="s1">green</span><span class="s0">:</span><span class="s4">02x</span><span class="s0">}{</span><span class="s1">blue</span><span class="s0">:</span><span class="s4">02x</span><span class="s0">}</span><span class="s4">&quot;</span>
+
+    <span class="s2">@</span><span class="s1">property</span>
+    <span class="s0">def </span><span class="s1">rgb</span><span class="s2">(</span><span class="s1">self</span><span class="s2">) </span><span class="s1">-&gt; str</span><span class="s2">:</span>
+        <span class="s3">&quot;&quot;&quot;The color in RGB format. 
+ 
+        Returns: 
+            str: An rgb color, e.g. ``&quot;rgb(100,23,255)&quot;``. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">red</span><span class="s2">, </span><span class="s1">green</span><span class="s2">, </span><span class="s1">blue </span><span class="s2">= </span><span class="s1">self</span>
+        <span class="s0">return </span><span class="s4">f&quot;rgb(</span><span class="s0">{</span><span class="s1">red</span><span class="s0">}</span><span class="s4">,</span><span class="s0">{</span><span class="s1">green</span><span class="s0">}</span><span class="s4">,</span><span class="s0">{</span><span class="s1">blue</span><span class="s0">}</span><span class="s4">)&quot;</span>
+
+    <span class="s2">@</span><span class="s1">property</span>
+    <span class="s0">def </span><span class="s1">normalized</span><span class="s2">(</span><span class="s1">self</span><span class="s2">) </span><span class="s1">-&gt; Tuple</span><span class="s2">[</span><span class="s1">float</span><span class="s2">, </span><span class="s1">float</span><span class="s2">, </span><span class="s1">float</span><span class="s2">]:</span>
+        <span class="s3">&quot;&quot;&quot;Convert components into floats between 0 and 1. 
+ 
+        Returns: 
+            Tuple[float, float, float]: A tuple of three normalized colour components. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">red</span><span class="s2">, </span><span class="s1">green</span><span class="s2">, </span><span class="s1">blue </span><span class="s2">= </span><span class="s1">self</span>
+        <span class="s0">return </span><span class="s1">red </span><span class="s2">/ </span><span class="s5">255.0</span><span class="s2">, </span><span class="s1">green </span><span class="s2">/ </span><span class="s5">255.0</span><span class="s2">, </span><span class="s1">blue </span><span class="s2">/ </span><span class="s5">255.0</span>
+</pre>
+</body>
+</html>

@@ -1,0 +1,106 @@
+<html>
+<head>
+<title>enums.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #5f826b; font-style: italic;}
+.s1 { color: #bcbec4;}
+.s2 { color: #cf8e6d;}
+.s3 { color: #bcbec4;}
+.s4 { color: #2aacb8;}
+</style>
+</head>
+<body bgcolor="#1e1f22">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+enums.py</font>
+</center></td></tr></table>
+<pre><span class="s0">&quot;&quot;&quot; 
+All of the Enums that are used throughout the chardet package. 
+ 
+:author: Dan Blanchard (dan.blanchard@gmail.com) 
+&quot;&quot;&quot;</span>
+
+<span class="s2">from </span><span class="s1">enum </span><span class="s2">import </span><span class="s1">Enum</span><span class="s3">, </span><span class="s1">Flag</span>
+
+
+<span class="s2">class </span><span class="s1">InputState</span><span class="s3">:</span>
+    <span class="s0">&quot;&quot;&quot; 
+    This enum represents the different states a universal detector can be in. 
+    &quot;&quot;&quot;</span>
+
+    <span class="s1">PURE_ASCII </span><span class="s3">= </span><span class="s4">0</span>
+    <span class="s1">ESC_ASCII </span><span class="s3">= </span><span class="s4">1</span>
+    <span class="s1">HIGH_BYTE </span><span class="s3">= </span><span class="s4">2</span>
+
+
+<span class="s2">class </span><span class="s1">LanguageFilter</span><span class="s3">(</span><span class="s1">Flag</span><span class="s3">):</span>
+    <span class="s0">&quot;&quot;&quot; 
+    This enum represents the different language filters we can apply to a 
+    ``UniversalDetector``. 
+    &quot;&quot;&quot;</span>
+
+    <span class="s1">NONE </span><span class="s3">= </span><span class="s4">0x00</span>
+    <span class="s1">CHINESE_SIMPLIFIED </span><span class="s3">= </span><span class="s4">0x01</span>
+    <span class="s1">CHINESE_TRADITIONAL </span><span class="s3">= </span><span class="s4">0x02</span>
+    <span class="s1">JAPANESE </span><span class="s3">= </span><span class="s4">0x04</span>
+    <span class="s1">KOREAN </span><span class="s3">= </span><span class="s4">0x08</span>
+    <span class="s1">NON_CJK </span><span class="s3">= </span><span class="s4">0x10</span>
+    <span class="s1">ALL </span><span class="s3">= </span><span class="s4">0x1F</span>
+    <span class="s1">CHINESE </span><span class="s3">= </span><span class="s1">CHINESE_SIMPLIFIED </span><span class="s3">| </span><span class="s1">CHINESE_TRADITIONAL</span>
+    <span class="s1">CJK </span><span class="s3">= </span><span class="s1">CHINESE </span><span class="s3">| </span><span class="s1">JAPANESE </span><span class="s3">| </span><span class="s1">KOREAN</span>
+
+
+<span class="s2">class </span><span class="s1">ProbingState</span><span class="s3">(</span><span class="s1">Enum</span><span class="s3">):</span>
+    <span class="s0">&quot;&quot;&quot; 
+    This enum represents the different states a prober can be in. 
+    &quot;&quot;&quot;</span>
+
+    <span class="s1">DETECTING </span><span class="s3">= </span><span class="s4">0</span>
+    <span class="s1">FOUND_IT </span><span class="s3">= </span><span class="s4">1</span>
+    <span class="s1">NOT_ME </span><span class="s3">= </span><span class="s4">2</span>
+
+
+<span class="s2">class </span><span class="s1">MachineState</span><span class="s3">:</span>
+    <span class="s0">&quot;&quot;&quot; 
+    This enum represents the different states a state machine can be in. 
+    &quot;&quot;&quot;</span>
+
+    <span class="s1">START </span><span class="s3">= </span><span class="s4">0</span>
+    <span class="s1">ERROR </span><span class="s3">= </span><span class="s4">1</span>
+    <span class="s1">ITS_ME </span><span class="s3">= </span><span class="s4">2</span>
+
+
+<span class="s2">class </span><span class="s1">SequenceLikelihood</span><span class="s3">:</span>
+    <span class="s0">&quot;&quot;&quot; 
+    This enum represents the likelihood of a character following the previous one. 
+    &quot;&quot;&quot;</span>
+
+    <span class="s1">NEGATIVE </span><span class="s3">= </span><span class="s4">0</span>
+    <span class="s1">UNLIKELY </span><span class="s3">= </span><span class="s4">1</span>
+    <span class="s1">LIKELY </span><span class="s3">= </span><span class="s4">2</span>
+    <span class="s1">POSITIVE </span><span class="s3">= </span><span class="s4">3</span>
+
+    <span class="s3">@</span><span class="s1">classmethod</span>
+    <span class="s2">def </span><span class="s1">get_num_categories</span><span class="s3">(</span><span class="s1">cls</span><span class="s3">) </span><span class="s1">-&gt; int</span><span class="s3">:</span>
+        <span class="s0">&quot;&quot;&quot;:returns: The number of likelihood categories in the enum.&quot;&quot;&quot;</span>
+        <span class="s2">return </span><span class="s4">4</span>
+
+
+<span class="s2">class </span><span class="s1">CharacterCategory</span><span class="s3">:</span>
+    <span class="s0">&quot;&quot;&quot; 
+    This enum represents the different categories language models for 
+    ``SingleByteCharsetProber`` put characters into. 
+ 
+    Anything less than CONTROL is considered a letter. 
+    &quot;&quot;&quot;</span>
+
+    <span class="s1">UNDEFINED </span><span class="s3">= </span><span class="s4">255</span>
+    <span class="s1">LINE_BREAK </span><span class="s3">= </span><span class="s4">254</span>
+    <span class="s1">SYMBOL </span><span class="s3">= </span><span class="s4">253</span>
+    <span class="s1">DIGIT </span><span class="s3">= </span><span class="s4">252</span>
+    <span class="s1">CONTROL </span><span class="s3">= </span><span class="s4">251</span>
+</pre>
+</body>
+</html>

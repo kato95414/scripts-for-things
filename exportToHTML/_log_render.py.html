@@ -1,0 +1,116 @@
+<html>
+<head>
+<title>_log_render.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cf8e6d;}
+.s1 { color: #bcbec4;}
+.s2 { color: #bcbec4;}
+.s3 { color: #6aab73;}
+.s4 { color: #2aacb8;}
+.s5 { color: #7a7e85;}
+</style>
+</head>
+<body bgcolor="#1e1f22">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+_log_render.py</font>
+</center></td></tr></table>
+<pre><span class="s0">from </span><span class="s1">datetime </span><span class="s0">import </span><span class="s1">datetime</span>
+<span class="s0">from </span><span class="s1">typing </span><span class="s0">import </span><span class="s1">Iterable</span><span class="s2">, </span><span class="s1">List</span><span class="s2">, </span><span class="s1">Optional</span><span class="s2">, </span><span class="s1">TYPE_CHECKING</span><span class="s2">, </span><span class="s1">Union</span><span class="s2">, </span><span class="s1">Callable</span>
+
+
+<span class="s0">from </span><span class="s2">.</span><span class="s1">text </span><span class="s0">import </span><span class="s1">Text</span><span class="s2">, </span><span class="s1">TextType</span>
+
+<span class="s0">if </span><span class="s1">TYPE_CHECKING</span><span class="s2">:</span>
+    <span class="s0">from </span><span class="s2">.</span><span class="s1">console </span><span class="s0">import </span><span class="s1">Console</span><span class="s2">, </span><span class="s1">ConsoleRenderable</span><span class="s2">, </span><span class="s1">RenderableType</span>
+    <span class="s0">from </span><span class="s2">.</span><span class="s1">table </span><span class="s0">import </span><span class="s1">Table</span>
+
+<span class="s1">FormatTimeCallable </span><span class="s2">= </span><span class="s1">Callable</span><span class="s2">[[</span><span class="s1">datetime</span><span class="s2">], </span><span class="s1">Text</span><span class="s2">]</span>
+
+
+<span class="s0">class </span><span class="s1">LogRender</span><span class="s2">:</span>
+    <span class="s0">def </span><span class="s1">__init__</span><span class="s2">(</span>
+        <span class="s1">self</span><span class="s2">,</span>
+        <span class="s1">show_time</span><span class="s2">: </span><span class="s1">bool </span><span class="s2">= </span><span class="s0">True</span><span class="s2">,</span>
+        <span class="s1">show_level</span><span class="s2">: </span><span class="s1">bool </span><span class="s2">= </span><span class="s0">False</span><span class="s2">,</span>
+        <span class="s1">show_path</span><span class="s2">: </span><span class="s1">bool </span><span class="s2">= </span><span class="s0">True</span><span class="s2">,</span>
+        <span class="s1">time_format</span><span class="s2">: </span><span class="s1">Union</span><span class="s2">[</span><span class="s1">str</span><span class="s2">, </span><span class="s1">FormatTimeCallable</span><span class="s2">] = </span><span class="s3">&quot;[%x %X]&quot;</span><span class="s2">,</span>
+        <span class="s1">omit_repeated_times</span><span class="s2">: </span><span class="s1">bool </span><span class="s2">= </span><span class="s0">True</span><span class="s2">,</span>
+        <span class="s1">level_width</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">int</span><span class="s2">] = </span><span class="s4">8</span><span class="s2">,</span>
+    <span class="s2">) </span><span class="s1">-&gt; </span><span class="s0">None</span><span class="s2">:</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">show_time </span><span class="s2">= </span><span class="s1">show_time</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">show_level </span><span class="s2">= </span><span class="s1">show_level</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">show_path </span><span class="s2">= </span><span class="s1">show_path</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">time_format </span><span class="s2">= </span><span class="s1">time_format</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">omit_repeated_times </span><span class="s2">= </span><span class="s1">omit_repeated_times</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">level_width </span><span class="s2">= </span><span class="s1">level_width</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">_last_time</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">Text</span><span class="s2">] = </span><span class="s0">None</span>
+
+    <span class="s0">def </span><span class="s1">__call__</span><span class="s2">(</span>
+        <span class="s1">self</span><span class="s2">,</span>
+        <span class="s1">console</span><span class="s2">: </span><span class="s3">&quot;Console&quot;</span><span class="s2">,</span>
+        <span class="s1">renderables</span><span class="s2">: </span><span class="s1">Iterable</span><span class="s2">[</span><span class="s3">&quot;ConsoleRenderable&quot;</span><span class="s2">],</span>
+        <span class="s1">log_time</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">datetime</span><span class="s2">] = </span><span class="s0">None</span><span class="s2">,</span>
+        <span class="s1">time_format</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">Union</span><span class="s2">[</span><span class="s1">str</span><span class="s2">, </span><span class="s1">FormatTimeCallable</span><span class="s2">]] = </span><span class="s0">None</span><span class="s2">,</span>
+        <span class="s1">level</span><span class="s2">: </span><span class="s1">TextType </span><span class="s2">= </span><span class="s3">&quot;&quot;</span><span class="s2">,</span>
+        <span class="s1">path</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">str</span><span class="s2">] = </span><span class="s0">None</span><span class="s2">,</span>
+        <span class="s1">line_no</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">int</span><span class="s2">] = </span><span class="s0">None</span><span class="s2">,</span>
+        <span class="s1">link_path</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">str</span><span class="s2">] = </span><span class="s0">None</span><span class="s2">,</span>
+    <span class="s2">) </span><span class="s1">-&gt; </span><span class="s3">&quot;Table&quot;</span><span class="s2">:</span>
+        <span class="s0">from </span><span class="s2">.</span><span class="s1">containers </span><span class="s0">import </span><span class="s1">Renderables</span>
+        <span class="s0">from </span><span class="s2">.</span><span class="s1">table </span><span class="s0">import </span><span class="s1">Table</span>
+
+        <span class="s1">output </span><span class="s2">= </span><span class="s1">Table</span><span class="s2">.</span><span class="s1">grid</span><span class="s2">(</span><span class="s1">padding</span><span class="s2">=(</span><span class="s4">0</span><span class="s2">, </span><span class="s4">1</span><span class="s2">))</span>
+        <span class="s1">output</span><span class="s2">.</span><span class="s1">expand </span><span class="s2">= </span><span class="s0">True</span>
+        <span class="s0">if </span><span class="s1">self</span><span class="s2">.</span><span class="s1">show_time</span><span class="s2">:</span>
+            <span class="s1">output</span><span class="s2">.</span><span class="s1">add_column</span><span class="s2">(</span><span class="s1">style</span><span class="s2">=</span><span class="s3">&quot;log.time&quot;</span><span class="s2">)</span>
+        <span class="s0">if </span><span class="s1">self</span><span class="s2">.</span><span class="s1">show_level</span><span class="s2">:</span>
+            <span class="s1">output</span><span class="s2">.</span><span class="s1">add_column</span><span class="s2">(</span><span class="s1">style</span><span class="s2">=</span><span class="s3">&quot;log.level&quot;</span><span class="s2">, </span><span class="s1">width</span><span class="s2">=</span><span class="s1">self</span><span class="s2">.</span><span class="s1">level_width</span><span class="s2">)</span>
+        <span class="s1">output</span><span class="s2">.</span><span class="s1">add_column</span><span class="s2">(</span><span class="s1">ratio</span><span class="s2">=</span><span class="s4">1</span><span class="s2">, </span><span class="s1">style</span><span class="s2">=</span><span class="s3">&quot;log.message&quot;</span><span class="s2">, </span><span class="s1">overflow</span><span class="s2">=</span><span class="s3">&quot;fold&quot;</span><span class="s2">)</span>
+        <span class="s0">if </span><span class="s1">self</span><span class="s2">.</span><span class="s1">show_path </span><span class="s0">and </span><span class="s1">path</span><span class="s2">:</span>
+            <span class="s1">output</span><span class="s2">.</span><span class="s1">add_column</span><span class="s2">(</span><span class="s1">style</span><span class="s2">=</span><span class="s3">&quot;log.path&quot;</span><span class="s2">)</span>
+        <span class="s1">row</span><span class="s2">: </span><span class="s1">List</span><span class="s2">[</span><span class="s3">&quot;RenderableType&quot;</span><span class="s2">] = []</span>
+        <span class="s0">if </span><span class="s1">self</span><span class="s2">.</span><span class="s1">show_time</span><span class="s2">:</span>
+            <span class="s1">log_time </span><span class="s2">= </span><span class="s1">log_time </span><span class="s0">or </span><span class="s1">console</span><span class="s2">.</span><span class="s1">get_datetime</span><span class="s2">()</span>
+            <span class="s1">time_format </span><span class="s2">= </span><span class="s1">time_format </span><span class="s0">or </span><span class="s1">self</span><span class="s2">.</span><span class="s1">time_format</span>
+            <span class="s0">if </span><span class="s1">callable</span><span class="s2">(</span><span class="s1">time_format</span><span class="s2">):</span>
+                <span class="s1">log_time_display </span><span class="s2">= </span><span class="s1">time_format</span><span class="s2">(</span><span class="s1">log_time</span><span class="s2">)</span>
+            <span class="s0">else</span><span class="s2">:</span>
+                <span class="s1">log_time_display </span><span class="s2">= </span><span class="s1">Text</span><span class="s2">(</span><span class="s1">log_time</span><span class="s2">.</span><span class="s1">strftime</span><span class="s2">(</span><span class="s1">time_format</span><span class="s2">))</span>
+            <span class="s0">if </span><span class="s1">log_time_display </span><span class="s2">== </span><span class="s1">self</span><span class="s2">.</span><span class="s1">_last_time </span><span class="s0">and </span><span class="s1">self</span><span class="s2">.</span><span class="s1">omit_repeated_times</span><span class="s2">:</span>
+                <span class="s1">row</span><span class="s2">.</span><span class="s1">append</span><span class="s2">(</span><span class="s1">Text</span><span class="s2">(</span><span class="s3">&quot; &quot; </span><span class="s2">* </span><span class="s1">len</span><span class="s2">(</span><span class="s1">log_time_display</span><span class="s2">)))</span>
+            <span class="s0">else</span><span class="s2">:</span>
+                <span class="s1">row</span><span class="s2">.</span><span class="s1">append</span><span class="s2">(</span><span class="s1">log_time_display</span><span class="s2">)</span>
+                <span class="s1">self</span><span class="s2">.</span><span class="s1">_last_time </span><span class="s2">= </span><span class="s1">log_time_display</span>
+        <span class="s0">if </span><span class="s1">self</span><span class="s2">.</span><span class="s1">show_level</span><span class="s2">:</span>
+            <span class="s1">row</span><span class="s2">.</span><span class="s1">append</span><span class="s2">(</span><span class="s1">level</span><span class="s2">)</span>
+
+        <span class="s1">row</span><span class="s2">.</span><span class="s1">append</span><span class="s2">(</span><span class="s1">Renderables</span><span class="s2">(</span><span class="s1">renderables</span><span class="s2">))</span>
+        <span class="s0">if </span><span class="s1">self</span><span class="s2">.</span><span class="s1">show_path </span><span class="s0">and </span><span class="s1">path</span><span class="s2">:</span>
+            <span class="s1">path_text </span><span class="s2">= </span><span class="s1">Text</span><span class="s2">()</span>
+            <span class="s1">path_text</span><span class="s2">.</span><span class="s1">append</span><span class="s2">(</span>
+                <span class="s1">path</span><span class="s2">, </span><span class="s1">style</span><span class="s2">=</span><span class="s3">f&quot;link file://</span><span class="s0">{</span><span class="s1">link_path</span><span class="s0">}</span><span class="s3">&quot; </span><span class="s0">if </span><span class="s1">link_path </span><span class="s0">else </span><span class="s3">&quot;&quot;</span>
+            <span class="s2">)</span>
+            <span class="s0">if </span><span class="s1">line_no</span><span class="s2">:</span>
+                <span class="s1">path_text</span><span class="s2">.</span><span class="s1">append</span><span class="s2">(</span><span class="s3">&quot;:&quot;</span><span class="s2">)</span>
+                <span class="s1">path_text</span><span class="s2">.</span><span class="s1">append</span><span class="s2">(</span>
+                    <span class="s3">f&quot;</span><span class="s0">{</span><span class="s1">line_no</span><span class="s0">}</span><span class="s3">&quot;</span><span class="s2">,</span>
+                    <span class="s1">style</span><span class="s2">=</span><span class="s3">f&quot;link file://</span><span class="s0">{</span><span class="s1">link_path</span><span class="s0">}</span><span class="s3">#</span><span class="s0">{</span><span class="s1">line_no</span><span class="s0">}</span><span class="s3">&quot; </span><span class="s0">if </span><span class="s1">link_path </span><span class="s0">else </span><span class="s3">&quot;&quot;</span><span class="s2">,</span>
+                <span class="s2">)</span>
+            <span class="s1">row</span><span class="s2">.</span><span class="s1">append</span><span class="s2">(</span><span class="s1">path_text</span><span class="s2">)</span>
+
+        <span class="s1">output</span><span class="s2">.</span><span class="s1">add_row</span><span class="s2">(*</span><span class="s1">row</span><span class="s2">)</span>
+        <span class="s0">return </span><span class="s1">output</span>
+
+
+<span class="s0">if </span><span class="s1">__name__ </span><span class="s2">== </span><span class="s3">&quot;__main__&quot;</span><span class="s2">:  </span><span class="s5"># pragma: no cover</span>
+    <span class="s0">from </span><span class="s1">pip</span><span class="s2">.</span><span class="s1">_vendor</span><span class="s2">.</span><span class="s1">rich</span><span class="s2">.</span><span class="s1">console </span><span class="s0">import </span><span class="s1">Console</span>
+
+    <span class="s1">c </span><span class="s2">= </span><span class="s1">Console</span><span class="s2">()</span>
+    <span class="s1">c</span><span class="s2">.</span><span class="s1">print</span><span class="s2">(</span><span class="s3">&quot;[on blue]Hello&quot;</span><span class="s2">, </span><span class="s1">justify</span><span class="s2">=</span><span class="s3">&quot;right&quot;</span><span class="s2">)</span>
+    <span class="s1">c</span><span class="s2">.</span><span class="s1">log</span><span class="s2">(</span><span class="s3">&quot;[on blue]hello&quot;</span><span class="s2">, </span><span class="s1">justify</span><span class="s2">=</span><span class="s3">&quot;right&quot;</span><span class="s2">)</span>
+</pre>
+</body>
+</html>

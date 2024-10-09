@@ -1,0 +1,108 @@
+<html>
+<head>
+<title>sbcsgroupprober.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #7a7e85;}
+.s1 { color: #bcbec4;}
+.s2 { color: #cf8e6d;}
+.s3 { color: #bcbec4;}
+</style>
+</head>
+<body bgcolor="#1e1f22">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+sbcsgroupprober.py</font>
+</center></td></tr></table>
+<pre><span class="s0">######################## BEGIN LICENSE BLOCK ########################</span>
+<span class="s0"># The Original Code is Mozilla Universal charset detector code.</span>
+<span class="s0">#</span>
+<span class="s0"># The Initial Developer of the Original Code is</span>
+<span class="s0"># Netscape Communications Corporation.</span>
+<span class="s0"># Portions created by the Initial Developer are Copyright (C) 2001</span>
+<span class="s0"># the Initial Developer. All Rights Reserved.</span>
+<span class="s0">#</span>
+<span class="s0"># Contributor(s):</span>
+<span class="s0">#   Mark Pilgrim - port to Python</span>
+<span class="s0">#   Shy Shalom - original C code</span>
+<span class="s0">#</span>
+<span class="s0"># This library is free software; you can redistribute it and/or</span>
+<span class="s0"># modify it under the terms of the GNU Lesser General Public</span>
+<span class="s0"># License as published by the Free Software Foundation; either</span>
+<span class="s0"># version 2.1 of the License, or (at your option) any later version.</span>
+<span class="s0">#</span>
+<span class="s0"># This library is distributed in the hope that it will be useful,</span>
+<span class="s0"># but WITHOUT ANY WARRANTY; without even the implied warranty of</span>
+<span class="s0"># MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU</span>
+<span class="s0"># Lesser General Public License for more details.</span>
+<span class="s0">#</span>
+<span class="s0"># You should have received a copy of the GNU Lesser General Public</span>
+<span class="s0"># License along with this library; if not, write to the Free Software</span>
+<span class="s0"># Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA</span>
+<span class="s0"># 02110-1301  USA</span>
+<span class="s0">######################### END LICENSE BLOCK #########################</span>
+
+<span class="s2">from </span><span class="s3">.</span><span class="s1">charsetgroupprober </span><span class="s2">import </span><span class="s1">CharSetGroupProber</span>
+<span class="s2">from </span><span class="s3">.</span><span class="s1">hebrewprober </span><span class="s2">import </span><span class="s1">HebrewProber</span>
+<span class="s2">from </span><span class="s3">.</span><span class="s1">langbulgarianmodel </span><span class="s2">import </span><span class="s1">ISO_8859_5_BULGARIAN_MODEL</span><span class="s3">, </span><span class="s1">WINDOWS_1251_BULGARIAN_MODEL</span>
+<span class="s2">from </span><span class="s3">.</span><span class="s1">langgreekmodel </span><span class="s2">import </span><span class="s1">ISO_8859_7_GREEK_MODEL</span><span class="s3">, </span><span class="s1">WINDOWS_1253_GREEK_MODEL</span>
+<span class="s2">from </span><span class="s3">.</span><span class="s1">langhebrewmodel </span><span class="s2">import </span><span class="s1">WINDOWS_1255_HEBREW_MODEL</span>
+
+<span class="s0"># from .langhungarianmodel import (ISO_8859_2_HUNGARIAN_MODEL,</span>
+<span class="s0">#                                  WINDOWS_1250_HUNGARIAN_MODEL)</span>
+<span class="s2">from </span><span class="s3">.</span><span class="s1">langrussianmodel </span><span class="s2">import </span><span class="s3">(</span>
+    <span class="s1">IBM855_RUSSIAN_MODEL</span><span class="s3">,</span>
+    <span class="s1">IBM866_RUSSIAN_MODEL</span><span class="s3">,</span>
+    <span class="s1">ISO_8859_5_RUSSIAN_MODEL</span><span class="s3">,</span>
+    <span class="s1">KOI8_R_RUSSIAN_MODEL</span><span class="s3">,</span>
+    <span class="s1">MACCYRILLIC_RUSSIAN_MODEL</span><span class="s3">,</span>
+    <span class="s1">WINDOWS_1251_RUSSIAN_MODEL</span><span class="s3">,</span>
+<span class="s3">)</span>
+<span class="s2">from </span><span class="s3">.</span><span class="s1">langthaimodel </span><span class="s2">import </span><span class="s1">TIS_620_THAI_MODEL</span>
+<span class="s2">from </span><span class="s3">.</span><span class="s1">langturkishmodel </span><span class="s2">import </span><span class="s1">ISO_8859_9_TURKISH_MODEL</span>
+<span class="s2">from </span><span class="s3">.</span><span class="s1">sbcharsetprober </span><span class="s2">import </span><span class="s1">SingleByteCharSetProber</span>
+
+
+<span class="s2">class </span><span class="s1">SBCSGroupProber</span><span class="s3">(</span><span class="s1">CharSetGroupProber</span><span class="s3">):</span>
+    <span class="s2">def </span><span class="s1">__init__</span><span class="s3">(</span><span class="s1">self</span><span class="s3">) </span><span class="s1">-&gt; </span><span class="s2">None</span><span class="s3">:</span>
+        <span class="s1">super</span><span class="s3">().</span><span class="s1">__init__</span><span class="s3">()</span>
+        <span class="s1">hebrew_prober </span><span class="s3">= </span><span class="s1">HebrewProber</span><span class="s3">()</span>
+        <span class="s1">logical_hebrew_prober </span><span class="s3">= </span><span class="s1">SingleByteCharSetProber</span><span class="s3">(</span>
+            <span class="s1">WINDOWS_1255_HEBREW_MODEL</span><span class="s3">, </span><span class="s1">is_reversed</span><span class="s3">=</span><span class="s2">False</span><span class="s3">, </span><span class="s1">name_prober</span><span class="s3">=</span><span class="s1">hebrew_prober</span>
+        <span class="s3">)</span>
+        <span class="s0"># TODO: See if using ISO-8859-8 Hebrew model works better here, since</span>
+        <span class="s0">#       it's actually the visual one</span>
+        <span class="s1">visual_hebrew_prober </span><span class="s3">= </span><span class="s1">SingleByteCharSetProber</span><span class="s3">(</span>
+            <span class="s1">WINDOWS_1255_HEBREW_MODEL</span><span class="s3">, </span><span class="s1">is_reversed</span><span class="s3">=</span><span class="s2">True</span><span class="s3">, </span><span class="s1">name_prober</span><span class="s3">=</span><span class="s1">hebrew_prober</span>
+        <span class="s3">)</span>
+        <span class="s1">hebrew_prober</span><span class="s3">.</span><span class="s1">set_model_probers</span><span class="s3">(</span><span class="s1">logical_hebrew_prober</span><span class="s3">, </span><span class="s1">visual_hebrew_prober</span><span class="s3">)</span>
+        <span class="s0"># TODO: ORDER MATTERS HERE. I changed the order vs what was in master</span>
+        <span class="s0">#       and several tests failed that did not before. Some thought</span>
+        <span class="s0">#       should be put into the ordering, and we should consider making</span>
+        <span class="s0">#       order not matter here, because that is very counter-intuitive.</span>
+        <span class="s1">self</span><span class="s3">.</span><span class="s1">probers </span><span class="s3">= [</span>
+            <span class="s1">SingleByteCharSetProber</span><span class="s3">(</span><span class="s1">WINDOWS_1251_RUSSIAN_MODEL</span><span class="s3">),</span>
+            <span class="s1">SingleByteCharSetProber</span><span class="s3">(</span><span class="s1">KOI8_R_RUSSIAN_MODEL</span><span class="s3">),</span>
+            <span class="s1">SingleByteCharSetProber</span><span class="s3">(</span><span class="s1">ISO_8859_5_RUSSIAN_MODEL</span><span class="s3">),</span>
+            <span class="s1">SingleByteCharSetProber</span><span class="s3">(</span><span class="s1">MACCYRILLIC_RUSSIAN_MODEL</span><span class="s3">),</span>
+            <span class="s1">SingleByteCharSetProber</span><span class="s3">(</span><span class="s1">IBM866_RUSSIAN_MODEL</span><span class="s3">),</span>
+            <span class="s1">SingleByteCharSetProber</span><span class="s3">(</span><span class="s1">IBM855_RUSSIAN_MODEL</span><span class="s3">),</span>
+            <span class="s1">SingleByteCharSetProber</span><span class="s3">(</span><span class="s1">ISO_8859_7_GREEK_MODEL</span><span class="s3">),</span>
+            <span class="s1">SingleByteCharSetProber</span><span class="s3">(</span><span class="s1">WINDOWS_1253_GREEK_MODEL</span><span class="s3">),</span>
+            <span class="s1">SingleByteCharSetProber</span><span class="s3">(</span><span class="s1">ISO_8859_5_BULGARIAN_MODEL</span><span class="s3">),</span>
+            <span class="s1">SingleByteCharSetProber</span><span class="s3">(</span><span class="s1">WINDOWS_1251_BULGARIAN_MODEL</span><span class="s3">),</span>
+            <span class="s0"># TODO: Restore Hungarian encodings (iso-8859-2 and windows-1250)</span>
+            <span class="s0">#       after we retrain model.</span>
+            <span class="s0"># SingleByteCharSetProber(ISO_8859_2_HUNGARIAN_MODEL),</span>
+            <span class="s0"># SingleByteCharSetProber(WINDOWS_1250_HUNGARIAN_MODEL),</span>
+            <span class="s1">SingleByteCharSetProber</span><span class="s3">(</span><span class="s1">TIS_620_THAI_MODEL</span><span class="s3">),</span>
+            <span class="s1">SingleByteCharSetProber</span><span class="s3">(</span><span class="s1">ISO_8859_9_TURKISH_MODEL</span><span class="s3">),</span>
+            <span class="s1">hebrew_prober</span><span class="s3">,</span>
+            <span class="s1">logical_hebrew_prober</span><span class="s3">,</span>
+            <span class="s1">visual_hebrew_prober</span><span class="s3">,</span>
+        <span class="s3">]</span>
+        <span class="s1">self</span><span class="s3">.</span><span class="s1">reset</span><span class="s3">()</span>
+</pre>
+</body>
+</html>

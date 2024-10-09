@@ -1,0 +1,123 @@
+<html>
+<head>
+<title>jupyter.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cf8e6d;}
+.s1 { color: #bcbec4;}
+.s2 { color: #bcbec4;}
+.s3 { color: #6aab73;}
+.s4 { color: #5f826b; font-style: italic;}
+.s5 { color: #7a7e85;}
+</style>
+</head>
+<body bgcolor="#1e1f22">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+jupyter.py</font>
+</center></td></tr></table>
+<pre><span class="s0">from </span><span class="s1">typing </span><span class="s0">import </span><span class="s1">TYPE_CHECKING</span><span class="s2">, </span><span class="s1">Any</span><span class="s2">, </span><span class="s1">Dict</span><span class="s2">, </span><span class="s1">Iterable</span><span class="s2">, </span><span class="s1">List</span><span class="s2">, </span><span class="s1">Sequence</span>
+
+<span class="s0">if </span><span class="s1">TYPE_CHECKING</span><span class="s2">:</span>
+    <span class="s0">from </span><span class="s1">pip</span><span class="s2">.</span><span class="s1">_vendor</span><span class="s2">.</span><span class="s1">rich</span><span class="s2">.</span><span class="s1">console </span><span class="s0">import </span><span class="s1">ConsoleRenderable</span>
+
+<span class="s0">from </span><span class="s2">. </span><span class="s0">import </span><span class="s1">get_console</span>
+<span class="s0">from </span><span class="s2">.</span><span class="s1">segment </span><span class="s0">import </span><span class="s1">Segment</span>
+<span class="s0">from </span><span class="s2">.</span><span class="s1">terminal_theme </span><span class="s0">import </span><span class="s1">DEFAULT_TERMINAL_THEME</span>
+
+<span class="s0">if </span><span class="s1">TYPE_CHECKING</span><span class="s2">:</span>
+    <span class="s0">from </span><span class="s1">pip</span><span class="s2">.</span><span class="s1">_vendor</span><span class="s2">.</span><span class="s1">rich</span><span class="s2">.</span><span class="s1">console </span><span class="s0">import </span><span class="s1">ConsoleRenderable</span>
+
+<span class="s1">JUPYTER_HTML_FORMAT </span><span class="s2">= </span><span class="s3">&quot;&quot;&quot;</span><span class="s0">\ 
+</span><span class="s3">&lt;pre style=&quot;white-space:pre;overflow-x:auto;line-height:normal;font-family:Menlo,'DejaVu Sans Mono',consolas,'Courier New',monospace&quot;&gt;{code}&lt;/pre&gt; 
+&quot;&quot;&quot;</span>
+
+
+<span class="s0">class </span><span class="s1">JupyterRenderable</span><span class="s2">:</span>
+    <span class="s4">&quot;&quot;&quot;A shim to write html to Jupyter notebook.&quot;&quot;&quot;</span>
+
+    <span class="s0">def </span><span class="s1">__init__</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">html</span><span class="s2">: </span><span class="s1">str</span><span class="s2">, </span><span class="s1">text</span><span class="s2">: </span><span class="s1">str</span><span class="s2">) </span><span class="s1">-&gt; </span><span class="s0">None</span><span class="s2">:</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">html </span><span class="s2">= </span><span class="s1">html</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">text </span><span class="s2">= </span><span class="s1">text</span>
+
+    <span class="s0">def </span><span class="s1">_repr_mimebundle_</span><span class="s2">(</span>
+        <span class="s1">self</span><span class="s2">, </span><span class="s1">include</span><span class="s2">: </span><span class="s1">Sequence</span><span class="s2">[</span><span class="s1">str</span><span class="s2">], </span><span class="s1">exclude</span><span class="s2">: </span><span class="s1">Sequence</span><span class="s2">[</span><span class="s1">str</span><span class="s2">], **</span><span class="s1">kwargs</span><span class="s2">: </span><span class="s1">Any</span>
+    <span class="s2">) </span><span class="s1">-&gt; Dict</span><span class="s2">[</span><span class="s1">str</span><span class="s2">, </span><span class="s1">str</span><span class="s2">]:</span>
+        <span class="s1">data </span><span class="s2">= {</span><span class="s3">&quot;text/plain&quot;</span><span class="s2">: </span><span class="s1">self</span><span class="s2">.</span><span class="s1">text</span><span class="s2">, </span><span class="s3">&quot;text/html&quot;</span><span class="s2">: </span><span class="s1">self</span><span class="s2">.</span><span class="s1">html</span><span class="s2">}</span>
+        <span class="s0">if </span><span class="s1">include</span><span class="s2">:</span>
+            <span class="s1">data </span><span class="s2">= {</span><span class="s1">k</span><span class="s2">: </span><span class="s1">v </span><span class="s0">for </span><span class="s2">(</span><span class="s1">k</span><span class="s2">, </span><span class="s1">v</span><span class="s2">) </span><span class="s0">in </span><span class="s1">data</span><span class="s2">.</span><span class="s1">items</span><span class="s2">() </span><span class="s0">if </span><span class="s1">k </span><span class="s0">in </span><span class="s1">include</span><span class="s2">}</span>
+        <span class="s0">if </span><span class="s1">exclude</span><span class="s2">:</span>
+            <span class="s1">data </span><span class="s2">= {</span><span class="s1">k</span><span class="s2">: </span><span class="s1">v </span><span class="s0">for </span><span class="s2">(</span><span class="s1">k</span><span class="s2">, </span><span class="s1">v</span><span class="s2">) </span><span class="s0">in </span><span class="s1">data</span><span class="s2">.</span><span class="s1">items</span><span class="s2">() </span><span class="s0">if </span><span class="s1">k </span><span class="s0">not in </span><span class="s1">exclude</span><span class="s2">}</span>
+        <span class="s0">return </span><span class="s1">data</span>
+
+
+<span class="s0">class </span><span class="s1">JupyterMixin</span><span class="s2">:</span>
+    <span class="s4">&quot;&quot;&quot;Add to an Rich renderable to make it render in Jupyter notebook.&quot;&quot;&quot;</span>
+
+    <span class="s1">__slots__ </span><span class="s2">= ()</span>
+
+    <span class="s0">def </span><span class="s1">_repr_mimebundle_</span><span class="s2">(</span>
+        <span class="s1">self</span><span class="s2">: </span><span class="s3">&quot;ConsoleRenderable&quot;</span><span class="s2">,</span>
+        <span class="s1">include</span><span class="s2">: </span><span class="s1">Sequence</span><span class="s2">[</span><span class="s1">str</span><span class="s2">],</span>
+        <span class="s1">exclude</span><span class="s2">: </span><span class="s1">Sequence</span><span class="s2">[</span><span class="s1">str</span><span class="s2">],</span>
+        <span class="s2">**</span><span class="s1">kwargs</span><span class="s2">: </span><span class="s1">Any</span><span class="s2">,</span>
+    <span class="s2">) </span><span class="s1">-&gt; Dict</span><span class="s2">[</span><span class="s1">str</span><span class="s2">, </span><span class="s1">str</span><span class="s2">]:</span>
+        <span class="s1">console </span><span class="s2">= </span><span class="s1">get_console</span><span class="s2">()</span>
+        <span class="s1">segments </span><span class="s2">= </span><span class="s1">list</span><span class="s2">(</span><span class="s1">console</span><span class="s2">.</span><span class="s1">render</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">console</span><span class="s2">.</span><span class="s1">options</span><span class="s2">))</span>
+        <span class="s1">html </span><span class="s2">= </span><span class="s1">_render_segments</span><span class="s2">(</span><span class="s1">segments</span><span class="s2">)</span>
+        <span class="s1">text </span><span class="s2">= </span><span class="s1">console</span><span class="s2">.</span><span class="s1">_render_buffer</span><span class="s2">(</span><span class="s1">segments</span><span class="s2">)</span>
+        <span class="s1">data </span><span class="s2">= {</span><span class="s3">&quot;text/plain&quot;</span><span class="s2">: </span><span class="s1">text</span><span class="s2">, </span><span class="s3">&quot;text/html&quot;</span><span class="s2">: </span><span class="s1">html</span><span class="s2">}</span>
+        <span class="s0">if </span><span class="s1">include</span><span class="s2">:</span>
+            <span class="s1">data </span><span class="s2">= {</span><span class="s1">k</span><span class="s2">: </span><span class="s1">v </span><span class="s0">for </span><span class="s2">(</span><span class="s1">k</span><span class="s2">, </span><span class="s1">v</span><span class="s2">) </span><span class="s0">in </span><span class="s1">data</span><span class="s2">.</span><span class="s1">items</span><span class="s2">() </span><span class="s0">if </span><span class="s1">k </span><span class="s0">in </span><span class="s1">include</span><span class="s2">}</span>
+        <span class="s0">if </span><span class="s1">exclude</span><span class="s2">:</span>
+            <span class="s1">data </span><span class="s2">= {</span><span class="s1">k</span><span class="s2">: </span><span class="s1">v </span><span class="s0">for </span><span class="s2">(</span><span class="s1">k</span><span class="s2">, </span><span class="s1">v</span><span class="s2">) </span><span class="s0">in </span><span class="s1">data</span><span class="s2">.</span><span class="s1">items</span><span class="s2">() </span><span class="s0">if </span><span class="s1">k </span><span class="s0">not in </span><span class="s1">exclude</span><span class="s2">}</span>
+        <span class="s0">return </span><span class="s1">data</span>
+
+
+<span class="s0">def </span><span class="s1">_render_segments</span><span class="s2">(</span><span class="s1">segments</span><span class="s2">: </span><span class="s1">Iterable</span><span class="s2">[</span><span class="s1">Segment</span><span class="s2">]) </span><span class="s1">-&gt; str</span><span class="s2">:</span>
+    <span class="s0">def </span><span class="s1">escape</span><span class="s2">(</span><span class="s1">text</span><span class="s2">: </span><span class="s1">str</span><span class="s2">) </span><span class="s1">-&gt; str</span><span class="s2">:</span>
+        <span class="s4">&quot;&quot;&quot;Escape html.&quot;&quot;&quot;</span>
+        <span class="s0">return </span><span class="s1">text</span><span class="s2">.</span><span class="s1">replace</span><span class="s2">(</span><span class="s3">&quot;&amp;&quot;</span><span class="s2">, </span><span class="s3">&quot;&amp;amp;&quot;</span><span class="s2">).</span><span class="s1">replace</span><span class="s2">(</span><span class="s3">&quot;&lt;&quot;</span><span class="s2">, </span><span class="s3">&quot;&amp;lt;&quot;</span><span class="s2">).</span><span class="s1">replace</span><span class="s2">(</span><span class="s3">&quot;&gt;&quot;</span><span class="s2">, </span><span class="s3">&quot;&amp;gt;&quot;</span><span class="s2">)</span>
+
+    <span class="s1">fragments</span><span class="s2">: </span><span class="s1">List</span><span class="s2">[</span><span class="s1">str</span><span class="s2">] = []</span>
+    <span class="s1">append_fragment </span><span class="s2">= </span><span class="s1">fragments</span><span class="s2">.</span><span class="s1">append</span>
+    <span class="s1">theme </span><span class="s2">= </span><span class="s1">DEFAULT_TERMINAL_THEME</span>
+    <span class="s0">for </span><span class="s1">text</span><span class="s2">, </span><span class="s1">style</span><span class="s2">, </span><span class="s1">control </span><span class="s0">in </span><span class="s1">Segment</span><span class="s2">.</span><span class="s1">simplify</span><span class="s2">(</span><span class="s1">segments</span><span class="s2">):</span>
+        <span class="s0">if </span><span class="s1">control</span><span class="s2">:</span>
+            <span class="s0">continue</span>
+        <span class="s1">text </span><span class="s2">= </span><span class="s1">escape</span><span class="s2">(</span><span class="s1">text</span><span class="s2">)</span>
+        <span class="s0">if </span><span class="s1">style</span><span class="s2">:</span>
+            <span class="s1">rule </span><span class="s2">= </span><span class="s1">style</span><span class="s2">.</span><span class="s1">get_html_style</span><span class="s2">(</span><span class="s1">theme</span><span class="s2">)</span>
+            <span class="s1">text </span><span class="s2">= </span><span class="s3">f'&lt;span style=&quot;</span><span class="s0">{</span><span class="s1">rule</span><span class="s0">}</span><span class="s3">&quot;&gt;</span><span class="s0">{</span><span class="s1">text</span><span class="s0">}</span><span class="s3">&lt;/span&gt;' </span><span class="s0">if </span><span class="s1">rule </span><span class="s0">else </span><span class="s1">text</span>
+            <span class="s0">if </span><span class="s1">style</span><span class="s2">.</span><span class="s1">link</span><span class="s2">:</span>
+                <span class="s1">text </span><span class="s2">= </span><span class="s3">f'&lt;a href=&quot;</span><span class="s0">{</span><span class="s1">style</span><span class="s2">.</span><span class="s1">link</span><span class="s0">}</span><span class="s3">&quot; target=&quot;_blank&quot;&gt;</span><span class="s0">{</span><span class="s1">text</span><span class="s0">}</span><span class="s3">&lt;/a&gt;'</span>
+        <span class="s1">append_fragment</span><span class="s2">(</span><span class="s1">text</span><span class="s2">)</span>
+
+    <span class="s1">code </span><span class="s2">= </span><span class="s3">&quot;&quot;</span><span class="s2">.</span><span class="s1">join</span><span class="s2">(</span><span class="s1">fragments</span><span class="s2">)</span>
+    <span class="s1">html </span><span class="s2">= </span><span class="s1">JUPYTER_HTML_FORMAT</span><span class="s2">.</span><span class="s1">format</span><span class="s2">(</span><span class="s1">code</span><span class="s2">=</span><span class="s1">code</span><span class="s2">)</span>
+
+    <span class="s0">return </span><span class="s1">html</span>
+
+
+<span class="s0">def </span><span class="s1">display</span><span class="s2">(</span><span class="s1">segments</span><span class="s2">: </span><span class="s1">Iterable</span><span class="s2">[</span><span class="s1">Segment</span><span class="s2">], </span><span class="s1">text</span><span class="s2">: </span><span class="s1">str</span><span class="s2">) </span><span class="s1">-&gt; </span><span class="s0">None</span><span class="s2">:</span>
+    <span class="s4">&quot;&quot;&quot;Render segments to Jupyter.&quot;&quot;&quot;</span>
+    <span class="s1">html </span><span class="s2">= </span><span class="s1">_render_segments</span><span class="s2">(</span><span class="s1">segments</span><span class="s2">)</span>
+    <span class="s1">jupyter_renderable </span><span class="s2">= </span><span class="s1">JupyterRenderable</span><span class="s2">(</span><span class="s1">html</span><span class="s2">, </span><span class="s1">text</span><span class="s2">)</span>
+    <span class="s0">try</span><span class="s2">:</span>
+        <span class="s0">from </span><span class="s1">IPython</span><span class="s2">.</span><span class="s1">display </span><span class="s0">import </span><span class="s1">display </span><span class="s0">as </span><span class="s1">ipython_display</span>
+
+        <span class="s1">ipython_display</span><span class="s2">(</span><span class="s1">jupyter_renderable</span><span class="s2">)</span>
+    <span class="s0">except </span><span class="s1">ModuleNotFoundError</span><span class="s2">:</span>
+        <span class="s5"># Handle the case where the Console has force_jupyter=True,</span>
+        <span class="s5"># but IPython is not installed.</span>
+        <span class="s0">pass</span>
+
+
+<span class="s0">def </span><span class="s1">print</span><span class="s2">(*</span><span class="s1">args</span><span class="s2">: </span><span class="s1">Any</span><span class="s2">, **</span><span class="s1">kwargs</span><span class="s2">: </span><span class="s1">Any</span><span class="s2">) </span><span class="s1">-&gt; </span><span class="s0">None</span><span class="s2">:</span>
+    <span class="s4">&quot;&quot;&quot;Proxy for Console print.&quot;&quot;&quot;</span>
+    <span class="s1">console </span><span class="s2">= </span><span class="s1">get_console</span><span class="s2">()</span>
+    <span class="s0">return </span><span class="s1">console</span><span class="s2">.</span><span class="s1">print</span><span class="s2">(*</span><span class="s1">args</span><span class="s2">, **</span><span class="s1">kwargs</span><span class="s2">)</span>
+</pre>
+</body>
+</html>

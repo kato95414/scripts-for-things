@@ -1,0 +1,54 @@
+<html>
+<head>
+<title>_emoji_replace.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cf8e6d;}
+.s1 { color: #bcbec4;}
+.s2 { color: #bcbec4;}
+.s3 { color: #7a7e85;}
+.s4 { color: #6aab73;}
+.s5 { color: #5f826b; font-style: italic;}
+</style>
+</head>
+<body bgcolor="#1e1f22">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+_emoji_replace.py</font>
+</center></td></tr></table>
+<pre><span class="s0">from </span><span class="s1">typing </span><span class="s0">import </span><span class="s1">Callable</span><span class="s2">, </span><span class="s1">Match</span><span class="s2">, </span><span class="s1">Optional</span>
+<span class="s0">import </span><span class="s1">re</span>
+
+<span class="s0">from </span><span class="s2">.</span><span class="s1">_emoji_codes </span><span class="s0">import </span><span class="s1">EMOJI</span>
+
+
+<span class="s1">_ReStringMatch </span><span class="s2">= </span><span class="s1">Match</span><span class="s2">[</span><span class="s1">str</span><span class="s2">]  </span><span class="s3"># regex match object</span>
+<span class="s1">_ReSubCallable </span><span class="s2">= </span><span class="s1">Callable</span><span class="s2">[[</span><span class="s1">_ReStringMatch</span><span class="s2">], </span><span class="s1">str</span><span class="s2">]  </span><span class="s3"># Callable invoked by re.sub</span>
+<span class="s1">_EmojiSubMethod </span><span class="s2">= </span><span class="s1">Callable</span><span class="s2">[[</span><span class="s1">_ReSubCallable</span><span class="s2">, </span><span class="s1">str</span><span class="s2">], </span><span class="s1">str</span><span class="s2">]  </span><span class="s3"># Sub method of a compiled re</span>
+
+
+<span class="s0">def </span><span class="s1">_emoji_replace</span><span class="s2">(</span>
+    <span class="s1">text</span><span class="s2">: </span><span class="s1">str</span><span class="s2">,</span>
+    <span class="s1">default_variant</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">str</span><span class="s2">] = </span><span class="s0">None</span><span class="s2">,</span>
+    <span class="s1">_emoji_sub</span><span class="s2">: </span><span class="s1">_EmojiSubMethod </span><span class="s2">= </span><span class="s1">re</span><span class="s2">.</span><span class="s1">compile</span><span class="s2">(</span><span class="s4">r&quot;(:(\S*?)(?:(?:\-)(emoji|text))?:)&quot;</span><span class="s2">).</span><span class="s1">sub</span><span class="s2">,</span>
+<span class="s2">) </span><span class="s1">-&gt; str</span><span class="s2">:</span>
+    <span class="s5">&quot;&quot;&quot;Replace emoji code in text.&quot;&quot;&quot;</span>
+    <span class="s1">get_emoji </span><span class="s2">= </span><span class="s1">EMOJI</span><span class="s2">.</span><span class="s1">__getitem__</span>
+    <span class="s1">variants </span><span class="s2">= {</span><span class="s4">&quot;text&quot;</span><span class="s2">: </span><span class="s4">&quot;</span><span class="s0">\uFE0E</span><span class="s4">&quot;</span><span class="s2">, </span><span class="s4">&quot;emoji&quot;</span><span class="s2">: </span><span class="s4">&quot;</span><span class="s0">\uFE0F</span><span class="s4">&quot;</span><span class="s2">}</span>
+    <span class="s1">get_variant </span><span class="s2">= </span><span class="s1">variants</span><span class="s2">.</span><span class="s1">get</span>
+    <span class="s1">default_variant_code </span><span class="s2">= </span><span class="s1">variants</span><span class="s2">.</span><span class="s1">get</span><span class="s2">(</span><span class="s1">default_variant</span><span class="s2">, </span><span class="s4">&quot;&quot;</span><span class="s2">) </span><span class="s0">if </span><span class="s1">default_variant </span><span class="s0">else </span><span class="s4">&quot;&quot;</span>
+
+    <span class="s0">def </span><span class="s1">do_replace</span><span class="s2">(</span><span class="s1">match</span><span class="s2">: </span><span class="s1">Match</span><span class="s2">[</span><span class="s1">str</span><span class="s2">]) </span><span class="s1">-&gt; str</span><span class="s2">:</span>
+        <span class="s1">emoji_code</span><span class="s2">, </span><span class="s1">emoji_name</span><span class="s2">, </span><span class="s1">variant </span><span class="s2">= </span><span class="s1">match</span><span class="s2">.</span><span class="s1">groups</span><span class="s2">()</span>
+        <span class="s0">try</span><span class="s2">:</span>
+            <span class="s0">return </span><span class="s1">get_emoji</span><span class="s2">(</span><span class="s1">emoji_name</span><span class="s2">.</span><span class="s1">lower</span><span class="s2">()) + </span><span class="s1">get_variant</span><span class="s2">(</span>
+                <span class="s1">variant</span><span class="s2">, </span><span class="s1">default_variant_code</span>
+            <span class="s2">)</span>
+        <span class="s0">except </span><span class="s1">KeyError</span><span class="s2">:</span>
+            <span class="s0">return </span><span class="s1">emoji_code</span>
+
+    <span class="s0">return </span><span class="s1">_emoji_sub</span><span class="s2">(</span><span class="s1">do_replace</span><span class="s2">, </span><span class="s1">text</span><span class="s2">)</span>
+</pre>
+</body>
+</html>

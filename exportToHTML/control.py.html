@@ -1,0 +1,248 @@
+<html>
+<head>
+<title>control.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cf8e6d;}
+.s1 { color: #bcbec4;}
+.s2 { color: #bcbec4;}
+.s3 { color: #2aacb8;}
+.s4 { color: #7a7e85;}
+.s5 { color: #6aab73;}
+.s6 { color: #5f826b; font-style: italic;}
+</style>
+</head>
+<body bgcolor="#1e1f22">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+control.py</font>
+</center></td></tr></table>
+<pre><span class="s0">import </span><span class="s1">sys</span>
+<span class="s0">import </span><span class="s1">time</span>
+<span class="s0">from </span><span class="s1">typing </span><span class="s0">import </span><span class="s1">TYPE_CHECKING</span><span class="s2">, </span><span class="s1">Callable</span><span class="s2">, </span><span class="s1">Dict</span><span class="s2">, </span><span class="s1">Iterable</span><span class="s2">, </span><span class="s1">List</span><span class="s2">, </span><span class="s1">Union</span>
+
+<span class="s0">if </span><span class="s1">sys</span><span class="s2">.</span><span class="s1">version_info </span><span class="s2">&gt;= (</span><span class="s3">3</span><span class="s2">, </span><span class="s3">8</span><span class="s2">):</span>
+    <span class="s0">from </span><span class="s1">typing </span><span class="s0">import </span><span class="s1">Final</span>
+<span class="s0">else</span><span class="s2">:</span>
+    <span class="s0">from </span><span class="s1">pip</span><span class="s2">.</span><span class="s1">_vendor</span><span class="s2">.</span><span class="s1">typing_extensions </span><span class="s0">import </span><span class="s1">Final  </span><span class="s4"># pragma: no cover</span>
+
+<span class="s0">from </span><span class="s2">.</span><span class="s1">segment </span><span class="s0">import </span><span class="s1">ControlCode</span><span class="s2">, </span><span class="s1">ControlType</span><span class="s2">, </span><span class="s1">Segment</span>
+
+<span class="s0">if </span><span class="s1">TYPE_CHECKING</span><span class="s2">:</span>
+    <span class="s0">from </span><span class="s2">.</span><span class="s1">console </span><span class="s0">import </span><span class="s1">Console</span><span class="s2">, </span><span class="s1">ConsoleOptions</span><span class="s2">, </span><span class="s1">RenderResult</span>
+
+<span class="s1">STRIP_CONTROL_CODES</span><span class="s2">: </span><span class="s1">Final </span><span class="s2">= [</span>
+    <span class="s3">7</span><span class="s2">,  </span><span class="s4"># Bell</span>
+    <span class="s3">8</span><span class="s2">,  </span><span class="s4"># Backspace</span>
+    <span class="s3">11</span><span class="s2">,  </span><span class="s4"># Vertical tab</span>
+    <span class="s3">12</span><span class="s2">,  </span><span class="s4"># Form feed</span>
+    <span class="s3">13</span><span class="s2">,  </span><span class="s4"># Carriage return</span>
+<span class="s2">]</span>
+<span class="s1">_CONTROL_STRIP_TRANSLATE</span><span class="s2">: </span><span class="s1">Final </span><span class="s2">= {</span>
+    <span class="s1">_codepoint</span><span class="s2">: </span><span class="s0">None for </span><span class="s1">_codepoint </span><span class="s0">in </span><span class="s1">STRIP_CONTROL_CODES</span>
+<span class="s2">}</span>
+
+<span class="s1">CONTROL_ESCAPE</span><span class="s2">: </span><span class="s1">Final </span><span class="s2">= {</span>
+    <span class="s3">7</span><span class="s2">: </span><span class="s5">&quot;</span><span class="s0">\\</span><span class="s5">a&quot;</span><span class="s2">,</span>
+    <span class="s3">8</span><span class="s2">: </span><span class="s5">&quot;</span><span class="s0">\\</span><span class="s5">b&quot;</span><span class="s2">,</span>
+    <span class="s3">11</span><span class="s2">: </span><span class="s5">&quot;</span><span class="s0">\\</span><span class="s5">v&quot;</span><span class="s2">,</span>
+    <span class="s3">12</span><span class="s2">: </span><span class="s5">&quot;</span><span class="s0">\\</span><span class="s5">f&quot;</span><span class="s2">,</span>
+    <span class="s3">13</span><span class="s2">: </span><span class="s5">&quot;</span><span class="s0">\\</span><span class="s5">r&quot;</span><span class="s2">,</span>
+<span class="s2">}</span>
+
+<span class="s1">CONTROL_CODES_FORMAT</span><span class="s2">: </span><span class="s1">Dict</span><span class="s2">[</span><span class="s1">int</span><span class="s2">, </span><span class="s1">Callable</span><span class="s2">[..., </span><span class="s1">str</span><span class="s2">]] = {</span>
+    <span class="s1">ControlType</span><span class="s2">.</span><span class="s1">BELL</span><span class="s2">: </span><span class="s0">lambda</span><span class="s2">: </span><span class="s5">&quot;</span><span class="s0">\x07</span><span class="s5">&quot;</span><span class="s2">,</span>
+    <span class="s1">ControlType</span><span class="s2">.</span><span class="s1">CARRIAGE_RETURN</span><span class="s2">: </span><span class="s0">lambda</span><span class="s2">: </span><span class="s5">&quot;</span><span class="s0">\r</span><span class="s5">&quot;</span><span class="s2">,</span>
+    <span class="s1">ControlType</span><span class="s2">.</span><span class="s1">HOME</span><span class="s2">: </span><span class="s0">lambda</span><span class="s2">: </span><span class="s5">&quot;</span><span class="s0">\x1b</span><span class="s5">[H&quot;</span><span class="s2">,</span>
+    <span class="s1">ControlType</span><span class="s2">.</span><span class="s1">CLEAR</span><span class="s2">: </span><span class="s0">lambda</span><span class="s2">: </span><span class="s5">&quot;</span><span class="s0">\x1b</span><span class="s5">[2J&quot;</span><span class="s2">,</span>
+    <span class="s1">ControlType</span><span class="s2">.</span><span class="s1">ENABLE_ALT_SCREEN</span><span class="s2">: </span><span class="s0">lambda</span><span class="s2">: </span><span class="s5">&quot;</span><span class="s0">\x1b</span><span class="s5">[?1049h&quot;</span><span class="s2">,</span>
+    <span class="s1">ControlType</span><span class="s2">.</span><span class="s1">DISABLE_ALT_SCREEN</span><span class="s2">: </span><span class="s0">lambda</span><span class="s2">: </span><span class="s5">&quot;</span><span class="s0">\x1b</span><span class="s5">[?1049l&quot;</span><span class="s2">,</span>
+    <span class="s1">ControlType</span><span class="s2">.</span><span class="s1">SHOW_CURSOR</span><span class="s2">: </span><span class="s0">lambda</span><span class="s2">: </span><span class="s5">&quot;</span><span class="s0">\x1b</span><span class="s5">[?25h&quot;</span><span class="s2">,</span>
+    <span class="s1">ControlType</span><span class="s2">.</span><span class="s1">HIDE_CURSOR</span><span class="s2">: </span><span class="s0">lambda</span><span class="s2">: </span><span class="s5">&quot;</span><span class="s0">\x1b</span><span class="s5">[?25l&quot;</span><span class="s2">,</span>
+    <span class="s1">ControlType</span><span class="s2">.</span><span class="s1">CURSOR_UP</span><span class="s2">: </span><span class="s0">lambda </span><span class="s1">param</span><span class="s2">: </span><span class="s5">f&quot;</span><span class="s0">\x1b</span><span class="s5">[</span><span class="s0">{</span><span class="s1">param</span><span class="s0">}</span><span class="s5">A&quot;</span><span class="s2">,</span>
+    <span class="s1">ControlType</span><span class="s2">.</span><span class="s1">CURSOR_DOWN</span><span class="s2">: </span><span class="s0">lambda </span><span class="s1">param</span><span class="s2">: </span><span class="s5">f&quot;</span><span class="s0">\x1b</span><span class="s5">[</span><span class="s0">{</span><span class="s1">param</span><span class="s0">}</span><span class="s5">B&quot;</span><span class="s2">,</span>
+    <span class="s1">ControlType</span><span class="s2">.</span><span class="s1">CURSOR_FORWARD</span><span class="s2">: </span><span class="s0">lambda </span><span class="s1">param</span><span class="s2">: </span><span class="s5">f&quot;</span><span class="s0">\x1b</span><span class="s5">[</span><span class="s0">{</span><span class="s1">param</span><span class="s0">}</span><span class="s5">C&quot;</span><span class="s2">,</span>
+    <span class="s1">ControlType</span><span class="s2">.</span><span class="s1">CURSOR_BACKWARD</span><span class="s2">: </span><span class="s0">lambda </span><span class="s1">param</span><span class="s2">: </span><span class="s5">f&quot;</span><span class="s0">\x1b</span><span class="s5">[</span><span class="s0">{</span><span class="s1">param</span><span class="s0">}</span><span class="s5">D&quot;</span><span class="s2">,</span>
+    <span class="s1">ControlType</span><span class="s2">.</span><span class="s1">CURSOR_MOVE_TO_COLUMN</span><span class="s2">: </span><span class="s0">lambda </span><span class="s1">param</span><span class="s2">: </span><span class="s5">f&quot;</span><span class="s0">\x1b</span><span class="s5">[</span><span class="s0">{</span><span class="s1">param</span><span class="s2">+</span><span class="s3">1</span><span class="s0">}</span><span class="s5">G&quot;</span><span class="s2">,</span>
+    <span class="s1">ControlType</span><span class="s2">.</span><span class="s1">ERASE_IN_LINE</span><span class="s2">: </span><span class="s0">lambda </span><span class="s1">param</span><span class="s2">: </span><span class="s5">f&quot;</span><span class="s0">\x1b</span><span class="s5">[</span><span class="s0">{</span><span class="s1">param</span><span class="s0">}</span><span class="s5">K&quot;</span><span class="s2">,</span>
+    <span class="s1">ControlType</span><span class="s2">.</span><span class="s1">CURSOR_MOVE_TO</span><span class="s2">: </span><span class="s0">lambda </span><span class="s1">x</span><span class="s2">, </span><span class="s1">y</span><span class="s2">: </span><span class="s5">f&quot;</span><span class="s0">\x1b</span><span class="s5">[</span><span class="s0">{</span><span class="s1">y</span><span class="s2">+</span><span class="s3">1</span><span class="s0">}</span><span class="s5">;</span><span class="s0">{</span><span class="s1">x</span><span class="s2">+</span><span class="s3">1</span><span class="s0">}</span><span class="s5">H&quot;</span><span class="s2">,</span>
+    <span class="s1">ControlType</span><span class="s2">.</span><span class="s1">SET_WINDOW_TITLE</span><span class="s2">: </span><span class="s0">lambda </span><span class="s1">title</span><span class="s2">: </span><span class="s5">f&quot;</span><span class="s0">\x1b</span><span class="s5">]0;</span><span class="s0">{</span><span class="s1">title</span><span class="s0">}\x07</span><span class="s5">&quot;</span><span class="s2">,</span>
+<span class="s2">}</span>
+
+
+<span class="s0">class </span><span class="s1">Control</span><span class="s2">:</span>
+    <span class="s6">&quot;&quot;&quot;A renderable that inserts a control code (non printable but may move cursor). 
+ 
+    Args: 
+        *codes (str): Positional arguments are either a :class:`~rich.segment.ControlType` enum or a 
+            tuple of ControlType and an integer parameter 
+    &quot;&quot;&quot;</span>
+
+    <span class="s1">__slots__ </span><span class="s2">= [</span><span class="s5">&quot;segment&quot;</span><span class="s2">]</span>
+
+    <span class="s0">def </span><span class="s1">__init__</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, *</span><span class="s1">codes</span><span class="s2">: </span><span class="s1">Union</span><span class="s2">[</span><span class="s1">ControlType</span><span class="s2">, </span><span class="s1">ControlCode</span><span class="s2">]) </span><span class="s1">-&gt; </span><span class="s0">None</span><span class="s2">:</span>
+        <span class="s1">control_codes</span><span class="s2">: </span><span class="s1">List</span><span class="s2">[</span><span class="s1">ControlCode</span><span class="s2">] = [</span>
+            <span class="s2">(</span><span class="s1">code</span><span class="s2">,) </span><span class="s0">if </span><span class="s1">isinstance</span><span class="s2">(</span><span class="s1">code</span><span class="s2">, </span><span class="s1">ControlType</span><span class="s2">) </span><span class="s0">else </span><span class="s1">code </span><span class="s0">for </span><span class="s1">code </span><span class="s0">in </span><span class="s1">codes</span>
+        <span class="s2">]</span>
+        <span class="s1">_format_map </span><span class="s2">= </span><span class="s1">CONTROL_CODES_FORMAT</span>
+        <span class="s1">rendered_codes </span><span class="s2">= </span><span class="s5">&quot;&quot;</span><span class="s2">.</span><span class="s1">join</span><span class="s2">(</span>
+            <span class="s1">_format_map</span><span class="s2">[</span><span class="s1">code</span><span class="s2">](*</span><span class="s1">parameters</span><span class="s2">) </span><span class="s0">for </span><span class="s1">code</span><span class="s2">, *</span><span class="s1">parameters </span><span class="s0">in </span><span class="s1">control_codes</span>
+        <span class="s2">)</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">segment </span><span class="s2">= </span><span class="s1">Segment</span><span class="s2">(</span><span class="s1">rendered_codes</span><span class="s2">, </span><span class="s0">None</span><span class="s2">, </span><span class="s1">control_codes</span><span class="s2">)</span>
+
+    <span class="s2">@</span><span class="s1">classmethod</span>
+    <span class="s0">def </span><span class="s1">bell</span><span class="s2">(</span><span class="s1">cls</span><span class="s2">) </span><span class="s1">-&gt; </span><span class="s5">&quot;Control&quot;</span><span class="s2">:</span>
+        <span class="s6">&quot;&quot;&quot;Ring the 'bell'.&quot;&quot;&quot;</span>
+        <span class="s0">return </span><span class="s1">cls</span><span class="s2">(</span><span class="s1">ControlType</span><span class="s2">.</span><span class="s1">BELL</span><span class="s2">)</span>
+
+    <span class="s2">@</span><span class="s1">classmethod</span>
+    <span class="s0">def </span><span class="s1">home</span><span class="s2">(</span><span class="s1">cls</span><span class="s2">) </span><span class="s1">-&gt; </span><span class="s5">&quot;Control&quot;</span><span class="s2">:</span>
+        <span class="s6">&quot;&quot;&quot;Move cursor to 'home' position.&quot;&quot;&quot;</span>
+        <span class="s0">return </span><span class="s1">cls</span><span class="s2">(</span><span class="s1">ControlType</span><span class="s2">.</span><span class="s1">HOME</span><span class="s2">)</span>
+
+    <span class="s2">@</span><span class="s1">classmethod</span>
+    <span class="s0">def </span><span class="s1">move</span><span class="s2">(</span><span class="s1">cls</span><span class="s2">, </span><span class="s1">x</span><span class="s2">: </span><span class="s1">int </span><span class="s2">= </span><span class="s3">0</span><span class="s2">, </span><span class="s1">y</span><span class="s2">: </span><span class="s1">int </span><span class="s2">= </span><span class="s3">0</span><span class="s2">) </span><span class="s1">-&gt; </span><span class="s5">&quot;Control&quot;</span><span class="s2">:</span>
+        <span class="s6">&quot;&quot;&quot;Move cursor relative to current position. 
+ 
+        Args: 
+            x (int): X offset. 
+            y (int): Y offset. 
+ 
+        Returns: 
+            ~Control: Control object. 
+ 
+        &quot;&quot;&quot;</span>
+
+        <span class="s0">def </span><span class="s1">get_codes</span><span class="s2">() </span><span class="s1">-&gt; Iterable</span><span class="s2">[</span><span class="s1">ControlCode</span><span class="s2">]:</span>
+            <span class="s1">control </span><span class="s2">= </span><span class="s1">ControlType</span>
+            <span class="s0">if </span><span class="s1">x</span><span class="s2">:</span>
+                <span class="s0">yield </span><span class="s2">(</span>
+                    <span class="s1">control</span><span class="s2">.</span><span class="s1">CURSOR_FORWARD </span><span class="s0">if </span><span class="s1">x </span><span class="s2">&gt; </span><span class="s3">0 </span><span class="s0">else </span><span class="s1">control</span><span class="s2">.</span><span class="s1">CURSOR_BACKWARD</span><span class="s2">,</span>
+                    <span class="s1">abs</span><span class="s2">(</span><span class="s1">x</span><span class="s2">),</span>
+                <span class="s2">)</span>
+            <span class="s0">if </span><span class="s1">y</span><span class="s2">:</span>
+                <span class="s0">yield </span><span class="s2">(</span>
+                    <span class="s1">control</span><span class="s2">.</span><span class="s1">CURSOR_DOWN </span><span class="s0">if </span><span class="s1">y </span><span class="s2">&gt; </span><span class="s3">0 </span><span class="s0">else </span><span class="s1">control</span><span class="s2">.</span><span class="s1">CURSOR_UP</span><span class="s2">,</span>
+                    <span class="s1">abs</span><span class="s2">(</span><span class="s1">y</span><span class="s2">),</span>
+                <span class="s2">)</span>
+
+        <span class="s1">control </span><span class="s2">= </span><span class="s1">cls</span><span class="s2">(*</span><span class="s1">get_codes</span><span class="s2">())</span>
+        <span class="s0">return </span><span class="s1">control</span>
+
+    <span class="s2">@</span><span class="s1">classmethod</span>
+    <span class="s0">def </span><span class="s1">move_to_column</span><span class="s2">(</span><span class="s1">cls</span><span class="s2">, </span><span class="s1">x</span><span class="s2">: </span><span class="s1">int</span><span class="s2">, </span><span class="s1">y</span><span class="s2">: </span><span class="s1">int </span><span class="s2">= </span><span class="s3">0</span><span class="s2">) </span><span class="s1">-&gt; </span><span class="s5">&quot;Control&quot;</span><span class="s2">:</span>
+        <span class="s6">&quot;&quot;&quot;Move to the given column, optionally add offset to row. 
+ 
+        Returns: 
+            x (int): absolute x (column) 
+            y (int): optional y offset (row) 
+ 
+        Returns: 
+            ~Control: Control object. 
+        &quot;&quot;&quot;</span>
+
+        <span class="s0">return </span><span class="s2">(</span>
+            <span class="s1">cls</span><span class="s2">(</span>
+                <span class="s2">(</span><span class="s1">ControlType</span><span class="s2">.</span><span class="s1">CURSOR_MOVE_TO_COLUMN</span><span class="s2">, </span><span class="s1">x</span><span class="s2">),</span>
+                <span class="s2">(</span>
+                    <span class="s1">ControlType</span><span class="s2">.</span><span class="s1">CURSOR_DOWN </span><span class="s0">if </span><span class="s1">y </span><span class="s2">&gt; </span><span class="s3">0 </span><span class="s0">else </span><span class="s1">ControlType</span><span class="s2">.</span><span class="s1">CURSOR_UP</span><span class="s2">,</span>
+                    <span class="s1">abs</span><span class="s2">(</span><span class="s1">y</span><span class="s2">),</span>
+                <span class="s2">),</span>
+            <span class="s2">)</span>
+            <span class="s0">if </span><span class="s1">y</span>
+            <span class="s0">else </span><span class="s1">cls</span><span class="s2">((</span><span class="s1">ControlType</span><span class="s2">.</span><span class="s1">CURSOR_MOVE_TO_COLUMN</span><span class="s2">, </span><span class="s1">x</span><span class="s2">))</span>
+        <span class="s2">)</span>
+
+    <span class="s2">@</span><span class="s1">classmethod</span>
+    <span class="s0">def </span><span class="s1">move_to</span><span class="s2">(</span><span class="s1">cls</span><span class="s2">, </span><span class="s1">x</span><span class="s2">: </span><span class="s1">int</span><span class="s2">, </span><span class="s1">y</span><span class="s2">: </span><span class="s1">int</span><span class="s2">) </span><span class="s1">-&gt; </span><span class="s5">&quot;Control&quot;</span><span class="s2">:</span>
+        <span class="s6">&quot;&quot;&quot;Move cursor to absolute position. 
+ 
+        Args: 
+            x (int): x offset (column) 
+            y (int): y offset (row) 
+ 
+        Returns: 
+            ~Control: Control object. 
+        &quot;&quot;&quot;</span>
+        <span class="s0">return </span><span class="s1">cls</span><span class="s2">((</span><span class="s1">ControlType</span><span class="s2">.</span><span class="s1">CURSOR_MOVE_TO</span><span class="s2">, </span><span class="s1">x</span><span class="s2">, </span><span class="s1">y</span><span class="s2">))</span>
+
+    <span class="s2">@</span><span class="s1">classmethod</span>
+    <span class="s0">def </span><span class="s1">clear</span><span class="s2">(</span><span class="s1">cls</span><span class="s2">) </span><span class="s1">-&gt; </span><span class="s5">&quot;Control&quot;</span><span class="s2">:</span>
+        <span class="s6">&quot;&quot;&quot;Clear the screen.&quot;&quot;&quot;</span>
+        <span class="s0">return </span><span class="s1">cls</span><span class="s2">(</span><span class="s1">ControlType</span><span class="s2">.</span><span class="s1">CLEAR</span><span class="s2">)</span>
+
+    <span class="s2">@</span><span class="s1">classmethod</span>
+    <span class="s0">def </span><span class="s1">show_cursor</span><span class="s2">(</span><span class="s1">cls</span><span class="s2">, </span><span class="s1">show</span><span class="s2">: </span><span class="s1">bool</span><span class="s2">) </span><span class="s1">-&gt; </span><span class="s5">&quot;Control&quot;</span><span class="s2">:</span>
+        <span class="s6">&quot;&quot;&quot;Show or hide the cursor.&quot;&quot;&quot;</span>
+        <span class="s0">return </span><span class="s1">cls</span><span class="s2">(</span><span class="s1">ControlType</span><span class="s2">.</span><span class="s1">SHOW_CURSOR </span><span class="s0">if </span><span class="s1">show </span><span class="s0">else </span><span class="s1">ControlType</span><span class="s2">.</span><span class="s1">HIDE_CURSOR</span><span class="s2">)</span>
+
+    <span class="s2">@</span><span class="s1">classmethod</span>
+    <span class="s0">def </span><span class="s1">alt_screen</span><span class="s2">(</span><span class="s1">cls</span><span class="s2">, </span><span class="s1">enable</span><span class="s2">: </span><span class="s1">bool</span><span class="s2">) </span><span class="s1">-&gt; </span><span class="s5">&quot;Control&quot;</span><span class="s2">:</span>
+        <span class="s6">&quot;&quot;&quot;Enable or disable alt screen.&quot;&quot;&quot;</span>
+        <span class="s0">if </span><span class="s1">enable</span><span class="s2">:</span>
+            <span class="s0">return </span><span class="s1">cls</span><span class="s2">(</span><span class="s1">ControlType</span><span class="s2">.</span><span class="s1">ENABLE_ALT_SCREEN</span><span class="s2">, </span><span class="s1">ControlType</span><span class="s2">.</span><span class="s1">HOME</span><span class="s2">)</span>
+        <span class="s0">else</span><span class="s2">:</span>
+            <span class="s0">return </span><span class="s1">cls</span><span class="s2">(</span><span class="s1">ControlType</span><span class="s2">.</span><span class="s1">DISABLE_ALT_SCREEN</span><span class="s2">)</span>
+
+    <span class="s2">@</span><span class="s1">classmethod</span>
+    <span class="s0">def </span><span class="s1">title</span><span class="s2">(</span><span class="s1">cls</span><span class="s2">, </span><span class="s1">title</span><span class="s2">: </span><span class="s1">str</span><span class="s2">) </span><span class="s1">-&gt; </span><span class="s5">&quot;Control&quot;</span><span class="s2">:</span>
+        <span class="s6">&quot;&quot;&quot;Set the terminal window title 
+ 
+        Args: 
+            title (str): The new terminal window title 
+        &quot;&quot;&quot;</span>
+        <span class="s0">return </span><span class="s1">cls</span><span class="s2">((</span><span class="s1">ControlType</span><span class="s2">.</span><span class="s1">SET_WINDOW_TITLE</span><span class="s2">, </span><span class="s1">title</span><span class="s2">))</span>
+
+    <span class="s0">def </span><span class="s1">__str__</span><span class="s2">(</span><span class="s1">self</span><span class="s2">) </span><span class="s1">-&gt; str</span><span class="s2">:</span>
+        <span class="s0">return </span><span class="s1">self</span><span class="s2">.</span><span class="s1">segment</span><span class="s2">.</span><span class="s1">text</span>
+
+    <span class="s0">def </span><span class="s1">__rich_console__</span><span class="s2">(</span>
+        <span class="s1">self</span><span class="s2">, </span><span class="s1">console</span><span class="s2">: </span><span class="s5">&quot;Console&quot;</span><span class="s2">, </span><span class="s1">options</span><span class="s2">: </span><span class="s5">&quot;ConsoleOptions&quot;</span>
+    <span class="s2">) </span><span class="s1">-&gt; </span><span class="s5">&quot;RenderResult&quot;</span><span class="s2">:</span>
+        <span class="s0">if </span><span class="s1">self</span><span class="s2">.</span><span class="s1">segment</span><span class="s2">.</span><span class="s1">text</span><span class="s2">:</span>
+            <span class="s0">yield </span><span class="s1">self</span><span class="s2">.</span><span class="s1">segment</span>
+
+
+<span class="s0">def </span><span class="s1">strip_control_codes</span><span class="s2">(</span>
+    <span class="s1">text</span><span class="s2">: </span><span class="s1">str</span><span class="s2">, </span><span class="s1">_translate_table</span><span class="s2">: </span><span class="s1">Dict</span><span class="s2">[</span><span class="s1">int</span><span class="s2">, </span><span class="s0">None</span><span class="s2">] = </span><span class="s1">_CONTROL_STRIP_TRANSLATE</span>
+<span class="s2">) </span><span class="s1">-&gt; str</span><span class="s2">:</span>
+    <span class="s6">&quot;&quot;&quot;Remove control codes from text. 
+ 
+    Args: 
+        text (str): A string possibly contain control codes. 
+ 
+    Returns: 
+        str: String with control codes removed. 
+    &quot;&quot;&quot;</span>
+    <span class="s0">return </span><span class="s1">text</span><span class="s2">.</span><span class="s1">translate</span><span class="s2">(</span><span class="s1">_translate_table</span><span class="s2">)</span>
+
+
+<span class="s0">def </span><span class="s1">escape_control_codes</span><span class="s2">(</span>
+    <span class="s1">text</span><span class="s2">: </span><span class="s1">str</span><span class="s2">,</span>
+    <span class="s1">_translate_table</span><span class="s2">: </span><span class="s1">Dict</span><span class="s2">[</span><span class="s1">int</span><span class="s2">, </span><span class="s1">str</span><span class="s2">] = </span><span class="s1">CONTROL_ESCAPE</span><span class="s2">,</span>
+<span class="s2">) </span><span class="s1">-&gt; str</span><span class="s2">:</span>
+    <span class="s6">&quot;&quot;&quot;Replace control codes with their &quot;escaped&quot; equivalent in the given text. 
+    (e.g. &quot;\b&quot; becomes &quot;\\b&quot;) 
+ 
+    Args: 
+        text (str): A string possibly containing control codes. 
+ 
+    Returns: 
+        str: String with control codes replaced with their escaped version. 
+    &quot;&quot;&quot;</span>
+    <span class="s0">return </span><span class="s1">text</span><span class="s2">.</span><span class="s1">translate</span><span class="s2">(</span><span class="s1">_translate_table</span><span class="s2">)</span>
+
+
+<span class="s0">if </span><span class="s1">__name__ </span><span class="s2">== </span><span class="s5">&quot;__main__&quot;</span><span class="s2">:  </span><span class="s4"># pragma: no cover</span>
+    <span class="s0">from </span><span class="s1">pip</span><span class="s2">.</span><span class="s1">_vendor</span><span class="s2">.</span><span class="s1">rich</span><span class="s2">.</span><span class="s1">console </span><span class="s0">import </span><span class="s1">Console</span>
+
+    <span class="s1">console </span><span class="s2">= </span><span class="s1">Console</span><span class="s2">()</span>
+    <span class="s1">console</span><span class="s2">.</span><span class="s1">print</span><span class="s2">(</span><span class="s5">&quot;Look at the title of your terminal window ^&quot;</span><span class="s2">)</span>
+    <span class="s4"># console.print(Control((ControlType.SET_WINDOW_TITLE, &quot;Hello, world!&quot;)))</span>
+    <span class="s0">for </span><span class="s1">i </span><span class="s0">in </span><span class="s1">range</span><span class="s2">(</span><span class="s3">10</span><span class="s2">):</span>
+        <span class="s1">console</span><span class="s2">.</span><span class="s1">set_window_title</span><span class="s2">(</span><span class="s5">&quot;🚀 Loading&quot; </span><span class="s2">+ </span><span class="s5">&quot;.&quot; </span><span class="s2">* </span><span class="s1">i</span><span class="s2">)</span>
+        <span class="s1">time</span><span class="s2">.</span><span class="s1">sleep</span><span class="s2">(</span><span class="s3">0.5</span><span class="s2">)</span>
+</pre>
+</body>
+</html>

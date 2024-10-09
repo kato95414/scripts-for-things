@@ -1,0 +1,210 @@
+<html>
+<head>
+<title>columns.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cf8e6d;}
+.s1 { color: #bcbec4;}
+.s2 { color: #bcbec4;}
+.s3 { color: #5f826b; font-style: italic;}
+.s4 { color: #2aacb8;}
+.s5 { color: #7a7e85;}
+.s6 { color: #6aab73;}
+</style>
+</head>
+<body bgcolor="#1e1f22">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+columns.py</font>
+</center></td></tr></table>
+<pre><span class="s0">from </span><span class="s1">collections </span><span class="s0">import </span><span class="s1">defaultdict</span>
+<span class="s0">from </span><span class="s1">itertools </span><span class="s0">import </span><span class="s1">chain</span>
+<span class="s0">from </span><span class="s1">operator </span><span class="s0">import </span><span class="s1">itemgetter</span>
+<span class="s0">from </span><span class="s1">typing </span><span class="s0">import </span><span class="s1">Dict</span><span class="s2">, </span><span class="s1">Iterable</span><span class="s2">, </span><span class="s1">List</span><span class="s2">, </span><span class="s1">Optional</span><span class="s2">, </span><span class="s1">Tuple</span>
+
+<span class="s0">from </span><span class="s2">.</span><span class="s1">align </span><span class="s0">import </span><span class="s1">Align</span><span class="s2">, </span><span class="s1">AlignMethod</span>
+<span class="s0">from </span><span class="s2">.</span><span class="s1">console </span><span class="s0">import </span><span class="s1">Console</span><span class="s2">, </span><span class="s1">ConsoleOptions</span><span class="s2">, </span><span class="s1">RenderableType</span><span class="s2">, </span><span class="s1">RenderResult</span>
+<span class="s0">from </span><span class="s2">.</span><span class="s1">constrain </span><span class="s0">import </span><span class="s1">Constrain</span>
+<span class="s0">from </span><span class="s2">.</span><span class="s1">measure </span><span class="s0">import </span><span class="s1">Measurement</span>
+<span class="s0">from </span><span class="s2">.</span><span class="s1">padding </span><span class="s0">import </span><span class="s1">Padding</span><span class="s2">, </span><span class="s1">PaddingDimensions</span>
+<span class="s0">from </span><span class="s2">.</span><span class="s1">table </span><span class="s0">import </span><span class="s1">Table</span>
+<span class="s0">from </span><span class="s2">.</span><span class="s1">text </span><span class="s0">import </span><span class="s1">TextType</span>
+<span class="s0">from </span><span class="s2">.</span><span class="s1">jupyter </span><span class="s0">import </span><span class="s1">JupyterMixin</span>
+
+
+<span class="s0">class </span><span class="s1">Columns</span><span class="s2">(</span><span class="s1">JupyterMixin</span><span class="s2">):</span>
+    <span class="s3">&quot;&quot;&quot;Display renderables in neat columns. 
+ 
+    Args: 
+        renderables (Iterable[RenderableType]): Any number of Rich renderables (including str). 
+        width (int, optional): The desired width of the columns, or None to auto detect. Defaults to None. 
+        padding (PaddingDimensions, optional): Optional padding around cells. Defaults to (0, 1). 
+        expand (bool, optional): Expand columns to full width. Defaults to False. 
+        equal (bool, optional): Arrange in to equal sized columns. Defaults to False. 
+        column_first (bool, optional): Align items from top to bottom (rather than left to right). Defaults to False. 
+        right_to_left (bool, optional): Start column from right hand side. Defaults to False. 
+        align (str, optional): Align value (&quot;left&quot;, &quot;right&quot;, or &quot;center&quot;) or None for default. Defaults to None. 
+        title (TextType, optional): Optional title for Columns. 
+    &quot;&quot;&quot;</span>
+
+    <span class="s0">def </span><span class="s1">__init__</span><span class="s2">(</span>
+        <span class="s1">self</span><span class="s2">,</span>
+        <span class="s1">renderables</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">Iterable</span><span class="s2">[</span><span class="s1">RenderableType</span><span class="s2">]] = </span><span class="s0">None</span><span class="s2">,</span>
+        <span class="s1">padding</span><span class="s2">: </span><span class="s1">PaddingDimensions </span><span class="s2">= (</span><span class="s4">0</span><span class="s2">, </span><span class="s4">1</span><span class="s2">),</span>
+        <span class="s2">*,</span>
+        <span class="s1">width</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">int</span><span class="s2">] = </span><span class="s0">None</span><span class="s2">,</span>
+        <span class="s1">expand</span><span class="s2">: </span><span class="s1">bool </span><span class="s2">= </span><span class="s0">False</span><span class="s2">,</span>
+        <span class="s1">equal</span><span class="s2">: </span><span class="s1">bool </span><span class="s2">= </span><span class="s0">False</span><span class="s2">,</span>
+        <span class="s1">column_first</span><span class="s2">: </span><span class="s1">bool </span><span class="s2">= </span><span class="s0">False</span><span class="s2">,</span>
+        <span class="s1">right_to_left</span><span class="s2">: </span><span class="s1">bool </span><span class="s2">= </span><span class="s0">False</span><span class="s2">,</span>
+        <span class="s1">align</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">AlignMethod</span><span class="s2">] = </span><span class="s0">None</span><span class="s2">,</span>
+        <span class="s1">title</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">TextType</span><span class="s2">] = </span><span class="s0">None</span><span class="s2">,</span>
+    <span class="s2">) </span><span class="s1">-&gt; </span><span class="s0">None</span><span class="s2">:</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">renderables </span><span class="s2">= </span><span class="s1">list</span><span class="s2">(</span><span class="s1">renderables </span><span class="s0">or </span><span class="s2">[])</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">width </span><span class="s2">= </span><span class="s1">width</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">padding </span><span class="s2">= </span><span class="s1">padding</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">expand </span><span class="s2">= </span><span class="s1">expand</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">equal </span><span class="s2">= </span><span class="s1">equal</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">column_first </span><span class="s2">= </span><span class="s1">column_first</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">right_to_left </span><span class="s2">= </span><span class="s1">right_to_left</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">align</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">AlignMethod</span><span class="s2">] = </span><span class="s1">align</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">title </span><span class="s2">= </span><span class="s1">title</span>
+
+    <span class="s0">def </span><span class="s1">add_renderable</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">renderable</span><span class="s2">: </span><span class="s1">RenderableType</span><span class="s2">) </span><span class="s1">-&gt; </span><span class="s0">None</span><span class="s2">:</span>
+        <span class="s3">&quot;&quot;&quot;Add a renderable to the columns. 
+ 
+        Args: 
+            renderable (RenderableType): Any renderable object. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">renderables</span><span class="s2">.</span><span class="s1">append</span><span class="s2">(</span><span class="s1">renderable</span><span class="s2">)</span>
+
+    <span class="s0">def </span><span class="s1">__rich_console__</span><span class="s2">(</span>
+        <span class="s1">self</span><span class="s2">, </span><span class="s1">console</span><span class="s2">: </span><span class="s1">Console</span><span class="s2">, </span><span class="s1">options</span><span class="s2">: </span><span class="s1">ConsoleOptions</span>
+    <span class="s2">) </span><span class="s1">-&gt; RenderResult</span><span class="s2">:</span>
+        <span class="s1">render_str </span><span class="s2">= </span><span class="s1">console</span><span class="s2">.</span><span class="s1">render_str</span>
+        <span class="s1">renderables </span><span class="s2">= [</span>
+            <span class="s1">render_str</span><span class="s2">(</span><span class="s1">renderable</span><span class="s2">) </span><span class="s0">if </span><span class="s1">isinstance</span><span class="s2">(</span><span class="s1">renderable</span><span class="s2">, </span><span class="s1">str</span><span class="s2">) </span><span class="s0">else </span><span class="s1">renderable</span>
+            <span class="s0">for </span><span class="s1">renderable </span><span class="s0">in </span><span class="s1">self</span><span class="s2">.</span><span class="s1">renderables</span>
+        <span class="s2">]</span>
+        <span class="s0">if not </span><span class="s1">renderables</span><span class="s2">:</span>
+            <span class="s0">return</span>
+        <span class="s1">_top</span><span class="s2">, </span><span class="s1">right</span><span class="s2">, </span><span class="s1">_bottom</span><span class="s2">, </span><span class="s1">left </span><span class="s2">= </span><span class="s1">Padding</span><span class="s2">.</span><span class="s1">unpack</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">padding</span><span class="s2">)</span>
+        <span class="s1">width_padding </span><span class="s2">= </span><span class="s1">max</span><span class="s2">(</span><span class="s1">left</span><span class="s2">, </span><span class="s1">right</span><span class="s2">)</span>
+        <span class="s1">max_width </span><span class="s2">= </span><span class="s1">options</span><span class="s2">.</span><span class="s1">max_width</span>
+        <span class="s1">widths</span><span class="s2">: </span><span class="s1">Dict</span><span class="s2">[</span><span class="s1">int</span><span class="s2">, </span><span class="s1">int</span><span class="s2">] = </span><span class="s1">defaultdict</span><span class="s2">(</span><span class="s1">int</span><span class="s2">)</span>
+        <span class="s1">column_count </span><span class="s2">= </span><span class="s1">len</span><span class="s2">(</span><span class="s1">renderables</span><span class="s2">)</span>
+
+        <span class="s1">get_measurement </span><span class="s2">= </span><span class="s1">Measurement</span><span class="s2">.</span><span class="s1">get</span>
+        <span class="s1">renderable_widths </span><span class="s2">= [</span>
+            <span class="s1">get_measurement</span><span class="s2">(</span><span class="s1">console</span><span class="s2">, </span><span class="s1">options</span><span class="s2">, </span><span class="s1">renderable</span><span class="s2">).</span><span class="s1">maximum</span>
+            <span class="s0">for </span><span class="s1">renderable </span><span class="s0">in </span><span class="s1">renderables</span>
+        <span class="s2">]</span>
+        <span class="s0">if </span><span class="s1">self</span><span class="s2">.</span><span class="s1">equal</span><span class="s2">:</span>
+            <span class="s1">renderable_widths </span><span class="s2">= [</span><span class="s1">max</span><span class="s2">(</span><span class="s1">renderable_widths</span><span class="s2">)] * </span><span class="s1">len</span><span class="s2">(</span><span class="s1">renderable_widths</span><span class="s2">)</span>
+
+        <span class="s0">def </span><span class="s1">iter_renderables</span><span class="s2">(</span>
+            <span class="s1">column_count</span><span class="s2">: </span><span class="s1">int</span><span class="s2">,</span>
+        <span class="s2">) </span><span class="s1">-&gt; Iterable</span><span class="s2">[</span><span class="s1">Tuple</span><span class="s2">[</span><span class="s1">int</span><span class="s2">, </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">RenderableType</span><span class="s2">]]]:</span>
+            <span class="s1">item_count </span><span class="s2">= </span><span class="s1">len</span><span class="s2">(</span><span class="s1">renderables</span><span class="s2">)</span>
+            <span class="s0">if </span><span class="s1">self</span><span class="s2">.</span><span class="s1">column_first</span><span class="s2">:</span>
+                <span class="s1">width_renderables </span><span class="s2">= </span><span class="s1">list</span><span class="s2">(</span><span class="s1">zip</span><span class="s2">(</span><span class="s1">renderable_widths</span><span class="s2">, </span><span class="s1">renderables</span><span class="s2">))</span>
+
+                <span class="s1">column_lengths</span><span class="s2">: </span><span class="s1">List</span><span class="s2">[</span><span class="s1">int</span><span class="s2">] = [</span><span class="s1">item_count </span><span class="s2">// </span><span class="s1">column_count</span><span class="s2">] * </span><span class="s1">column_count</span>
+                <span class="s0">for </span><span class="s1">col_no </span><span class="s0">in </span><span class="s1">range</span><span class="s2">(</span><span class="s1">item_count </span><span class="s2">% </span><span class="s1">column_count</span><span class="s2">):</span>
+                    <span class="s1">column_lengths</span><span class="s2">[</span><span class="s1">col_no</span><span class="s2">] += </span><span class="s4">1</span>
+
+                <span class="s1">row_count </span><span class="s2">= (</span><span class="s1">item_count </span><span class="s2">+ </span><span class="s1">column_count </span><span class="s2">- </span><span class="s4">1</span><span class="s2">) // </span><span class="s1">column_count</span>
+                <span class="s1">cells </span><span class="s2">= [[-</span><span class="s4">1</span><span class="s2">] * </span><span class="s1">column_count </span><span class="s0">for </span><span class="s1">_ </span><span class="s0">in </span><span class="s1">range</span><span class="s2">(</span><span class="s1">row_count</span><span class="s2">)]</span>
+                <span class="s1">row </span><span class="s2">= </span><span class="s1">col </span><span class="s2">= </span><span class="s4">0</span>
+                <span class="s0">for </span><span class="s1">index </span><span class="s0">in </span><span class="s1">range</span><span class="s2">(</span><span class="s1">item_count</span><span class="s2">):</span>
+                    <span class="s1">cells</span><span class="s2">[</span><span class="s1">row</span><span class="s2">][</span><span class="s1">col</span><span class="s2">] = </span><span class="s1">index</span>
+                    <span class="s1">column_lengths</span><span class="s2">[</span><span class="s1">col</span><span class="s2">] -= </span><span class="s4">1</span>
+                    <span class="s0">if </span><span class="s1">column_lengths</span><span class="s2">[</span><span class="s1">col</span><span class="s2">]:</span>
+                        <span class="s1">row </span><span class="s2">+= </span><span class="s4">1</span>
+                    <span class="s0">else</span><span class="s2">:</span>
+                        <span class="s1">col </span><span class="s2">+= </span><span class="s4">1</span>
+                        <span class="s1">row </span><span class="s2">= </span><span class="s4">0</span>
+                <span class="s0">for </span><span class="s1">index </span><span class="s0">in </span><span class="s1">chain</span><span class="s2">.</span><span class="s1">from_iterable</span><span class="s2">(</span><span class="s1">cells</span><span class="s2">):</span>
+                    <span class="s0">if </span><span class="s1">index </span><span class="s2">== -</span><span class="s4">1</span><span class="s2">:</span>
+                        <span class="s0">break</span>
+                    <span class="s0">yield </span><span class="s1">width_renderables</span><span class="s2">[</span><span class="s1">index</span><span class="s2">]</span>
+            <span class="s0">else</span><span class="s2">:</span>
+                <span class="s0">yield from </span><span class="s1">zip</span><span class="s2">(</span><span class="s1">renderable_widths</span><span class="s2">, </span><span class="s1">renderables</span><span class="s2">)</span>
+            <span class="s5"># Pad odd elements with spaces</span>
+            <span class="s0">if </span><span class="s1">item_count </span><span class="s2">% </span><span class="s1">column_count</span><span class="s2">:</span>
+                <span class="s0">for </span><span class="s1">_ </span><span class="s0">in </span><span class="s1">range</span><span class="s2">(</span><span class="s1">column_count </span><span class="s2">- (</span><span class="s1">item_count </span><span class="s2">% </span><span class="s1">column_count</span><span class="s2">)):</span>
+                    <span class="s0">yield </span><span class="s4">0</span><span class="s2">, </span><span class="s0">None</span>
+
+        <span class="s1">table </span><span class="s2">= </span><span class="s1">Table</span><span class="s2">.</span><span class="s1">grid</span><span class="s2">(</span><span class="s1">padding</span><span class="s2">=</span><span class="s1">self</span><span class="s2">.</span><span class="s1">padding</span><span class="s2">, </span><span class="s1">collapse_padding</span><span class="s2">=</span><span class="s0">True</span><span class="s2">, </span><span class="s1">pad_edge</span><span class="s2">=</span><span class="s0">False</span><span class="s2">)</span>
+        <span class="s1">table</span><span class="s2">.</span><span class="s1">expand </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">expand</span>
+        <span class="s1">table</span><span class="s2">.</span><span class="s1">title </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">title</span>
+
+        <span class="s0">if </span><span class="s1">self</span><span class="s2">.</span><span class="s1">width </span><span class="s0">is not None</span><span class="s2">:</span>
+            <span class="s1">column_count </span><span class="s2">= (</span><span class="s1">max_width</span><span class="s2">) // (</span><span class="s1">self</span><span class="s2">.</span><span class="s1">width </span><span class="s2">+ </span><span class="s1">width_padding</span><span class="s2">)</span>
+            <span class="s0">for </span><span class="s1">_ </span><span class="s0">in </span><span class="s1">range</span><span class="s2">(</span><span class="s1">column_count</span><span class="s2">):</span>
+                <span class="s1">table</span><span class="s2">.</span><span class="s1">add_column</span><span class="s2">(</span><span class="s1">width</span><span class="s2">=</span><span class="s1">self</span><span class="s2">.</span><span class="s1">width</span><span class="s2">)</span>
+        <span class="s0">else</span><span class="s2">:</span>
+            <span class="s0">while </span><span class="s1">column_count </span><span class="s2">&gt; </span><span class="s4">1</span><span class="s2">:</span>
+                <span class="s1">widths</span><span class="s2">.</span><span class="s1">clear</span><span class="s2">()</span>
+                <span class="s1">column_no </span><span class="s2">= </span><span class="s4">0</span>
+                <span class="s0">for </span><span class="s1">renderable_width</span><span class="s2">, </span><span class="s1">_ </span><span class="s0">in </span><span class="s1">iter_renderables</span><span class="s2">(</span><span class="s1">column_count</span><span class="s2">):</span>
+                    <span class="s1">widths</span><span class="s2">[</span><span class="s1">column_no</span><span class="s2">] = </span><span class="s1">max</span><span class="s2">(</span><span class="s1">widths</span><span class="s2">[</span><span class="s1">column_no</span><span class="s2">], </span><span class="s1">renderable_width</span><span class="s2">)</span>
+                    <span class="s1">total_width </span><span class="s2">= </span><span class="s1">sum</span><span class="s2">(</span><span class="s1">widths</span><span class="s2">.</span><span class="s1">values</span><span class="s2">()) + </span><span class="s1">width_padding </span><span class="s2">* (</span>
+                        <span class="s1">len</span><span class="s2">(</span><span class="s1">widths</span><span class="s2">) - </span><span class="s4">1</span>
+                    <span class="s2">)</span>
+                    <span class="s0">if </span><span class="s1">total_width </span><span class="s2">&gt; </span><span class="s1">max_width</span><span class="s2">:</span>
+                        <span class="s1">column_count </span><span class="s2">= </span><span class="s1">len</span><span class="s2">(</span><span class="s1">widths</span><span class="s2">) - </span><span class="s4">1</span>
+                        <span class="s0">break</span>
+                    <span class="s0">else</span><span class="s2">:</span>
+                        <span class="s1">column_no </span><span class="s2">= (</span><span class="s1">column_no </span><span class="s2">+ </span><span class="s4">1</span><span class="s2">) % </span><span class="s1">column_count</span>
+                <span class="s0">else</span><span class="s2">:</span>
+                    <span class="s0">break</span>
+
+        <span class="s1">get_renderable </span><span class="s2">= </span><span class="s1">itemgetter</span><span class="s2">(</span><span class="s4">1</span><span class="s2">)</span>
+        <span class="s1">_renderables </span><span class="s2">= [</span>
+            <span class="s1">get_renderable</span><span class="s2">(</span><span class="s1">_renderable</span><span class="s2">)</span>
+            <span class="s0">for </span><span class="s1">_renderable </span><span class="s0">in </span><span class="s1">iter_renderables</span><span class="s2">(</span><span class="s1">column_count</span><span class="s2">)</span>
+        <span class="s2">]</span>
+        <span class="s0">if </span><span class="s1">self</span><span class="s2">.</span><span class="s1">equal</span><span class="s2">:</span>
+            <span class="s1">_renderables </span><span class="s2">= [</span>
+                <span class="s0">None</span>
+                <span class="s0">if </span><span class="s1">renderable </span><span class="s0">is None</span>
+                <span class="s0">else </span><span class="s1">Constrain</span><span class="s2">(</span><span class="s1">renderable</span><span class="s2">, </span><span class="s1">renderable_widths</span><span class="s2">[</span><span class="s4">0</span><span class="s2">])</span>
+                <span class="s0">for </span><span class="s1">renderable </span><span class="s0">in </span><span class="s1">_renderables</span>
+            <span class="s2">]</span>
+        <span class="s0">if </span><span class="s1">self</span><span class="s2">.</span><span class="s1">align</span><span class="s2">:</span>
+            <span class="s1">align </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">align</span>
+            <span class="s1">_Align </span><span class="s2">= </span><span class="s1">Align</span>
+            <span class="s1">_renderables </span><span class="s2">= [</span>
+                <span class="s0">None if </span><span class="s1">renderable </span><span class="s0">is None else </span><span class="s1">_Align</span><span class="s2">(</span><span class="s1">renderable</span><span class="s2">, </span><span class="s1">align</span><span class="s2">)</span>
+                <span class="s0">for </span><span class="s1">renderable </span><span class="s0">in </span><span class="s1">_renderables</span>
+            <span class="s2">]</span>
+
+        <span class="s1">right_to_left </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">right_to_left</span>
+        <span class="s1">add_row </span><span class="s2">= </span><span class="s1">table</span><span class="s2">.</span><span class="s1">add_row</span>
+        <span class="s0">for </span><span class="s1">start </span><span class="s0">in </span><span class="s1">range</span><span class="s2">(</span><span class="s4">0</span><span class="s2">, </span><span class="s1">len</span><span class="s2">(</span><span class="s1">_renderables</span><span class="s2">), </span><span class="s1">column_count</span><span class="s2">):</span>
+            <span class="s1">row </span><span class="s2">= </span><span class="s1">_renderables</span><span class="s2">[</span><span class="s1">start </span><span class="s2">: </span><span class="s1">start </span><span class="s2">+ </span><span class="s1">column_count</span><span class="s2">]</span>
+            <span class="s0">if </span><span class="s1">right_to_left</span><span class="s2">:</span>
+                <span class="s1">row </span><span class="s2">= </span><span class="s1">row</span><span class="s2">[::-</span><span class="s4">1</span><span class="s2">]</span>
+            <span class="s1">add_row</span><span class="s2">(*</span><span class="s1">row</span><span class="s2">)</span>
+        <span class="s0">yield </span><span class="s1">table</span>
+
+
+<span class="s0">if </span><span class="s1">__name__ </span><span class="s2">== </span><span class="s6">&quot;__main__&quot;</span><span class="s2">:  </span><span class="s5"># pragma: no cover</span>
+    <span class="s0">import </span><span class="s1">os</span>
+
+    <span class="s1">console </span><span class="s2">= </span><span class="s1">Console</span><span class="s2">()</span>
+
+    <span class="s1">files </span><span class="s2">= [</span><span class="s6">f&quot;</span><span class="s0">{</span><span class="s1">i</span><span class="s0">} {</span><span class="s1">s</span><span class="s0">}</span><span class="s6">&quot; </span><span class="s0">for </span><span class="s1">i</span><span class="s2">, </span><span class="s1">s </span><span class="s0">in </span><span class="s1">enumerate</span><span class="s2">(</span><span class="s1">sorted</span><span class="s2">(</span><span class="s1">os</span><span class="s2">.</span><span class="s1">listdir</span><span class="s2">()))]</span>
+    <span class="s1">columns </span><span class="s2">= </span><span class="s1">Columns</span><span class="s2">(</span><span class="s1">files</span><span class="s2">, </span><span class="s1">padding</span><span class="s2">=(</span><span class="s4">0</span><span class="s2">, </span><span class="s4">1</span><span class="s2">), </span><span class="s1">expand</span><span class="s2">=</span><span class="s0">False</span><span class="s2">, </span><span class="s1">equal</span><span class="s2">=</span><span class="s0">False</span><span class="s2">)</span>
+    <span class="s1">console</span><span class="s2">.</span><span class="s1">print</span><span class="s2">(</span><span class="s1">columns</span><span class="s2">)</span>
+    <span class="s1">console</span><span class="s2">.</span><span class="s1">rule</span><span class="s2">()</span>
+    <span class="s1">columns</span><span class="s2">.</span><span class="s1">column_first </span><span class="s2">= </span><span class="s0">True</span>
+    <span class="s1">console</span><span class="s2">.</span><span class="s1">print</span><span class="s2">(</span><span class="s1">columns</span><span class="s2">)</span>
+    <span class="s1">columns</span><span class="s2">.</span><span class="s1">right_to_left </span><span class="s2">= </span><span class="s0">True</span>
+    <span class="s1">console</span><span class="s2">.</span><span class="s1">rule</span><span class="s2">()</span>
+    <span class="s1">console</span><span class="s2">.</span><span class="s1">print</span><span class="s2">(</span><span class="s1">columns</span><span class="s2">)</span>
+</pre>
+</body>
+</html>

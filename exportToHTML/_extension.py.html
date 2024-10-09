@@ -1,0 +1,30 @@
+<html>
+<head>
+<title>_extension.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cf8e6d;}
+.s1 { color: #bcbec4;}
+.s2 { color: #bcbec4;}
+.s3 { color: #7a7e85;}
+</style>
+</head>
+<body bgcolor="#1e1f22">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+_extension.py</font>
+</center></td></tr></table>
+<pre><span class="s0">from </span><span class="s1">typing </span><span class="s0">import </span><span class="s1">Any</span>
+
+
+<span class="s0">def </span><span class="s1">load_ipython_extension</span><span class="s2">(</span><span class="s1">ip</span><span class="s2">: </span><span class="s1">Any</span><span class="s2">) </span><span class="s1">-&gt; </span><span class="s0">None</span><span class="s2">:  </span><span class="s3"># pragma: no cover</span>
+    <span class="s3"># prevent circular import</span>
+    <span class="s0">from </span><span class="s1">pip</span><span class="s2">.</span><span class="s1">_vendor</span><span class="s2">.</span><span class="s1">rich</span><span class="s2">.</span><span class="s1">pretty </span><span class="s0">import </span><span class="s1">install</span>
+    <span class="s0">from </span><span class="s1">pip</span><span class="s2">.</span><span class="s1">_vendor</span><span class="s2">.</span><span class="s1">rich</span><span class="s2">.</span><span class="s1">traceback </span><span class="s0">import </span><span class="s1">install </span><span class="s0">as </span><span class="s1">tr_install</span>
+
+    <span class="s1">install</span><span class="s2">()</span>
+    <span class="s1">tr_install</span><span class="s2">()</span>
+</pre>
+</body>
+</html>

@@ -1,0 +1,54 @@
+<html>
+<head>
+<title>errors.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cf8e6d;}
+.s1 { color: #bcbec4;}
+.s2 { color: #bcbec4;}
+.s3 { color: #5f826b; font-style: italic;}
+</style>
+</head>
+<body bgcolor="#1e1f22">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+errors.py</font>
+</center></td></tr></table>
+<pre><span class="s0">class </span><span class="s1">ConsoleError</span><span class="s2">(</span><span class="s1">Exception</span><span class="s2">):</span>
+    <span class="s3">&quot;&quot;&quot;An error in console operation.&quot;&quot;&quot;</span>
+
+
+<span class="s0">class </span><span class="s1">StyleError</span><span class="s2">(</span><span class="s1">Exception</span><span class="s2">):</span>
+    <span class="s3">&quot;&quot;&quot;An error in styles.&quot;&quot;&quot;</span>
+
+
+<span class="s0">class </span><span class="s1">StyleSyntaxError</span><span class="s2">(</span><span class="s1">ConsoleError</span><span class="s2">):</span>
+    <span class="s3">&quot;&quot;&quot;Style was badly formatted.&quot;&quot;&quot;</span>
+
+
+<span class="s0">class </span><span class="s1">MissingStyle</span><span class="s2">(</span><span class="s1">StyleError</span><span class="s2">):</span>
+    <span class="s3">&quot;&quot;&quot;No such style.&quot;&quot;&quot;</span>
+
+
+<span class="s0">class </span><span class="s1">StyleStackError</span><span class="s2">(</span><span class="s1">ConsoleError</span><span class="s2">):</span>
+    <span class="s3">&quot;&quot;&quot;Style stack is invalid.&quot;&quot;&quot;</span>
+
+
+<span class="s0">class </span><span class="s1">NotRenderableError</span><span class="s2">(</span><span class="s1">ConsoleError</span><span class="s2">):</span>
+    <span class="s3">&quot;&quot;&quot;Object is not renderable.&quot;&quot;&quot;</span>
+
+
+<span class="s0">class </span><span class="s1">MarkupError</span><span class="s2">(</span><span class="s1">ConsoleError</span><span class="s2">):</span>
+    <span class="s3">&quot;&quot;&quot;Markup was badly formatted.&quot;&quot;&quot;</span>
+
+
+<span class="s0">class </span><span class="s1">LiveError</span><span class="s2">(</span><span class="s1">ConsoleError</span><span class="s2">):</span>
+    <span class="s3">&quot;&quot;&quot;Error related to Live display.&quot;&quot;&quot;</span>
+
+
+<span class="s0">class </span><span class="s1">NoAltScreen</span><span class="s2">(</span><span class="s1">ConsoleError</span><span class="s2">):</span>
+    <span class="s3">&quot;&quot;&quot;Alt screen mode was required.&quot;&quot;&quot;</span>
+</pre>
+</body>
+</html>

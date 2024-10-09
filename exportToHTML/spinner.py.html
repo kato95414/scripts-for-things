@@ -1,0 +1,160 @@
+<html>
+<head>
+<title>spinner.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cf8e6d;}
+.s1 { color: #bcbec4;}
+.s2 { color: #bcbec4;}
+.s3 { color: #5f826b; font-style: italic;}
+.s4 { color: #6aab73;}
+.s5 { color: #2aacb8;}
+.s6 { color: #7a7e85;}
+</style>
+</head>
+<body bgcolor="#1e1f22">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+spinner.py</font>
+</center></td></tr></table>
+<pre><span class="s0">from </span><span class="s1">typing </span><span class="s0">import </span><span class="s1">cast</span><span class="s2">, </span><span class="s1">List</span><span class="s2">, </span><span class="s1">Optional</span><span class="s2">, </span><span class="s1">TYPE_CHECKING</span><span class="s2">, </span><span class="s1">Union</span>
+
+<span class="s0">from </span><span class="s2">.</span><span class="s1">_spinners </span><span class="s0">import </span><span class="s1">SPINNERS</span>
+<span class="s0">from </span><span class="s2">.</span><span class="s1">measure </span><span class="s0">import </span><span class="s1">Measurement</span>
+<span class="s0">from </span><span class="s2">.</span><span class="s1">table </span><span class="s0">import </span><span class="s1">Table</span>
+<span class="s0">from </span><span class="s2">.</span><span class="s1">text </span><span class="s0">import </span><span class="s1">Text</span>
+
+<span class="s0">if </span><span class="s1">TYPE_CHECKING</span><span class="s2">:</span>
+    <span class="s0">from </span><span class="s2">.</span><span class="s1">console </span><span class="s0">import </span><span class="s1">Console</span><span class="s2">, </span><span class="s1">ConsoleOptions</span><span class="s2">, </span><span class="s1">RenderResult</span><span class="s2">, </span><span class="s1">RenderableType</span>
+    <span class="s0">from </span><span class="s2">.</span><span class="s1">style </span><span class="s0">import </span><span class="s1">StyleType</span>
+
+
+<span class="s0">class </span><span class="s1">Spinner</span><span class="s2">:</span>
+    <span class="s3">&quot;&quot;&quot;A spinner animation. 
+ 
+    Args: 
+        name (str): Name of spinner (run python -m rich.spinner). 
+        text (RenderableType, optional): A renderable to display at the right of the spinner (str or Text typically). Defaults to &quot;&quot;. 
+        style (StyleType, optional): Style for spinner animation. Defaults to None. 
+        speed (float, optional): Speed factor for animation. Defaults to 1.0. 
+ 
+    Raises: 
+        KeyError: If name isn't one of the supported spinner animations. 
+    &quot;&quot;&quot;</span>
+
+    <span class="s0">def </span><span class="s1">__init__</span><span class="s2">(</span>
+        <span class="s1">self</span><span class="s2">,</span>
+        <span class="s1">name</span><span class="s2">: </span><span class="s1">str</span><span class="s2">,</span>
+        <span class="s1">text</span><span class="s2">: </span><span class="s4">&quot;RenderableType&quot; </span><span class="s2">= </span><span class="s4">&quot;&quot;</span><span class="s2">,</span>
+        <span class="s2">*,</span>
+        <span class="s1">style</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s4">&quot;StyleType&quot;</span><span class="s2">] = </span><span class="s0">None</span><span class="s2">,</span>
+        <span class="s1">speed</span><span class="s2">: </span><span class="s1">float </span><span class="s2">= </span><span class="s5">1.0</span><span class="s2">,</span>
+    <span class="s2">) </span><span class="s1">-&gt; </span><span class="s0">None</span><span class="s2">:</span>
+        <span class="s0">try</span><span class="s2">:</span>
+            <span class="s1">spinner </span><span class="s2">= </span><span class="s1">SPINNERS</span><span class="s2">[</span><span class="s1">name</span><span class="s2">]</span>
+        <span class="s0">except </span><span class="s1">KeyError</span><span class="s2">:</span>
+            <span class="s0">raise </span><span class="s1">KeyError</span><span class="s2">(</span><span class="s4">f&quot;no spinner called </span><span class="s0">{</span><span class="s1">name</span><span class="s0">!r}</span><span class="s4">&quot;</span><span class="s2">)</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">text</span><span class="s2">: </span><span class="s4">&quot;Union[RenderableType, Text]&quot; </span><span class="s2">= (</span>
+            <span class="s1">Text</span><span class="s2">.</span><span class="s1">from_markup</span><span class="s2">(</span><span class="s1">text</span><span class="s2">) </span><span class="s0">if </span><span class="s1">isinstance</span><span class="s2">(</span><span class="s1">text</span><span class="s2">, </span><span class="s1">str</span><span class="s2">) </span><span class="s0">else </span><span class="s1">text</span>
+        <span class="s2">)</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">frames </span><span class="s2">= </span><span class="s1">cast</span><span class="s2">(</span><span class="s1">List</span><span class="s2">[</span><span class="s1">str</span><span class="s2">], </span><span class="s1">spinner</span><span class="s2">[</span><span class="s4">&quot;frames&quot;</span><span class="s2">])[:]</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">interval </span><span class="s2">= </span><span class="s1">cast</span><span class="s2">(</span><span class="s1">float</span><span class="s2">, </span><span class="s1">spinner</span><span class="s2">[</span><span class="s4">&quot;interval&quot;</span><span class="s2">])</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">start_time</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">float</span><span class="s2">] = </span><span class="s0">None</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">style </span><span class="s2">= </span><span class="s1">style</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">speed </span><span class="s2">= </span><span class="s1">speed</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">frame_no_offset</span><span class="s2">: </span><span class="s1">float </span><span class="s2">= </span><span class="s5">0.0</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">_update_speed </span><span class="s2">= </span><span class="s5">0.0</span>
+
+    <span class="s0">def </span><span class="s1">__rich_console__</span><span class="s2">(</span>
+        <span class="s1">self</span><span class="s2">, </span><span class="s1">console</span><span class="s2">: </span><span class="s4">&quot;Console&quot;</span><span class="s2">, </span><span class="s1">options</span><span class="s2">: </span><span class="s4">&quot;ConsoleOptions&quot;</span>
+    <span class="s2">) </span><span class="s1">-&gt; </span><span class="s4">&quot;RenderResult&quot;</span><span class="s2">:</span>
+        <span class="s0">yield </span><span class="s1">self</span><span class="s2">.</span><span class="s1">render</span><span class="s2">(</span><span class="s1">console</span><span class="s2">.</span><span class="s1">get_time</span><span class="s2">())</span>
+
+    <span class="s0">def </span><span class="s1">__rich_measure__</span><span class="s2">(</span>
+        <span class="s1">self</span><span class="s2">, </span><span class="s1">console</span><span class="s2">: </span><span class="s4">&quot;Console&quot;</span><span class="s2">, </span><span class="s1">options</span><span class="s2">: </span><span class="s4">&quot;ConsoleOptions&quot;</span>
+    <span class="s2">) </span><span class="s1">-&gt; Measurement</span><span class="s2">:</span>
+        <span class="s1">text </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">render</span><span class="s2">(</span><span class="s5">0</span><span class="s2">)</span>
+        <span class="s0">return </span><span class="s1">Measurement</span><span class="s2">.</span><span class="s1">get</span><span class="s2">(</span><span class="s1">console</span><span class="s2">, </span><span class="s1">options</span><span class="s2">, </span><span class="s1">text</span><span class="s2">)</span>
+
+    <span class="s0">def </span><span class="s1">render</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">time</span><span class="s2">: </span><span class="s1">float</span><span class="s2">) </span><span class="s1">-&gt; </span><span class="s4">&quot;RenderableType&quot;</span><span class="s2">:</span>
+        <span class="s3">&quot;&quot;&quot;Render the spinner for a given time. 
+ 
+        Args: 
+            time (float): Time in seconds. 
+ 
+        Returns: 
+            RenderableType: A renderable containing animation frame. 
+        &quot;&quot;&quot;</span>
+        <span class="s0">if </span><span class="s1">self</span><span class="s2">.</span><span class="s1">start_time </span><span class="s0">is None</span><span class="s2">:</span>
+            <span class="s1">self</span><span class="s2">.</span><span class="s1">start_time </span><span class="s2">= </span><span class="s1">time</span>
+
+        <span class="s1">frame_no </span><span class="s2">= ((</span><span class="s1">time </span><span class="s2">- </span><span class="s1">self</span><span class="s2">.</span><span class="s1">start_time</span><span class="s2">) * </span><span class="s1">self</span><span class="s2">.</span><span class="s1">speed</span><span class="s2">) / (</span>
+            <span class="s1">self</span><span class="s2">.</span><span class="s1">interval </span><span class="s2">/ </span><span class="s5">1000.0</span>
+        <span class="s2">) + </span><span class="s1">self</span><span class="s2">.</span><span class="s1">frame_no_offset</span>
+        <span class="s1">frame </span><span class="s2">= </span><span class="s1">Text</span><span class="s2">(</span>
+            <span class="s1">self</span><span class="s2">.</span><span class="s1">frames</span><span class="s2">[</span><span class="s1">int</span><span class="s2">(</span><span class="s1">frame_no</span><span class="s2">) % </span><span class="s1">len</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">frames</span><span class="s2">)], </span><span class="s1">style</span><span class="s2">=</span><span class="s1">self</span><span class="s2">.</span><span class="s1">style </span><span class="s0">or </span><span class="s4">&quot;&quot;</span>
+        <span class="s2">)</span>
+
+        <span class="s0">if </span><span class="s1">self</span><span class="s2">.</span><span class="s1">_update_speed</span><span class="s2">:</span>
+            <span class="s1">self</span><span class="s2">.</span><span class="s1">frame_no_offset </span><span class="s2">= </span><span class="s1">frame_no</span>
+            <span class="s1">self</span><span class="s2">.</span><span class="s1">start_time </span><span class="s2">= </span><span class="s1">time</span>
+            <span class="s1">self</span><span class="s2">.</span><span class="s1">speed </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">_update_speed</span>
+            <span class="s1">self</span><span class="s2">.</span><span class="s1">_update_speed </span><span class="s2">= </span><span class="s5">0.0</span>
+
+        <span class="s0">if not </span><span class="s1">self</span><span class="s2">.</span><span class="s1">text</span><span class="s2">:</span>
+            <span class="s0">return </span><span class="s1">frame</span>
+        <span class="s0">elif </span><span class="s1">isinstance</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">text</span><span class="s2">, (</span><span class="s1">str</span><span class="s2">, </span><span class="s1">Text</span><span class="s2">)):</span>
+            <span class="s0">return </span><span class="s1">Text</span><span class="s2">.</span><span class="s1">assemble</span><span class="s2">(</span><span class="s1">frame</span><span class="s2">, </span><span class="s4">&quot; &quot;</span><span class="s2">, </span><span class="s1">self</span><span class="s2">.</span><span class="s1">text</span><span class="s2">)</span>
+        <span class="s0">else</span><span class="s2">:</span>
+            <span class="s1">table </span><span class="s2">= </span><span class="s1">Table</span><span class="s2">.</span><span class="s1">grid</span><span class="s2">(</span><span class="s1">padding</span><span class="s2">=</span><span class="s5">1</span><span class="s2">)</span>
+            <span class="s1">table</span><span class="s2">.</span><span class="s1">add_row</span><span class="s2">(</span><span class="s1">frame</span><span class="s2">, </span><span class="s1">self</span><span class="s2">.</span><span class="s1">text</span><span class="s2">)</span>
+            <span class="s0">return </span><span class="s1">table</span>
+
+    <span class="s0">def </span><span class="s1">update</span><span class="s2">(</span>
+        <span class="s1">self</span><span class="s2">,</span>
+        <span class="s2">*,</span>
+        <span class="s1">text</span><span class="s2">: </span><span class="s4">&quot;RenderableType&quot; </span><span class="s2">= </span><span class="s4">&quot;&quot;</span><span class="s2">,</span>
+        <span class="s1">style</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s4">&quot;StyleType&quot;</span><span class="s2">] = </span><span class="s0">None</span><span class="s2">,</span>
+        <span class="s1">speed</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">float</span><span class="s2">] = </span><span class="s0">None</span><span class="s2">,</span>
+    <span class="s2">) </span><span class="s1">-&gt; </span><span class="s0">None</span><span class="s2">:</span>
+        <span class="s3">&quot;&quot;&quot;Updates attributes of a spinner after it has been started. 
+ 
+        Args: 
+            text (RenderableType, optional): A renderable to display at the right of the spinner (str or Text typically). Defaults to &quot;&quot;. 
+            style (StyleType, optional): Style for spinner animation. Defaults to None. 
+            speed (float, optional): Speed factor for animation. Defaults to None. 
+        &quot;&quot;&quot;</span>
+        <span class="s0">if </span><span class="s1">text</span><span class="s2">:</span>
+            <span class="s1">self</span><span class="s2">.</span><span class="s1">text </span><span class="s2">= </span><span class="s1">Text</span><span class="s2">.</span><span class="s1">from_markup</span><span class="s2">(</span><span class="s1">text</span><span class="s2">) </span><span class="s0">if </span><span class="s1">isinstance</span><span class="s2">(</span><span class="s1">text</span><span class="s2">, </span><span class="s1">str</span><span class="s2">) </span><span class="s0">else </span><span class="s1">text</span>
+        <span class="s0">if </span><span class="s1">style</span><span class="s2">:</span>
+            <span class="s1">self</span><span class="s2">.</span><span class="s1">style </span><span class="s2">= </span><span class="s1">style</span>
+        <span class="s0">if </span><span class="s1">speed</span><span class="s2">:</span>
+            <span class="s1">self</span><span class="s2">.</span><span class="s1">_update_speed </span><span class="s2">= </span><span class="s1">speed</span>
+
+
+<span class="s0">if </span><span class="s1">__name__ </span><span class="s2">== </span><span class="s4">&quot;__main__&quot;</span><span class="s2">:  </span><span class="s6"># pragma: no cover</span>
+    <span class="s0">from </span><span class="s1">time </span><span class="s0">import </span><span class="s1">sleep</span>
+
+    <span class="s0">from </span><span class="s2">.</span><span class="s1">columns </span><span class="s0">import </span><span class="s1">Columns</span>
+    <span class="s0">from </span><span class="s2">.</span><span class="s1">panel </span><span class="s0">import </span><span class="s1">Panel</span>
+    <span class="s0">from </span><span class="s2">.</span><span class="s1">live </span><span class="s0">import </span><span class="s1">Live</span>
+
+    <span class="s1">all_spinners </span><span class="s2">= </span><span class="s1">Columns</span><span class="s2">(</span>
+        <span class="s2">[</span>
+            <span class="s1">Spinner</span><span class="s2">(</span><span class="s1">spinner_name</span><span class="s2">, </span><span class="s1">text</span><span class="s2">=</span><span class="s1">Text</span><span class="s2">(</span><span class="s1">repr</span><span class="s2">(</span><span class="s1">spinner_name</span><span class="s2">), </span><span class="s1">style</span><span class="s2">=</span><span class="s4">&quot;green&quot;</span><span class="s2">))</span>
+            <span class="s0">for </span><span class="s1">spinner_name </span><span class="s0">in </span><span class="s1">sorted</span><span class="s2">(</span><span class="s1">SPINNERS</span><span class="s2">.</span><span class="s1">keys</span><span class="s2">())</span>
+        <span class="s2">],</span>
+        <span class="s1">column_first</span><span class="s2">=</span><span class="s0">True</span><span class="s2">,</span>
+        <span class="s1">expand</span><span class="s2">=</span><span class="s0">True</span><span class="s2">,</span>
+    <span class="s2">)</span>
+
+    <span class="s0">with </span><span class="s1">Live</span><span class="s2">(</span>
+        <span class="s1">Panel</span><span class="s2">(</span><span class="s1">all_spinners</span><span class="s2">, </span><span class="s1">title</span><span class="s2">=</span><span class="s4">&quot;Spinners&quot;</span><span class="s2">, </span><span class="s1">border_style</span><span class="s2">=</span><span class="s4">&quot;blue&quot;</span><span class="s2">),</span>
+        <span class="s1">refresh_per_second</span><span class="s2">=</span><span class="s5">20</span><span class="s2">,</span>
+    <span class="s2">) </span><span class="s0">as </span><span class="s1">live</span><span class="s2">:</span>
+        <span class="s0">while True</span><span class="s2">:</span>
+            <span class="s1">sleep</span><span class="s2">(</span><span class="s5">0.1</span><span class="s2">)</span>
+</pre>
+</body>
+</html>

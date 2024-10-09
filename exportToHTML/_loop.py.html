@@ -1,0 +1,64 @@
+<html>
+<head>
+<title>_loop.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cf8e6d;}
+.s1 { color: #bcbec4;}
+.s2 { color: #bcbec4;}
+.s3 { color: #6aab73;}
+.s4 { color: #5f826b; font-style: italic;}
+</style>
+</head>
+<body bgcolor="#1e1f22">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+_loop.py</font>
+</center></td></tr></table>
+<pre><span class="s0">from </span><span class="s1">typing </span><span class="s0">import </span><span class="s1">Iterable</span><span class="s2">, </span><span class="s1">Tuple</span><span class="s2">, </span><span class="s1">TypeVar</span>
+
+<span class="s1">T </span><span class="s2">= </span><span class="s1">TypeVar</span><span class="s2">(</span><span class="s3">&quot;T&quot;</span><span class="s2">)</span>
+
+
+<span class="s0">def </span><span class="s1">loop_first</span><span class="s2">(</span><span class="s1">values</span><span class="s2">: </span><span class="s1">Iterable</span><span class="s2">[</span><span class="s1">T</span><span class="s2">]) </span><span class="s1">-&gt; Iterable</span><span class="s2">[</span><span class="s1">Tuple</span><span class="s2">[</span><span class="s1">bool</span><span class="s2">, </span><span class="s1">T</span><span class="s2">]]:</span>
+    <span class="s4">&quot;&quot;&quot;Iterate and generate a tuple with a flag for first value.&quot;&quot;&quot;</span>
+    <span class="s1">iter_values </span><span class="s2">= </span><span class="s1">iter</span><span class="s2">(</span><span class="s1">values</span><span class="s2">)</span>
+    <span class="s0">try</span><span class="s2">:</span>
+        <span class="s1">value </span><span class="s2">= </span><span class="s1">next</span><span class="s2">(</span><span class="s1">iter_values</span><span class="s2">)</span>
+    <span class="s0">except </span><span class="s1">StopIteration</span><span class="s2">:</span>
+        <span class="s0">return</span>
+    <span class="s0">yield True</span><span class="s2">, </span><span class="s1">value</span>
+    <span class="s0">for </span><span class="s1">value </span><span class="s0">in </span><span class="s1">iter_values</span><span class="s2">:</span>
+        <span class="s0">yield False</span><span class="s2">, </span><span class="s1">value</span>
+
+
+<span class="s0">def </span><span class="s1">loop_last</span><span class="s2">(</span><span class="s1">values</span><span class="s2">: </span><span class="s1">Iterable</span><span class="s2">[</span><span class="s1">T</span><span class="s2">]) </span><span class="s1">-&gt; Iterable</span><span class="s2">[</span><span class="s1">Tuple</span><span class="s2">[</span><span class="s1">bool</span><span class="s2">, </span><span class="s1">T</span><span class="s2">]]:</span>
+    <span class="s4">&quot;&quot;&quot;Iterate and generate a tuple with a flag for last value.&quot;&quot;&quot;</span>
+    <span class="s1">iter_values </span><span class="s2">= </span><span class="s1">iter</span><span class="s2">(</span><span class="s1">values</span><span class="s2">)</span>
+    <span class="s0">try</span><span class="s2">:</span>
+        <span class="s1">previous_value </span><span class="s2">= </span><span class="s1">next</span><span class="s2">(</span><span class="s1">iter_values</span><span class="s2">)</span>
+    <span class="s0">except </span><span class="s1">StopIteration</span><span class="s2">:</span>
+        <span class="s0">return</span>
+    <span class="s0">for </span><span class="s1">value </span><span class="s0">in </span><span class="s1">iter_values</span><span class="s2">:</span>
+        <span class="s0">yield False</span><span class="s2">, </span><span class="s1">previous_value</span>
+        <span class="s1">previous_value </span><span class="s2">= </span><span class="s1">value</span>
+    <span class="s0">yield True</span><span class="s2">, </span><span class="s1">previous_value</span>
+
+
+<span class="s0">def </span><span class="s1">loop_first_last</span><span class="s2">(</span><span class="s1">values</span><span class="s2">: </span><span class="s1">Iterable</span><span class="s2">[</span><span class="s1">T</span><span class="s2">]) </span><span class="s1">-&gt; Iterable</span><span class="s2">[</span><span class="s1">Tuple</span><span class="s2">[</span><span class="s1">bool</span><span class="s2">, </span><span class="s1">bool</span><span class="s2">, </span><span class="s1">T</span><span class="s2">]]:</span>
+    <span class="s4">&quot;&quot;&quot;Iterate and generate a tuple with a flag for first and last value.&quot;&quot;&quot;</span>
+    <span class="s1">iter_values </span><span class="s2">= </span><span class="s1">iter</span><span class="s2">(</span><span class="s1">values</span><span class="s2">)</span>
+    <span class="s0">try</span><span class="s2">:</span>
+        <span class="s1">previous_value </span><span class="s2">= </span><span class="s1">next</span><span class="s2">(</span><span class="s1">iter_values</span><span class="s2">)</span>
+    <span class="s0">except </span><span class="s1">StopIteration</span><span class="s2">:</span>
+        <span class="s0">return</span>
+    <span class="s1">first </span><span class="s2">= </span><span class="s0">True</span>
+    <span class="s0">for </span><span class="s1">value </span><span class="s0">in </span><span class="s1">iter_values</span><span class="s2">:</span>
+        <span class="s0">yield </span><span class="s1">first</span><span class="s2">, </span><span class="s0">False</span><span class="s2">, </span><span class="s1">previous_value</span>
+        <span class="s1">first </span><span class="s2">= </span><span class="s0">False</span>
+        <span class="s1">previous_value </span><span class="s2">= </span><span class="s1">value</span>
+    <span class="s0">yield </span><span class="s1">first</span><span class="s2">, </span><span class="s0">True</span><span class="s2">, </span><span class="s1">previous_value</span>
+</pre>
+</body>
+</html>

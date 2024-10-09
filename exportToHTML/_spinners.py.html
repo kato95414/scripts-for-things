@@ -1,0 +1,504 @@
+<html>
+<head>
+<title>_spinners.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #5f826b; font-style: italic;}
+.s1 { color: #bcbec4;}
+.s2 { color: #bcbec4;}
+.s3 { color: #6aab73;}
+.s4 { color: #2aacb8;}
+.s5 { color: #cf8e6d;}
+</style>
+</head>
+<body bgcolor="#1e1f22">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+_spinners.py</font>
+</center></td></tr></table>
+<pre><span class="s0">&quot;&quot;&quot; 
+Spinners are from: 
+* cli-spinners: 
+    MIT License 
+    Copyright (c) Sindre Sorhus &lt;sindresorhus@gmail.com&gt; (sindresorhus.com) 
+    Permission is hereby granted, free of charge, to any person obtaining a copy 
+    of this software and associated documentation files (the &quot;Software&quot;), to deal 
+    in the Software without restriction, including without limitation the rights to 
+    use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of 
+    the Software, and to permit persons to whom the Software is furnished to do so, 
+    subject to the following conditions: 
+    The above copyright notice and this permission notice shall be included 
+    in all copies or substantial portions of the Software. 
+    THE SOFTWARE IS PROVIDED &quot;AS IS&quot;, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, 
+    INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR 
+    PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE 
+    FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, 
+    ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS 
+    IN THE SOFTWARE. 
+&quot;&quot;&quot;</span>
+
+<span class="s1">SPINNERS </span><span class="s2">= {</span>
+    <span class="s3">&quot;dots&quot;</span><span class="s2">: {</span>
+        <span class="s3">&quot;interval&quot;</span><span class="s2">: </span><span class="s4">80</span><span class="s2">,</span>
+        <span class="s3">&quot;frames&quot;</span><span class="s2">: </span><span class="s3">&quot;⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏&quot;</span><span class="s2">,</span>
+    <span class="s2">},</span>
+    <span class="s3">&quot;dots2&quot;</span><span class="s2">: {</span><span class="s3">&quot;interval&quot;</span><span class="s2">: </span><span class="s4">80</span><span class="s2">, </span><span class="s3">&quot;frames&quot;</span><span class="s2">: </span><span class="s3">&quot;⣾⣽⣻⢿⡿⣟⣯⣷&quot;</span><span class="s2">},</span>
+    <span class="s3">&quot;dots3&quot;</span><span class="s2">: {</span>
+        <span class="s3">&quot;interval&quot;</span><span class="s2">: </span><span class="s4">80</span><span class="s2">,</span>
+        <span class="s3">&quot;frames&quot;</span><span class="s2">: </span><span class="s3">&quot;⠋⠙⠚⠞⠖⠦⠴⠲⠳⠓&quot;</span><span class="s2">,</span>
+    <span class="s2">},</span>
+    <span class="s3">&quot;dots4&quot;</span><span class="s2">: {</span>
+        <span class="s3">&quot;interval&quot;</span><span class="s2">: </span><span class="s4">80</span><span class="s2">,</span>
+        <span class="s3">&quot;frames&quot;</span><span class="s2">: </span><span class="s3">&quot;⠄⠆⠇⠋⠙⠸⠰⠠⠰⠸⠙⠋⠇⠆&quot;</span><span class="s2">,</span>
+    <span class="s2">},</span>
+    <span class="s3">&quot;dots5&quot;</span><span class="s2">: {</span>
+        <span class="s3">&quot;interval&quot;</span><span class="s2">: </span><span class="s4">80</span><span class="s2">,</span>
+        <span class="s3">&quot;frames&quot;</span><span class="s2">: </span><span class="s3">&quot;⠋⠙⠚⠒⠂⠂⠒⠲⠴⠦⠖⠒⠐⠐⠒⠓⠋&quot;</span><span class="s2">,</span>
+    <span class="s2">},</span>
+    <span class="s3">&quot;dots6&quot;</span><span class="s2">: {</span>
+        <span class="s3">&quot;interval&quot;</span><span class="s2">: </span><span class="s4">80</span><span class="s2">,</span>
+        <span class="s3">&quot;frames&quot;</span><span class="s2">: </span><span class="s3">&quot;⠁⠉⠙⠚⠒⠂⠂⠒⠲⠴⠤⠄⠄⠤⠴⠲⠒⠂⠂⠒⠚⠙⠉⠁&quot;</span><span class="s2">,</span>
+    <span class="s2">},</span>
+    <span class="s3">&quot;dots7&quot;</span><span class="s2">: {</span>
+        <span class="s3">&quot;interval&quot;</span><span class="s2">: </span><span class="s4">80</span><span class="s2">,</span>
+        <span class="s3">&quot;frames&quot;</span><span class="s2">: </span><span class="s3">&quot;⠈⠉⠋⠓⠒⠐⠐⠒⠖⠦⠤⠠⠠⠤⠦⠖⠒⠐⠐⠒⠓⠋⠉⠈&quot;</span><span class="s2">,</span>
+    <span class="s2">},</span>
+    <span class="s3">&quot;dots8&quot;</span><span class="s2">: {</span>
+        <span class="s3">&quot;interval&quot;</span><span class="s2">: </span><span class="s4">80</span><span class="s2">,</span>
+        <span class="s3">&quot;frames&quot;</span><span class="s2">: </span><span class="s3">&quot;⠁⠁⠉⠙⠚⠒⠂⠂⠒⠲⠴⠤⠄⠄⠤⠠⠠⠤⠦⠖⠒⠐⠐⠒⠓⠋⠉⠈⠈&quot;</span><span class="s2">,</span>
+    <span class="s2">},</span>
+    <span class="s3">&quot;dots9&quot;</span><span class="s2">: {</span><span class="s3">&quot;interval&quot;</span><span class="s2">: </span><span class="s4">80</span><span class="s2">, </span><span class="s3">&quot;frames&quot;</span><span class="s2">: </span><span class="s3">&quot;⢹⢺⢼⣸⣇⡧⡗⡏&quot;</span><span class="s2">},</span>
+    <span class="s3">&quot;dots10&quot;</span><span class="s2">: {</span><span class="s3">&quot;interval&quot;</span><span class="s2">: </span><span class="s4">80</span><span class="s2">, </span><span class="s3">&quot;frames&quot;</span><span class="s2">: </span><span class="s3">&quot;⢄⢂⢁⡁⡈⡐⡠&quot;</span><span class="s2">},</span>
+    <span class="s3">&quot;dots11&quot;</span><span class="s2">: {</span><span class="s3">&quot;interval&quot;</span><span class="s2">: </span><span class="s4">100</span><span class="s2">, </span><span class="s3">&quot;frames&quot;</span><span class="s2">: </span><span class="s3">&quot;⠁⠂⠄⡀⢀⠠⠐⠈&quot;</span><span class="s2">},</span>
+    <span class="s3">&quot;dots12&quot;</span><span class="s2">: {</span>
+        <span class="s3">&quot;interval&quot;</span><span class="s2">: </span><span class="s4">80</span><span class="s2">,</span>
+        <span class="s3">&quot;frames&quot;</span><span class="s2">: [</span>
+            <span class="s3">&quot;⢀⠀&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;⡀⠀&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;⠄⠀&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;⢂⠀&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;⡂⠀&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;⠅⠀&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;⢃⠀&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;⡃⠀&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;⠍⠀&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;⢋⠀&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;⡋⠀&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;⠍⠁&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;⢋⠁&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;⡋⠁&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;⠍⠉&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;⠋⠉&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;⠋⠉&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;⠉⠙&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;⠉⠙&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;⠉⠩&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;⠈⢙&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;⠈⡙&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;⢈⠩&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;⡀⢙&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;⠄⡙&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;⢂⠩&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;⡂⢘&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;⠅⡘&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;⢃⠨&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;⡃⢐&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;⠍⡐&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;⢋⠠&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;⡋⢀&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;⠍⡁&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;⢋⠁&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;⡋⠁&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;⠍⠉&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;⠋⠉&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;⠋⠉&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;⠉⠙&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;⠉⠙&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;⠉⠩&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;⠈⢙&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;⠈⡙&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;⠈⠩&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;⠀⢙&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;⠀⡙&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;⠀⠩&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;⠀⢘&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;⠀⡘&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;⠀⠨&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;⠀⢐&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;⠀⡐&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;⠀⠠&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;⠀⢀&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;⠀⡀&quot;</span><span class="s2">,</span>
+        <span class="s2">],</span>
+    <span class="s2">},</span>
+    <span class="s3">&quot;dots8Bit&quot;</span><span class="s2">: {</span>
+        <span class="s3">&quot;interval&quot;</span><span class="s2">: </span><span class="s4">80</span><span class="s2">,</span>
+        <span class="s3">&quot;frames&quot;</span><span class="s2">: </span><span class="s3">&quot;⠀⠁⠂⠃⠄⠅⠆⠇⡀⡁⡂⡃⡄⡅⡆⡇⠈⠉⠊⠋⠌⠍⠎⠏⡈⡉⡊⡋⡌⡍⡎⡏⠐⠑⠒⠓⠔⠕⠖⠗⡐⡑⡒⡓⡔⡕⡖⡗⠘⠙⠚⠛⠜⠝⠞⠟⡘⡙&quot;</span>
+        <span class="s3">&quot;⡚⡛⡜⡝⡞⡟⠠⠡⠢⠣⠤⠥⠦⠧⡠⡡⡢⡣⡤⡥⡦⡧⠨⠩⠪⠫⠬⠭⠮⠯⡨⡩⡪⡫⡬⡭⡮⡯⠰⠱⠲⠳⠴⠵⠶⠷⡰⡱⡲⡳⡴⡵⡶⡷⠸⠹⠺⠻&quot;</span>
+        <span class="s3">&quot;⠼⠽⠾⠿⡸⡹⡺⡻⡼⡽⡾⡿⢀⢁⢂⢃⢄⢅⢆⢇⣀⣁⣂⣃⣄⣅⣆⣇⢈⢉⢊⢋⢌⢍⢎⢏⣈⣉⣊⣋⣌⣍⣎⣏⢐⢑⢒⢓⢔⢕⢖⢗⣐⣑⣒⣓⣔⣕&quot;</span>
+        <span class="s3">&quot;⣖⣗⢘⢙⢚⢛⢜⢝⢞⢟⣘⣙⣚⣛⣜⣝⣞⣟⢠⢡⢢⢣⢤⢥⢦⢧⣠⣡⣢⣣⣤⣥⣦⣧⢨⢩⢪⢫⢬⢭⢮⢯⣨⣩⣪⣫⣬⣭⣮⣯⢰⢱⢲⢳⢴⢵⢶⢷&quot;</span>
+        <span class="s3">&quot;⣰⣱⣲⣳⣴⣵⣶⣷⢸⢹⢺⢻⢼⢽⢾⢿⣸⣹⣺⣻⣼⣽⣾⣿&quot;</span><span class="s2">,</span>
+    <span class="s2">},</span>
+    <span class="s3">&quot;line&quot;</span><span class="s2">: {</span><span class="s3">&quot;interval&quot;</span><span class="s2">: </span><span class="s4">130</span><span class="s2">, </span><span class="s3">&quot;frames&quot;</span><span class="s2">: [</span><span class="s3">&quot;-&quot;</span><span class="s2">, </span><span class="s3">&quot;</span><span class="s5">\\</span><span class="s3">&quot;</span><span class="s2">, </span><span class="s3">&quot;|&quot;</span><span class="s2">, </span><span class="s3">&quot;/&quot;</span><span class="s2">]},</span>
+    <span class="s3">&quot;line2&quot;</span><span class="s2">: {</span><span class="s3">&quot;interval&quot;</span><span class="s2">: </span><span class="s4">100</span><span class="s2">, </span><span class="s3">&quot;frames&quot;</span><span class="s2">: </span><span class="s3">&quot;⠂-–—–-&quot;</span><span class="s2">},</span>
+    <span class="s3">&quot;pipe&quot;</span><span class="s2">: {</span><span class="s3">&quot;interval&quot;</span><span class="s2">: </span><span class="s4">100</span><span class="s2">, </span><span class="s3">&quot;frames&quot;</span><span class="s2">: </span><span class="s3">&quot;┤┘┴└├┌┬┐&quot;</span><span class="s2">},</span>
+    <span class="s3">&quot;simpleDots&quot;</span><span class="s2">: {</span><span class="s3">&quot;interval&quot;</span><span class="s2">: </span><span class="s4">400</span><span class="s2">, </span><span class="s3">&quot;frames&quot;</span><span class="s2">: [</span><span class="s3">&quot;.  &quot;</span><span class="s2">, </span><span class="s3">&quot;.. &quot;</span><span class="s2">, </span><span class="s3">&quot;...&quot;</span><span class="s2">, </span><span class="s3">&quot;   &quot;</span><span class="s2">]},</span>
+    <span class="s3">&quot;simpleDotsScrolling&quot;</span><span class="s2">: {</span>
+        <span class="s3">&quot;interval&quot;</span><span class="s2">: </span><span class="s4">200</span><span class="s2">,</span>
+        <span class="s3">&quot;frames&quot;</span><span class="s2">: [</span><span class="s3">&quot;.  &quot;</span><span class="s2">, </span><span class="s3">&quot;.. &quot;</span><span class="s2">, </span><span class="s3">&quot;...&quot;</span><span class="s2">, </span><span class="s3">&quot; ..&quot;</span><span class="s2">, </span><span class="s3">&quot;  .&quot;</span><span class="s2">, </span><span class="s3">&quot;   &quot;</span><span class="s2">],</span>
+    <span class="s2">},</span>
+    <span class="s3">&quot;star&quot;</span><span class="s2">: {</span><span class="s3">&quot;interval&quot;</span><span class="s2">: </span><span class="s4">70</span><span class="s2">, </span><span class="s3">&quot;frames&quot;</span><span class="s2">: </span><span class="s3">&quot;✶✸✹✺✹✷&quot;</span><span class="s2">},</span>
+    <span class="s3">&quot;star2&quot;</span><span class="s2">: {</span><span class="s3">&quot;interval&quot;</span><span class="s2">: </span><span class="s4">80</span><span class="s2">, </span><span class="s3">&quot;frames&quot;</span><span class="s2">: </span><span class="s3">&quot;+x*&quot;</span><span class="s2">},</span>
+    <span class="s3">&quot;flip&quot;</span><span class="s2">: {</span>
+        <span class="s3">&quot;interval&quot;</span><span class="s2">: </span><span class="s4">70</span><span class="s2">,</span>
+        <span class="s3">&quot;frames&quot;</span><span class="s2">: </span><span class="s3">&quot;___-``'´-___&quot;</span><span class="s2">,</span>
+    <span class="s2">},</span>
+    <span class="s3">&quot;hamburger&quot;</span><span class="s2">: {</span><span class="s3">&quot;interval&quot;</span><span class="s2">: </span><span class="s4">100</span><span class="s2">, </span><span class="s3">&quot;frames&quot;</span><span class="s2">: </span><span class="s3">&quot;☱☲☴&quot;</span><span class="s2">},</span>
+    <span class="s3">&quot;growVertical&quot;</span><span class="s2">: {</span>
+        <span class="s3">&quot;interval&quot;</span><span class="s2">: </span><span class="s4">120</span><span class="s2">,</span>
+        <span class="s3">&quot;frames&quot;</span><span class="s2">: </span><span class="s3">&quot;▁▃▄▅▆▇▆▅▄▃&quot;</span><span class="s2">,</span>
+    <span class="s2">},</span>
+    <span class="s3">&quot;growHorizontal&quot;</span><span class="s2">: {</span>
+        <span class="s3">&quot;interval&quot;</span><span class="s2">: </span><span class="s4">120</span><span class="s2">,</span>
+        <span class="s3">&quot;frames&quot;</span><span class="s2">: </span><span class="s3">&quot;▏▎▍▌▋▊▉▊▋▌▍▎&quot;</span><span class="s2">,</span>
+    <span class="s2">},</span>
+    <span class="s3">&quot;balloon&quot;</span><span class="s2">: {</span><span class="s3">&quot;interval&quot;</span><span class="s2">: </span><span class="s4">140</span><span class="s2">, </span><span class="s3">&quot;frames&quot;</span><span class="s2">: </span><span class="s3">&quot; .oO@* &quot;</span><span class="s2">},</span>
+    <span class="s3">&quot;balloon2&quot;</span><span class="s2">: {</span><span class="s3">&quot;interval&quot;</span><span class="s2">: </span><span class="s4">120</span><span class="s2">, </span><span class="s3">&quot;frames&quot;</span><span class="s2">: </span><span class="s3">&quot;.oO°Oo.&quot;</span><span class="s2">},</span>
+    <span class="s3">&quot;noise&quot;</span><span class="s2">: {</span><span class="s3">&quot;interval&quot;</span><span class="s2">: </span><span class="s4">100</span><span class="s2">, </span><span class="s3">&quot;frames&quot;</span><span class="s2">: </span><span class="s3">&quot;▓▒░&quot;</span><span class="s2">},</span>
+    <span class="s3">&quot;bounce&quot;</span><span class="s2">: {</span><span class="s3">&quot;interval&quot;</span><span class="s2">: </span><span class="s4">120</span><span class="s2">, </span><span class="s3">&quot;frames&quot;</span><span class="s2">: </span><span class="s3">&quot;⠁⠂⠄⠂&quot;</span><span class="s2">},</span>
+    <span class="s3">&quot;boxBounce&quot;</span><span class="s2">: {</span><span class="s3">&quot;interval&quot;</span><span class="s2">: </span><span class="s4">120</span><span class="s2">, </span><span class="s3">&quot;frames&quot;</span><span class="s2">: </span><span class="s3">&quot;▖▘▝▗&quot;</span><span class="s2">},</span>
+    <span class="s3">&quot;boxBounce2&quot;</span><span class="s2">: {</span><span class="s3">&quot;interval&quot;</span><span class="s2">: </span><span class="s4">100</span><span class="s2">, </span><span class="s3">&quot;frames&quot;</span><span class="s2">: </span><span class="s3">&quot;▌▀▐▄&quot;</span><span class="s2">},</span>
+    <span class="s3">&quot;triangle&quot;</span><span class="s2">: {</span><span class="s3">&quot;interval&quot;</span><span class="s2">: </span><span class="s4">50</span><span class="s2">, </span><span class="s3">&quot;frames&quot;</span><span class="s2">: </span><span class="s3">&quot;◢◣◤◥&quot;</span><span class="s2">},</span>
+    <span class="s3">&quot;arc&quot;</span><span class="s2">: {</span><span class="s3">&quot;interval&quot;</span><span class="s2">: </span><span class="s4">100</span><span class="s2">, </span><span class="s3">&quot;frames&quot;</span><span class="s2">: </span><span class="s3">&quot;◜◠◝◞◡◟&quot;</span><span class="s2">},</span>
+    <span class="s3">&quot;circle&quot;</span><span class="s2">: {</span><span class="s3">&quot;interval&quot;</span><span class="s2">: </span><span class="s4">120</span><span class="s2">, </span><span class="s3">&quot;frames&quot;</span><span class="s2">: </span><span class="s3">&quot;◡⊙◠&quot;</span><span class="s2">},</span>
+    <span class="s3">&quot;squareCorners&quot;</span><span class="s2">: {</span><span class="s3">&quot;interval&quot;</span><span class="s2">: </span><span class="s4">180</span><span class="s2">, </span><span class="s3">&quot;frames&quot;</span><span class="s2">: </span><span class="s3">&quot;◰◳◲◱&quot;</span><span class="s2">},</span>
+    <span class="s3">&quot;circleQuarters&quot;</span><span class="s2">: {</span><span class="s3">&quot;interval&quot;</span><span class="s2">: </span><span class="s4">120</span><span class="s2">, </span><span class="s3">&quot;frames&quot;</span><span class="s2">: </span><span class="s3">&quot;◴◷◶◵&quot;</span><span class="s2">},</span>
+    <span class="s3">&quot;circleHalves&quot;</span><span class="s2">: {</span><span class="s3">&quot;interval&quot;</span><span class="s2">: </span><span class="s4">50</span><span class="s2">, </span><span class="s3">&quot;frames&quot;</span><span class="s2">: </span><span class="s3">&quot;◐◓◑◒&quot;</span><span class="s2">},</span>
+    <span class="s3">&quot;squish&quot;</span><span class="s2">: {</span><span class="s3">&quot;interval&quot;</span><span class="s2">: </span><span class="s4">100</span><span class="s2">, </span><span class="s3">&quot;frames&quot;</span><span class="s2">: </span><span class="s3">&quot;╫╪&quot;</span><span class="s2">},</span>
+    <span class="s3">&quot;toggle&quot;</span><span class="s2">: {</span><span class="s3">&quot;interval&quot;</span><span class="s2">: </span><span class="s4">250</span><span class="s2">, </span><span class="s3">&quot;frames&quot;</span><span class="s2">: </span><span class="s3">&quot;⊶⊷&quot;</span><span class="s2">},</span>
+    <span class="s3">&quot;toggle2&quot;</span><span class="s2">: {</span><span class="s3">&quot;interval&quot;</span><span class="s2">: </span><span class="s4">80</span><span class="s2">, </span><span class="s3">&quot;frames&quot;</span><span class="s2">: </span><span class="s3">&quot;▫▪&quot;</span><span class="s2">},</span>
+    <span class="s3">&quot;toggle3&quot;</span><span class="s2">: {</span><span class="s3">&quot;interval&quot;</span><span class="s2">: </span><span class="s4">120</span><span class="s2">, </span><span class="s3">&quot;frames&quot;</span><span class="s2">: </span><span class="s3">&quot;□■&quot;</span><span class="s2">},</span>
+    <span class="s3">&quot;toggle4&quot;</span><span class="s2">: {</span><span class="s3">&quot;interval&quot;</span><span class="s2">: </span><span class="s4">100</span><span class="s2">, </span><span class="s3">&quot;frames&quot;</span><span class="s2">: </span><span class="s3">&quot;■□▪▫&quot;</span><span class="s2">},</span>
+    <span class="s3">&quot;toggle5&quot;</span><span class="s2">: {</span><span class="s3">&quot;interval&quot;</span><span class="s2">: </span><span class="s4">100</span><span class="s2">, </span><span class="s3">&quot;frames&quot;</span><span class="s2">: </span><span class="s3">&quot;▮▯&quot;</span><span class="s2">},</span>
+    <span class="s3">&quot;toggle6&quot;</span><span class="s2">: {</span><span class="s3">&quot;interval&quot;</span><span class="s2">: </span><span class="s4">300</span><span class="s2">, </span><span class="s3">&quot;frames&quot;</span><span class="s2">: </span><span class="s3">&quot;ဝ၀&quot;</span><span class="s2">},</span>
+    <span class="s3">&quot;toggle7&quot;</span><span class="s2">: {</span><span class="s3">&quot;interval&quot;</span><span class="s2">: </span><span class="s4">80</span><span class="s2">, </span><span class="s3">&quot;frames&quot;</span><span class="s2">: </span><span class="s3">&quot;⦾⦿&quot;</span><span class="s2">},</span>
+    <span class="s3">&quot;toggle8&quot;</span><span class="s2">: {</span><span class="s3">&quot;interval&quot;</span><span class="s2">: </span><span class="s4">100</span><span class="s2">, </span><span class="s3">&quot;frames&quot;</span><span class="s2">: </span><span class="s3">&quot;◍◌&quot;</span><span class="s2">},</span>
+    <span class="s3">&quot;toggle9&quot;</span><span class="s2">: {</span><span class="s3">&quot;interval&quot;</span><span class="s2">: </span><span class="s4">100</span><span class="s2">, </span><span class="s3">&quot;frames&quot;</span><span class="s2">: </span><span class="s3">&quot;◉◎&quot;</span><span class="s2">},</span>
+    <span class="s3">&quot;toggle10&quot;</span><span class="s2">: {</span><span class="s3">&quot;interval&quot;</span><span class="s2">: </span><span class="s4">100</span><span class="s2">, </span><span class="s3">&quot;frames&quot;</span><span class="s2">: </span><span class="s3">&quot;㊂㊀㊁&quot;</span><span class="s2">},</span>
+    <span class="s3">&quot;toggle11&quot;</span><span class="s2">: {</span><span class="s3">&quot;interval&quot;</span><span class="s2">: </span><span class="s4">50</span><span class="s2">, </span><span class="s3">&quot;frames&quot;</span><span class="s2">: </span><span class="s3">&quot;⧇⧆&quot;</span><span class="s2">},</span>
+    <span class="s3">&quot;toggle12&quot;</span><span class="s2">: {</span><span class="s3">&quot;interval&quot;</span><span class="s2">: </span><span class="s4">120</span><span class="s2">, </span><span class="s3">&quot;frames&quot;</span><span class="s2">: </span><span class="s3">&quot;☗☖&quot;</span><span class="s2">},</span>
+    <span class="s3">&quot;toggle13&quot;</span><span class="s2">: {</span><span class="s3">&quot;interval&quot;</span><span class="s2">: </span><span class="s4">80</span><span class="s2">, </span><span class="s3">&quot;frames&quot;</span><span class="s2">: </span><span class="s3">&quot;=*-&quot;</span><span class="s2">},</span>
+    <span class="s3">&quot;arrow&quot;</span><span class="s2">: {</span><span class="s3">&quot;interval&quot;</span><span class="s2">: </span><span class="s4">100</span><span class="s2">, </span><span class="s3">&quot;frames&quot;</span><span class="s2">: </span><span class="s3">&quot;←↖↑↗→↘↓↙&quot;</span><span class="s2">},</span>
+    <span class="s3">&quot;arrow2&quot;</span><span class="s2">: {</span>
+        <span class="s3">&quot;interval&quot;</span><span class="s2">: </span><span class="s4">80</span><span class="s2">,</span>
+        <span class="s3">&quot;frames&quot;</span><span class="s2">: [</span><span class="s3">&quot;⬆️ &quot;</span><span class="s2">, </span><span class="s3">&quot;↗️ &quot;</span><span class="s2">, </span><span class="s3">&quot;➡️ &quot;</span><span class="s2">, </span><span class="s3">&quot;↘️ &quot;</span><span class="s2">, </span><span class="s3">&quot;⬇️ &quot;</span><span class="s2">, </span><span class="s3">&quot;↙️ &quot;</span><span class="s2">, </span><span class="s3">&quot;⬅️ &quot;</span><span class="s2">, </span><span class="s3">&quot;↖️ &quot;</span><span class="s2">],</span>
+    <span class="s2">},</span>
+    <span class="s3">&quot;arrow3&quot;</span><span class="s2">: {</span>
+        <span class="s3">&quot;interval&quot;</span><span class="s2">: </span><span class="s4">120</span><span class="s2">,</span>
+        <span class="s3">&quot;frames&quot;</span><span class="s2">: [</span><span class="s3">&quot;▹▹▹▹▹&quot;</span><span class="s2">, </span><span class="s3">&quot;▸▹▹▹▹&quot;</span><span class="s2">, </span><span class="s3">&quot;▹▸▹▹▹&quot;</span><span class="s2">, </span><span class="s3">&quot;▹▹▸▹▹&quot;</span><span class="s2">, </span><span class="s3">&quot;▹▹▹▸▹&quot;</span><span class="s2">, </span><span class="s3">&quot;▹▹▹▹▸&quot;</span><span class="s2">],</span>
+    <span class="s2">},</span>
+    <span class="s3">&quot;bouncingBar&quot;</span><span class="s2">: {</span>
+        <span class="s3">&quot;interval&quot;</span><span class="s2">: </span><span class="s4">80</span><span class="s2">,</span>
+        <span class="s3">&quot;frames&quot;</span><span class="s2">: [</span>
+            <span class="s3">&quot;[    ]&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;[=   ]&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;[==  ]&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;[=== ]&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;[ ===]&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;[  ==]&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;[   =]&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;[    ]&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;[   =]&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;[  ==]&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;[ ===]&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;[====]&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;[=== ]&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;[==  ]&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;[=   ]&quot;</span><span class="s2">,</span>
+        <span class="s2">],</span>
+    <span class="s2">},</span>
+    <span class="s3">&quot;bouncingBall&quot;</span><span class="s2">: {</span>
+        <span class="s3">&quot;interval&quot;</span><span class="s2">: </span><span class="s4">80</span><span class="s2">,</span>
+        <span class="s3">&quot;frames&quot;</span><span class="s2">: [</span>
+            <span class="s3">&quot;( ●    )&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;(  ●   )&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;(   ●  )&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;(    ● )&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;(     ●)&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;(    ● )&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;(   ●  )&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;(  ●   )&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;( ●    )&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;(●     )&quot;</span><span class="s2">,</span>
+        <span class="s2">],</span>
+    <span class="s2">},</span>
+    <span class="s3">&quot;smiley&quot;</span><span class="s2">: {</span><span class="s3">&quot;interval&quot;</span><span class="s2">: </span><span class="s4">200</span><span class="s2">, </span><span class="s3">&quot;frames&quot;</span><span class="s2">: [</span><span class="s3">&quot;😄 &quot;</span><span class="s2">, </span><span class="s3">&quot;😝 &quot;</span><span class="s2">]},</span>
+    <span class="s3">&quot;monkey&quot;</span><span class="s2">: {</span><span class="s3">&quot;interval&quot;</span><span class="s2">: </span><span class="s4">300</span><span class="s2">, </span><span class="s3">&quot;frames&quot;</span><span class="s2">: [</span><span class="s3">&quot;🙈 &quot;</span><span class="s2">, </span><span class="s3">&quot;🙈 &quot;</span><span class="s2">, </span><span class="s3">&quot;🙉 &quot;</span><span class="s2">, </span><span class="s3">&quot;🙊 &quot;</span><span class="s2">]},</span>
+    <span class="s3">&quot;hearts&quot;</span><span class="s2">: {</span><span class="s3">&quot;interval&quot;</span><span class="s2">: </span><span class="s4">100</span><span class="s2">, </span><span class="s3">&quot;frames&quot;</span><span class="s2">: [</span><span class="s3">&quot;💛 &quot;</span><span class="s2">, </span><span class="s3">&quot;💙 &quot;</span><span class="s2">, </span><span class="s3">&quot;💜 &quot;</span><span class="s2">, </span><span class="s3">&quot;💚 &quot;</span><span class="s2">, </span><span class="s3">&quot;❤️ &quot;</span><span class="s2">]},</span>
+    <span class="s3">&quot;clock&quot;</span><span class="s2">: {</span>
+        <span class="s3">&quot;interval&quot;</span><span class="s2">: </span><span class="s4">100</span><span class="s2">,</span>
+        <span class="s3">&quot;frames&quot;</span><span class="s2">: [</span>
+            <span class="s3">&quot;🕛 &quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;🕐 &quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;🕑 &quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;🕒 &quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;🕓 &quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;🕔 &quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;🕕 &quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;🕖 &quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;🕗 &quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;🕘 &quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;🕙 &quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;🕚 &quot;</span><span class="s2">,</span>
+        <span class="s2">],</span>
+    <span class="s2">},</span>
+    <span class="s3">&quot;earth&quot;</span><span class="s2">: {</span><span class="s3">&quot;interval&quot;</span><span class="s2">: </span><span class="s4">180</span><span class="s2">, </span><span class="s3">&quot;frames&quot;</span><span class="s2">: [</span><span class="s3">&quot;🌍 &quot;</span><span class="s2">, </span><span class="s3">&quot;🌎 &quot;</span><span class="s2">, </span><span class="s3">&quot;🌏 &quot;</span><span class="s2">]},</span>
+    <span class="s3">&quot;material&quot;</span><span class="s2">: {</span>
+        <span class="s3">&quot;interval&quot;</span><span class="s2">: </span><span class="s4">17</span><span class="s2">,</span>
+        <span class="s3">&quot;frames&quot;</span><span class="s2">: [</span>
+            <span class="s3">&quot;█▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;██▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;███▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;████▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;██████▁▁▁▁▁▁▁▁▁▁▁▁▁▁&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;██████▁▁▁▁▁▁▁▁▁▁▁▁▁▁&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;███████▁▁▁▁▁▁▁▁▁▁▁▁▁&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;████████▁▁▁▁▁▁▁▁▁▁▁▁&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;█████████▁▁▁▁▁▁▁▁▁▁▁&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;█████████▁▁▁▁▁▁▁▁▁▁▁&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;██████████▁▁▁▁▁▁▁▁▁▁&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;███████████▁▁▁▁▁▁▁▁▁&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;█████████████▁▁▁▁▁▁▁&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;██████████████▁▁▁▁▁▁&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;██████████████▁▁▁▁▁▁&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▁██████████████▁▁▁▁▁&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▁██████████████▁▁▁▁▁&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▁██████████████▁▁▁▁▁&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▁▁██████████████▁▁▁▁&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▁▁▁██████████████▁▁▁&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▁▁▁▁█████████████▁▁▁&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▁▁▁▁██████████████▁▁&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▁▁▁▁██████████████▁▁&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▁▁▁▁▁██████████████▁&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▁▁▁▁▁██████████████▁&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▁▁▁▁▁██████████████▁&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▁▁▁▁▁▁██████████████&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▁▁▁▁▁▁██████████████&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▁▁▁▁▁▁▁█████████████&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▁▁▁▁▁▁▁█████████████&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▁▁▁▁▁▁▁▁████████████&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▁▁▁▁▁▁▁▁████████████&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▁▁▁▁▁▁▁▁▁███████████&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▁▁▁▁▁▁▁▁▁███████████&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▁▁▁▁▁▁▁▁▁▁██████████&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▁▁▁▁▁▁▁▁▁▁██████████&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▁▁▁▁▁▁▁▁▁▁▁▁████████&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▁▁▁▁▁▁▁▁▁▁▁▁▁███████&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▁▁▁▁▁▁▁▁▁▁▁▁▁▁██████&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁█████&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁█████&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;█▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁████&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;██▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁███&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;██▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁███&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;███▁▁▁▁▁▁▁▁▁▁▁▁▁▁███&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;████▁▁▁▁▁▁▁▁▁▁▁▁▁▁██&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;█████▁▁▁▁▁▁▁▁▁▁▁▁▁▁█&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;█████▁▁▁▁▁▁▁▁▁▁▁▁▁▁█&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;██████▁▁▁▁▁▁▁▁▁▁▁▁▁█&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;████████▁▁▁▁▁▁▁▁▁▁▁▁&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;█████████▁▁▁▁▁▁▁▁▁▁▁&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;█████████▁▁▁▁▁▁▁▁▁▁▁&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;█████████▁▁▁▁▁▁▁▁▁▁▁&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;█████████▁▁▁▁▁▁▁▁▁▁▁&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;███████████▁▁▁▁▁▁▁▁▁&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;████████████▁▁▁▁▁▁▁▁&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;████████████▁▁▁▁▁▁▁▁&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;██████████████▁▁▁▁▁▁&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;██████████████▁▁▁▁▁▁&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▁██████████████▁▁▁▁▁&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▁██████████████▁▁▁▁▁&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▁▁▁█████████████▁▁▁▁&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▁▁▁▁▁████████████▁▁▁&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▁▁▁▁▁████████████▁▁▁&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▁▁▁▁▁▁███████████▁▁▁&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▁▁▁▁▁▁▁▁█████████▁▁▁&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▁▁▁▁▁▁▁▁█████████▁▁▁&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▁▁▁▁▁▁▁▁▁█████████▁▁&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▁▁▁▁▁▁▁▁▁█████████▁▁&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▁▁▁▁▁▁▁▁▁▁█████████▁&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▁▁▁▁▁▁▁▁▁▁▁████████▁&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▁▁▁▁▁▁▁▁▁▁▁████████▁&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▁▁▁▁▁▁▁▁▁▁▁▁███████▁&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▁▁▁▁▁▁▁▁▁▁▁▁███████▁&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▁▁▁▁▁▁▁▁▁▁▁▁▁███████&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▁▁▁▁▁▁▁▁▁▁▁▁▁███████&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁█████&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁████&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁████&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁████&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁███&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁███&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁██&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁██&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁██&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁█&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁█&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁█&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁&quot;</span><span class="s2">,</span>
+        <span class="s2">],</span>
+    <span class="s2">},</span>
+    <span class="s3">&quot;moon&quot;</span><span class="s2">: {</span>
+        <span class="s3">&quot;interval&quot;</span><span class="s2">: </span><span class="s4">80</span><span class="s2">,</span>
+        <span class="s3">&quot;frames&quot;</span><span class="s2">: [</span><span class="s3">&quot;🌑 &quot;</span><span class="s2">, </span><span class="s3">&quot;🌒 &quot;</span><span class="s2">, </span><span class="s3">&quot;🌓 &quot;</span><span class="s2">, </span><span class="s3">&quot;🌔 &quot;</span><span class="s2">, </span><span class="s3">&quot;🌕 &quot;</span><span class="s2">, </span><span class="s3">&quot;🌖 &quot;</span><span class="s2">, </span><span class="s3">&quot;🌗 &quot;</span><span class="s2">, </span><span class="s3">&quot;🌘 &quot;</span><span class="s2">],</span>
+    <span class="s2">},</span>
+    <span class="s3">&quot;runner&quot;</span><span class="s2">: {</span><span class="s3">&quot;interval&quot;</span><span class="s2">: </span><span class="s4">140</span><span class="s2">, </span><span class="s3">&quot;frames&quot;</span><span class="s2">: [</span><span class="s3">&quot;🚶 &quot;</span><span class="s2">, </span><span class="s3">&quot;🏃 &quot;</span><span class="s2">]},</span>
+    <span class="s3">&quot;pong&quot;</span><span class="s2">: {</span>
+        <span class="s3">&quot;interval&quot;</span><span class="s2">: </span><span class="s4">80</span><span class="s2">,</span>
+        <span class="s3">&quot;frames&quot;</span><span class="s2">: [</span>
+            <span class="s3">&quot;▐⠂       ▌&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▐⠈       ▌&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▐ ⠂      ▌&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▐ ⠠      ▌&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▐  ⡀     ▌&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▐  ⠠     ▌&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▐   ⠂    ▌&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▐   ⠈    ▌&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▐    ⠂   ▌&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▐    ⠠   ▌&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▐     ⡀  ▌&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▐     ⠠  ▌&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▐      ⠂ ▌&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▐      ⠈ ▌&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▐       ⠂▌&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▐       ⠠▌&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▐       ⡀▌&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▐      ⠠ ▌&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▐      ⠂ ▌&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▐     ⠈  ▌&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▐     ⠂  ▌&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▐    ⠠   ▌&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▐    ⡀   ▌&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▐   ⠠    ▌&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▐   ⠂    ▌&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▐  ⠈     ▌&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▐  ⠂     ▌&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▐ ⠠      ▌&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▐ ⡀      ▌&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▐⠠       ▌&quot;</span><span class="s2">,</span>
+        <span class="s2">],</span>
+    <span class="s2">},</span>
+    <span class="s3">&quot;shark&quot;</span><span class="s2">: {</span>
+        <span class="s3">&quot;interval&quot;</span><span class="s2">: </span><span class="s4">120</span><span class="s2">,</span>
+        <span class="s3">&quot;frames&quot;</span><span class="s2">: [</span>
+            <span class="s3">&quot;▐|</span><span class="s5">\\</span><span class="s3">____________▌&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▐_|</span><span class="s5">\\</span><span class="s3">___________▌&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▐__|</span><span class="s5">\\</span><span class="s3">__________▌&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▐___|</span><span class="s5">\\</span><span class="s3">_________▌&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▐____|</span><span class="s5">\\</span><span class="s3">________▌&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▐_____|</span><span class="s5">\\</span><span class="s3">_______▌&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▐______|</span><span class="s5">\\</span><span class="s3">______▌&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▐_______|</span><span class="s5">\\</span><span class="s3">_____▌&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▐________|</span><span class="s5">\\</span><span class="s3">____▌&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▐_________|</span><span class="s5">\\</span><span class="s3">___▌&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▐__________|</span><span class="s5">\\</span><span class="s3">__▌&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▐___________|</span><span class="s5">\\</span><span class="s3">_▌&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▐____________|</span><span class="s5">\\</span><span class="s3">▌&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▐____________/|▌&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▐___________/|_▌&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▐__________/|__▌&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▐_________/|___▌&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▐________/|____▌&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▐_______/|_____▌&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▐______/|______▌&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▐_____/|_______▌&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▐____/|________▌&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▐___/|_________▌&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▐__/|__________▌&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▐_/|___________▌&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▐/|____________▌&quot;</span><span class="s2">,</span>
+        <span class="s2">],</span>
+    <span class="s2">},</span>
+    <span class="s3">&quot;dqpb&quot;</span><span class="s2">: {</span><span class="s3">&quot;interval&quot;</span><span class="s2">: </span><span class="s4">100</span><span class="s2">, </span><span class="s3">&quot;frames&quot;</span><span class="s2">: </span><span class="s3">&quot;dqpb&quot;</span><span class="s2">},</span>
+    <span class="s3">&quot;weather&quot;</span><span class="s2">: {</span>
+        <span class="s3">&quot;interval&quot;</span><span class="s2">: </span><span class="s4">100</span><span class="s2">,</span>
+        <span class="s3">&quot;frames&quot;</span><span class="s2">: [</span>
+            <span class="s3">&quot;☀️ &quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;☀️ &quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;☀️ &quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;🌤 &quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;⛅️ &quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;🌥 &quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;☁️ &quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;🌧 &quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;🌨 &quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;🌧 &quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;🌨 &quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;🌧 &quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;🌨 &quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;⛈ &quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;🌨 &quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;🌧 &quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;🌨 &quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;☁️ &quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;🌥 &quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;⛅️ &quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;🌤 &quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;☀️ &quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;☀️ &quot;</span><span class="s2">,</span>
+        <span class="s2">],</span>
+    <span class="s2">},</span>
+    <span class="s3">&quot;christmas&quot;</span><span class="s2">: {</span><span class="s3">&quot;interval&quot;</span><span class="s2">: </span><span class="s4">400</span><span class="s2">, </span><span class="s3">&quot;frames&quot;</span><span class="s2">: </span><span class="s3">&quot;🌲🎄&quot;</span><span class="s2">},</span>
+    <span class="s3">&quot;grenade&quot;</span><span class="s2">: {</span>
+        <span class="s3">&quot;interval&quot;</span><span class="s2">: </span><span class="s4">80</span><span class="s2">,</span>
+        <span class="s3">&quot;frames&quot;</span><span class="s2">: [</span>
+            <span class="s3">&quot;،   &quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;′   &quot;</span><span class="s2">,</span>
+            <span class="s3">&quot; ´ &quot;</span><span class="s2">,</span>
+            <span class="s3">&quot; ‾ &quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;  ⸌&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;  ⸊&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;  |&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;  ⁎&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;  ⁕&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot; ෴ &quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;  ⁓&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;   &quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;   &quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;   &quot;</span><span class="s2">,</span>
+        <span class="s2">],</span>
+    <span class="s2">},</span>
+    <span class="s3">&quot;point&quot;</span><span class="s2">: {</span><span class="s3">&quot;interval&quot;</span><span class="s2">: </span><span class="s4">125</span><span class="s2">, </span><span class="s3">&quot;frames&quot;</span><span class="s2">: [</span><span class="s3">&quot;∙∙∙&quot;</span><span class="s2">, </span><span class="s3">&quot;●∙∙&quot;</span><span class="s2">, </span><span class="s3">&quot;∙●∙&quot;</span><span class="s2">, </span><span class="s3">&quot;∙∙●&quot;</span><span class="s2">, </span><span class="s3">&quot;∙∙∙&quot;</span><span class="s2">]},</span>
+    <span class="s3">&quot;layer&quot;</span><span class="s2">: {</span><span class="s3">&quot;interval&quot;</span><span class="s2">: </span><span class="s4">150</span><span class="s2">, </span><span class="s3">&quot;frames&quot;</span><span class="s2">: </span><span class="s3">&quot;-=≡&quot;</span><span class="s2">},</span>
+    <span class="s3">&quot;betaWave&quot;</span><span class="s2">: {</span>
+        <span class="s3">&quot;interval&quot;</span><span class="s2">: </span><span class="s4">80</span><span class="s2">,</span>
+        <span class="s3">&quot;frames&quot;</span><span class="s2">: [</span>
+            <span class="s3">&quot;ρββββββ&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;βρβββββ&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;ββρββββ&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;βββρβββ&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;ββββρββ&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;βββββρβ&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;ββββββρ&quot;</span><span class="s2">,</span>
+        <span class="s2">],</span>
+    <span class="s2">},</span>
+    <span class="s3">&quot;aesthetic&quot;</span><span class="s2">: {</span>
+        <span class="s3">&quot;interval&quot;</span><span class="s2">: </span><span class="s4">80</span><span class="s2">,</span>
+        <span class="s3">&quot;frames&quot;</span><span class="s2">: [</span>
+            <span class="s3">&quot;▰▱▱▱▱▱▱&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▰▰▱▱▱▱▱&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▰▰▰▱▱▱▱&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▰▰▰▰▱▱▱&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▰▰▰▰▰▱▱&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▰▰▰▰▰▰▱&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▰▰▰▰▰▰▰&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;▰▱▱▱▱▱▱&quot;</span><span class="s2">,</span>
+        <span class="s2">],</span>
+    <span class="s2">},</span>
+<span class="s2">}</span>
+</pre>
+</body>
+</html>

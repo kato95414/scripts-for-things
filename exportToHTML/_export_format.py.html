@@ -1,0 +1,96 @@
+<html>
+<head>
+<title>_export_format.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #bcbec4;}
+.s1 { color: #bcbec4;}
+.s2 { color: #6aab73;}
+.s3 { color: #cf8e6d;}
+</style>
+</head>
+<body bgcolor="#1e1f22">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+_export_format.py</font>
+</center></td></tr></table>
+<pre><span class="s0">CONSOLE_HTML_FORMAT </span><span class="s1">= </span><span class="s2">&quot;&quot;&quot;</span><span class="s3">\ 
+</span><span class="s2">&lt;!DOCTYPE html&gt; 
+&lt;head&gt; 
+&lt;meta charset=&quot;UTF-8&quot;&gt; 
+&lt;style&gt; 
+{stylesheet} 
+body {{ 
+    color: {foreground}; 
+    background-color: {background}; 
+}} 
+&lt;/style&gt; 
+&lt;/head&gt; 
+&lt;html&gt; 
+&lt;body&gt; 
+    &lt;pre style=&quot;font-family:Menlo,'DejaVu Sans Mono',consolas,'Courier New',monospace&quot;&gt;&lt;code&gt;{code}&lt;/code&gt;&lt;/pre&gt; 
+&lt;/body&gt; 
+&lt;/html&gt; 
+&quot;&quot;&quot;</span>
+
+<span class="s0">CONSOLE_SVG_FORMAT </span><span class="s1">= </span><span class="s2">&quot;&quot;&quot;</span><span class="s3">\ 
+</span><span class="s2">&lt;svg class=&quot;rich-terminal&quot; viewBox=&quot;0 0 {width} {height}&quot; xmlns=&quot;http://www.w3.org/2000/svg&quot;&gt; 
+    &lt;!-- Generated with Rich https://www.textualize.io --&gt; 
+    &lt;style&gt; 
+ 
+    @font-face {{ 
+        font-family: &quot;Fira Code&quot;; 
+        src: local(&quot;FiraCode-Regular&quot;), 
+                url(&quot;https://cdnjs.cloudflare.com/ajax/libs/firacode/6.2.0/woff2/FiraCode-Regular.woff2&quot;) format(&quot;woff2&quot;), 
+                url(&quot;https://cdnjs.cloudflare.com/ajax/libs/firacode/6.2.0/woff/FiraCode-Regular.woff&quot;) format(&quot;woff&quot;); 
+        font-style: normal; 
+        font-weight: 400; 
+    }} 
+    @font-face {{ 
+        font-family: &quot;Fira Code&quot;; 
+        src: local(&quot;FiraCode-Bold&quot;), 
+                url(&quot;https://cdnjs.cloudflare.com/ajax/libs/firacode/6.2.0/woff2/FiraCode-Bold.woff2&quot;) format(&quot;woff2&quot;), 
+                url(&quot;https://cdnjs.cloudflare.com/ajax/libs/firacode/6.2.0/woff/FiraCode-Bold.woff&quot;) format(&quot;woff&quot;); 
+        font-style: bold; 
+        font-weight: 700; 
+    }} 
+ 
+    .{unique_id}-matrix {{ 
+        font-family: Fira Code, monospace; 
+        font-size: {char_height}px; 
+        line-height: {line_height}px; 
+        font-variant-east-asian: full-width; 
+    }} 
+ 
+    .{unique_id}-title {{ 
+        font-size: 18px; 
+        font-weight: bold; 
+        font-family: arial; 
+    }} 
+ 
+    {styles} 
+    &lt;/style&gt; 
+ 
+    &lt;defs&gt; 
+    &lt;clipPath id=&quot;{unique_id}-clip-terminal&quot;&gt; 
+      &lt;rect x=&quot;0&quot; y=&quot;0&quot; width=&quot;{terminal_width}&quot; height=&quot;{terminal_height}&quot; /&gt; 
+    &lt;/clipPath&gt; 
+    {lines} 
+    &lt;/defs&gt; 
+ 
+    {chrome} 
+    &lt;g transform=&quot;translate({terminal_x}, {terminal_y})&quot; clip-path=&quot;url(#{unique_id}-clip-terminal)&quot;&gt; 
+    {backgrounds} 
+    &lt;g class=&quot;{unique_id}-matrix&quot;&gt; 
+    {matrix} 
+    &lt;/g&gt; 
+    &lt;/g&gt; 
+&lt;/svg&gt; 
+&quot;&quot;&quot;</span>
+
+<span class="s0">_SVG_FONT_FAMILY </span><span class="s1">= </span><span class="s2">&quot;Rich Fira Code&quot;</span>
+<span class="s0">_SVG_CLASSES_PREFIX </span><span class="s1">= </span><span class="s2">&quot;rich-svg&quot;</span>
+</pre>
+</body>
+</html>

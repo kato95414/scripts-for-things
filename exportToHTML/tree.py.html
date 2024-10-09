@@ -1,0 +1,274 @@
+<html>
+<head>
+<title>tree.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cf8e6d;}
+.s1 { color: #bcbec4;}
+.s2 { color: #bcbec4;}
+.s3 { color: #5f826b; font-style: italic;}
+.s4 { color: #6aab73;}
+.s5 { color: #2aacb8;}
+.s6 { color: #7a7e85;}
+</style>
+</head>
+<body bgcolor="#1e1f22">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+tree.py</font>
+</center></td></tr></table>
+<pre><span class="s0">from </span><span class="s1">typing </span><span class="s0">import </span><span class="s1">Iterator</span><span class="s2">, </span><span class="s1">List</span><span class="s2">, </span><span class="s1">Optional</span><span class="s2">, </span><span class="s1">Tuple</span>
+
+<span class="s0">from </span><span class="s2">.</span><span class="s1">_loop </span><span class="s0">import </span><span class="s1">loop_first</span><span class="s2">, </span><span class="s1">loop_last</span>
+<span class="s0">from </span><span class="s2">.</span><span class="s1">console </span><span class="s0">import </span><span class="s1">Console</span><span class="s2">, </span><span class="s1">ConsoleOptions</span><span class="s2">, </span><span class="s1">RenderableType</span><span class="s2">, </span><span class="s1">RenderResult</span>
+<span class="s0">from </span><span class="s2">.</span><span class="s1">jupyter </span><span class="s0">import </span><span class="s1">JupyterMixin</span>
+<span class="s0">from </span><span class="s2">.</span><span class="s1">measure </span><span class="s0">import </span><span class="s1">Measurement</span>
+<span class="s0">from </span><span class="s2">.</span><span class="s1">segment </span><span class="s0">import </span><span class="s1">Segment</span>
+<span class="s0">from </span><span class="s2">.</span><span class="s1">style </span><span class="s0">import </span><span class="s1">Style</span><span class="s2">, </span><span class="s1">StyleStack</span><span class="s2">, </span><span class="s1">StyleType</span>
+<span class="s0">from </span><span class="s2">.</span><span class="s1">styled </span><span class="s0">import </span><span class="s1">Styled</span>
+
+
+<span class="s0">class </span><span class="s1">Tree</span><span class="s2">(</span><span class="s1">JupyterMixin</span><span class="s2">):</span>
+    <span class="s3">&quot;&quot;&quot;A renderable for a tree structure. 
+ 
+    Args: 
+        label (RenderableType): The renderable or str for the tree label. 
+        style (StyleType, optional): Style of this tree. Defaults to &quot;tree&quot;. 
+        guide_style (StyleType, optional): Style of the guide lines. Defaults to &quot;tree.line&quot;. 
+        expanded (bool, optional): Also display children. Defaults to True. 
+        highlight (bool, optional): Highlight renderable (if str). Defaults to False. 
+    &quot;&quot;&quot;</span>
+
+    <span class="s0">def </span><span class="s1">__init__</span><span class="s2">(</span>
+        <span class="s1">self</span><span class="s2">,</span>
+        <span class="s1">label</span><span class="s2">: </span><span class="s1">RenderableType</span><span class="s2">,</span>
+        <span class="s2">*,</span>
+        <span class="s1">style</span><span class="s2">: </span><span class="s1">StyleType </span><span class="s2">= </span><span class="s4">&quot;tree&quot;</span><span class="s2">,</span>
+        <span class="s1">guide_style</span><span class="s2">: </span><span class="s1">StyleType </span><span class="s2">= </span><span class="s4">&quot;tree.line&quot;</span><span class="s2">,</span>
+        <span class="s1">expanded</span><span class="s2">: </span><span class="s1">bool </span><span class="s2">= </span><span class="s0">True</span><span class="s2">,</span>
+        <span class="s1">highlight</span><span class="s2">: </span><span class="s1">bool </span><span class="s2">= </span><span class="s0">False</span><span class="s2">,</span>
+        <span class="s1">hide_root</span><span class="s2">: </span><span class="s1">bool </span><span class="s2">= </span><span class="s0">False</span><span class="s2">,</span>
+    <span class="s2">) </span><span class="s1">-&gt; </span><span class="s0">None</span><span class="s2">:</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">label </span><span class="s2">= </span><span class="s1">label</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">style </span><span class="s2">= </span><span class="s1">style</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">guide_style </span><span class="s2">= </span><span class="s1">guide_style</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">children</span><span class="s2">: </span><span class="s1">List</span><span class="s2">[</span><span class="s1">Tree</span><span class="s2">] = []</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">expanded </span><span class="s2">= </span><span class="s1">expanded</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">highlight </span><span class="s2">= </span><span class="s1">highlight</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">hide_root </span><span class="s2">= </span><span class="s1">hide_root</span>
+
+    <span class="s0">def </span><span class="s1">add</span><span class="s2">(</span>
+        <span class="s1">self</span><span class="s2">,</span>
+        <span class="s1">label</span><span class="s2">: </span><span class="s1">RenderableType</span><span class="s2">,</span>
+        <span class="s2">*,</span>
+        <span class="s1">style</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">StyleType</span><span class="s2">] = </span><span class="s0">None</span><span class="s2">,</span>
+        <span class="s1">guide_style</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">StyleType</span><span class="s2">] = </span><span class="s0">None</span><span class="s2">,</span>
+        <span class="s1">expanded</span><span class="s2">: </span><span class="s1">bool </span><span class="s2">= </span><span class="s0">True</span><span class="s2">,</span>
+        <span class="s1">highlight</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">bool</span><span class="s2">] = </span><span class="s0">False</span><span class="s2">,</span>
+    <span class="s2">) </span><span class="s1">-&gt; </span><span class="s4">&quot;Tree&quot;</span><span class="s2">:</span>
+        <span class="s3">&quot;&quot;&quot;Add a child tree. 
+ 
+        Args: 
+            label (RenderableType): The renderable or str for the tree label. 
+            style (StyleType, optional): Style of this tree. Defaults to &quot;tree&quot;. 
+            guide_style (StyleType, optional): Style of the guide lines. Defaults to &quot;tree.line&quot;. 
+            expanded (bool, optional): Also display children. Defaults to True. 
+            highlight (Optional[bool], optional): Highlight renderable (if str). Defaults to False. 
+ 
+        Returns: 
+            Tree: A new child Tree, which may be further modified. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">node </span><span class="s2">= </span><span class="s1">Tree</span><span class="s2">(</span>
+            <span class="s1">label</span><span class="s2">,</span>
+            <span class="s1">style</span><span class="s2">=</span><span class="s1">self</span><span class="s2">.</span><span class="s1">style </span><span class="s0">if </span><span class="s1">style </span><span class="s0">is None else </span><span class="s1">style</span><span class="s2">,</span>
+            <span class="s1">guide_style</span><span class="s2">=</span><span class="s1">self</span><span class="s2">.</span><span class="s1">guide_style </span><span class="s0">if </span><span class="s1">guide_style </span><span class="s0">is None else </span><span class="s1">guide_style</span><span class="s2">,</span>
+            <span class="s1">expanded</span><span class="s2">=</span><span class="s1">expanded</span><span class="s2">,</span>
+            <span class="s1">highlight</span><span class="s2">=</span><span class="s1">self</span><span class="s2">.</span><span class="s1">highlight </span><span class="s0">if </span><span class="s1">highlight </span><span class="s0">is None else </span><span class="s1">highlight</span><span class="s2">,</span>
+        <span class="s2">)</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">children</span><span class="s2">.</span><span class="s1">append</span><span class="s2">(</span><span class="s1">node</span><span class="s2">)</span>
+        <span class="s0">return </span><span class="s1">node</span>
+
+    <span class="s0">def </span><span class="s1">__rich_console__</span><span class="s2">(</span>
+        <span class="s1">self</span><span class="s2">, </span><span class="s1">console</span><span class="s2">: </span><span class="s4">&quot;Console&quot;</span><span class="s2">, </span><span class="s1">options</span><span class="s2">: </span><span class="s4">&quot;ConsoleOptions&quot;</span>
+    <span class="s2">) </span><span class="s1">-&gt; </span><span class="s4">&quot;RenderResult&quot;</span><span class="s2">:</span>
+
+        <span class="s1">stack</span><span class="s2">: </span><span class="s1">List</span><span class="s2">[</span><span class="s1">Iterator</span><span class="s2">[</span><span class="s1">Tuple</span><span class="s2">[</span><span class="s1">bool</span><span class="s2">, </span><span class="s1">Tree</span><span class="s2">]]] = []</span>
+        <span class="s1">pop </span><span class="s2">= </span><span class="s1">stack</span><span class="s2">.</span><span class="s1">pop</span>
+        <span class="s1">push </span><span class="s2">= </span><span class="s1">stack</span><span class="s2">.</span><span class="s1">append</span>
+        <span class="s1">new_line </span><span class="s2">= </span><span class="s1">Segment</span><span class="s2">.</span><span class="s1">line</span><span class="s2">()</span>
+
+        <span class="s1">get_style </span><span class="s2">= </span><span class="s1">console</span><span class="s2">.</span><span class="s1">get_style</span>
+        <span class="s1">null_style </span><span class="s2">= </span><span class="s1">Style</span><span class="s2">.</span><span class="s1">null</span><span class="s2">()</span>
+        <span class="s1">guide_style </span><span class="s2">= </span><span class="s1">get_style</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">guide_style</span><span class="s2">, </span><span class="s1">default</span><span class="s2">=</span><span class="s4">&quot;&quot;</span><span class="s2">) </span><span class="s0">or </span><span class="s1">null_style</span>
+        <span class="s1">SPACE</span><span class="s2">, </span><span class="s1">CONTINUE</span><span class="s2">, </span><span class="s1">FORK</span><span class="s2">, </span><span class="s1">END </span><span class="s2">= </span><span class="s1">range</span><span class="s2">(</span><span class="s5">4</span><span class="s2">)</span>
+
+        <span class="s1">ASCII_GUIDES </span><span class="s2">= (</span><span class="s4">&quot;    &quot;</span><span class="s2">, </span><span class="s4">&quot;|   &quot;</span><span class="s2">, </span><span class="s4">&quot;+-- &quot;</span><span class="s2">, </span><span class="s4">&quot;`-- &quot;</span><span class="s2">)</span>
+        <span class="s1">TREE_GUIDES </span><span class="s2">= [</span>
+            <span class="s2">(</span><span class="s4">&quot;    &quot;</span><span class="s2">, </span><span class="s4">&quot;│   &quot;</span><span class="s2">, </span><span class="s4">&quot;├── &quot;</span><span class="s2">, </span><span class="s4">&quot;└── &quot;</span><span class="s2">),</span>
+            <span class="s2">(</span><span class="s4">&quot;    &quot;</span><span class="s2">, </span><span class="s4">&quot;┃   &quot;</span><span class="s2">, </span><span class="s4">&quot;┣━━ &quot;</span><span class="s2">, </span><span class="s4">&quot;┗━━ &quot;</span><span class="s2">),</span>
+            <span class="s2">(</span><span class="s4">&quot;    &quot;</span><span class="s2">, </span><span class="s4">&quot;║   &quot;</span><span class="s2">, </span><span class="s4">&quot;╠══ &quot;</span><span class="s2">, </span><span class="s4">&quot;╚══ &quot;</span><span class="s2">),</span>
+        <span class="s2">]</span>
+        <span class="s1">_Segment </span><span class="s2">= </span><span class="s1">Segment</span>
+
+        <span class="s0">def </span><span class="s1">make_guide</span><span class="s2">(</span><span class="s1">index</span><span class="s2">: </span><span class="s1">int</span><span class="s2">, </span><span class="s1">style</span><span class="s2">: </span><span class="s1">Style</span><span class="s2">) </span><span class="s1">-&gt; Segment</span><span class="s2">:</span>
+            <span class="s3">&quot;&quot;&quot;Make a Segment for a level of the guide lines.&quot;&quot;&quot;</span>
+            <span class="s0">if </span><span class="s1">options</span><span class="s2">.</span><span class="s1">ascii_only</span><span class="s2">:</span>
+                <span class="s1">line </span><span class="s2">= </span><span class="s1">ASCII_GUIDES</span><span class="s2">[</span><span class="s1">index</span><span class="s2">]</span>
+            <span class="s0">else</span><span class="s2">:</span>
+                <span class="s1">guide </span><span class="s2">= </span><span class="s5">1 </span><span class="s0">if </span><span class="s1">style</span><span class="s2">.</span><span class="s1">bold </span><span class="s0">else </span><span class="s2">(</span><span class="s5">2 </span><span class="s0">if </span><span class="s1">style</span><span class="s2">.</span><span class="s1">underline2 </span><span class="s0">else </span><span class="s5">0</span><span class="s2">)</span>
+                <span class="s1">line </span><span class="s2">= </span><span class="s1">TREE_GUIDES</span><span class="s2">[</span><span class="s5">0 </span><span class="s0">if </span><span class="s1">options</span><span class="s2">.</span><span class="s1">legacy_windows </span><span class="s0">else </span><span class="s1">guide</span><span class="s2">][</span><span class="s1">index</span><span class="s2">]</span>
+            <span class="s0">return </span><span class="s1">_Segment</span><span class="s2">(</span><span class="s1">line</span><span class="s2">, </span><span class="s1">style</span><span class="s2">)</span>
+
+        <span class="s1">levels</span><span class="s2">: </span><span class="s1">List</span><span class="s2">[</span><span class="s1">Segment</span><span class="s2">] = [</span><span class="s1">make_guide</span><span class="s2">(</span><span class="s1">CONTINUE</span><span class="s2">, </span><span class="s1">guide_style</span><span class="s2">)]</span>
+        <span class="s1">push</span><span class="s2">(</span><span class="s1">iter</span><span class="s2">(</span><span class="s1">loop_last</span><span class="s2">([</span><span class="s1">self</span><span class="s2">])))</span>
+
+        <span class="s1">guide_style_stack </span><span class="s2">= </span><span class="s1">StyleStack</span><span class="s2">(</span><span class="s1">get_style</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">guide_style</span><span class="s2">))</span>
+        <span class="s1">style_stack </span><span class="s2">= </span><span class="s1">StyleStack</span><span class="s2">(</span><span class="s1">get_style</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">style</span><span class="s2">))</span>
+        <span class="s1">remove_guide_styles </span><span class="s2">= </span><span class="s1">Style</span><span class="s2">(</span><span class="s1">bold</span><span class="s2">=</span><span class="s0">False</span><span class="s2">, </span><span class="s1">underline2</span><span class="s2">=</span><span class="s0">False</span><span class="s2">)</span>
+
+        <span class="s1">depth </span><span class="s2">= </span><span class="s5">0</span>
+
+        <span class="s0">while </span><span class="s1">stack</span><span class="s2">:</span>
+            <span class="s1">stack_node </span><span class="s2">= </span><span class="s1">pop</span><span class="s2">()</span>
+            <span class="s0">try</span><span class="s2">:</span>
+                <span class="s1">last</span><span class="s2">, </span><span class="s1">node </span><span class="s2">= </span><span class="s1">next</span><span class="s2">(</span><span class="s1">stack_node</span><span class="s2">)</span>
+            <span class="s0">except </span><span class="s1">StopIteration</span><span class="s2">:</span>
+                <span class="s1">levels</span><span class="s2">.</span><span class="s1">pop</span><span class="s2">()</span>
+                <span class="s0">if </span><span class="s1">levels</span><span class="s2">:</span>
+                    <span class="s1">guide_style </span><span class="s2">= </span><span class="s1">levels</span><span class="s2">[-</span><span class="s5">1</span><span class="s2">].</span><span class="s1">style </span><span class="s0">or </span><span class="s1">null_style</span>
+                    <span class="s1">levels</span><span class="s2">[-</span><span class="s5">1</span><span class="s2">] = </span><span class="s1">make_guide</span><span class="s2">(</span><span class="s1">FORK</span><span class="s2">, </span><span class="s1">guide_style</span><span class="s2">)</span>
+                    <span class="s1">guide_style_stack</span><span class="s2">.</span><span class="s1">pop</span><span class="s2">()</span>
+                    <span class="s1">style_stack</span><span class="s2">.</span><span class="s1">pop</span><span class="s2">()</span>
+                <span class="s0">continue</span>
+            <span class="s1">push</span><span class="s2">(</span><span class="s1">stack_node</span><span class="s2">)</span>
+            <span class="s0">if </span><span class="s1">last</span><span class="s2">:</span>
+                <span class="s1">levels</span><span class="s2">[-</span><span class="s5">1</span><span class="s2">] = </span><span class="s1">make_guide</span><span class="s2">(</span><span class="s1">END</span><span class="s2">, </span><span class="s1">levels</span><span class="s2">[-</span><span class="s5">1</span><span class="s2">].</span><span class="s1">style </span><span class="s0">or </span><span class="s1">null_style</span><span class="s2">)</span>
+
+            <span class="s1">guide_style </span><span class="s2">= </span><span class="s1">guide_style_stack</span><span class="s2">.</span><span class="s1">current </span><span class="s2">+ </span><span class="s1">get_style</span><span class="s2">(</span><span class="s1">node</span><span class="s2">.</span><span class="s1">guide_style</span><span class="s2">)</span>
+            <span class="s1">style </span><span class="s2">= </span><span class="s1">style_stack</span><span class="s2">.</span><span class="s1">current </span><span class="s2">+ </span><span class="s1">get_style</span><span class="s2">(</span><span class="s1">node</span><span class="s2">.</span><span class="s1">style</span><span class="s2">)</span>
+            <span class="s1">prefix </span><span class="s2">= </span><span class="s1">levels</span><span class="s2">[(</span><span class="s5">2 </span><span class="s0">if </span><span class="s1">self</span><span class="s2">.</span><span class="s1">hide_root </span><span class="s0">else </span><span class="s5">1</span><span class="s2">) :]</span>
+            <span class="s1">renderable_lines </span><span class="s2">= </span><span class="s1">console</span><span class="s2">.</span><span class="s1">render_lines</span><span class="s2">(</span>
+                <span class="s1">Styled</span><span class="s2">(</span><span class="s1">node</span><span class="s2">.</span><span class="s1">label</span><span class="s2">, </span><span class="s1">style</span><span class="s2">),</span>
+                <span class="s1">options</span><span class="s2">.</span><span class="s1">update</span><span class="s2">(</span>
+                    <span class="s1">width</span><span class="s2">=</span><span class="s1">options</span><span class="s2">.</span><span class="s1">max_width</span>
+                    <span class="s2">- </span><span class="s1">sum</span><span class="s2">(</span><span class="s1">level</span><span class="s2">.</span><span class="s1">cell_length </span><span class="s0">for </span><span class="s1">level </span><span class="s0">in </span><span class="s1">prefix</span><span class="s2">),</span>
+                    <span class="s1">highlight</span><span class="s2">=</span><span class="s1">self</span><span class="s2">.</span><span class="s1">highlight</span><span class="s2">,</span>
+                    <span class="s1">height</span><span class="s2">=</span><span class="s0">None</span><span class="s2">,</span>
+                <span class="s2">),</span>
+                <span class="s1">pad</span><span class="s2">=</span><span class="s1">options</span><span class="s2">.</span><span class="s1">justify </span><span class="s0">is not None</span><span class="s2">,</span>
+            <span class="s2">)</span>
+
+            <span class="s0">if not </span><span class="s2">(</span><span class="s1">depth </span><span class="s2">== </span><span class="s5">0 </span><span class="s0">and </span><span class="s1">self</span><span class="s2">.</span><span class="s1">hide_root</span><span class="s2">):</span>
+                <span class="s0">for </span><span class="s1">first</span><span class="s2">, </span><span class="s1">line </span><span class="s0">in </span><span class="s1">loop_first</span><span class="s2">(</span><span class="s1">renderable_lines</span><span class="s2">):</span>
+                    <span class="s0">if </span><span class="s1">prefix</span><span class="s2">:</span>
+                        <span class="s0">yield from </span><span class="s1">_Segment</span><span class="s2">.</span><span class="s1">apply_style</span><span class="s2">(</span>
+                            <span class="s1">prefix</span><span class="s2">,</span>
+                            <span class="s1">style</span><span class="s2">.</span><span class="s1">background_style</span><span class="s2">,</span>
+                            <span class="s1">post_style</span><span class="s2">=</span><span class="s1">remove_guide_styles</span><span class="s2">,</span>
+                        <span class="s2">)</span>
+                    <span class="s0">yield from </span><span class="s1">line</span>
+                    <span class="s0">yield </span><span class="s1">new_line</span>
+                    <span class="s0">if </span><span class="s1">first </span><span class="s0">and </span><span class="s1">prefix</span><span class="s2">:</span>
+                        <span class="s1">prefix</span><span class="s2">[-</span><span class="s5">1</span><span class="s2">] = </span><span class="s1">make_guide</span><span class="s2">(</span>
+                            <span class="s1">SPACE </span><span class="s0">if </span><span class="s1">last </span><span class="s0">else </span><span class="s1">CONTINUE</span><span class="s2">, </span><span class="s1">prefix</span><span class="s2">[-</span><span class="s5">1</span><span class="s2">].</span><span class="s1">style </span><span class="s0">or </span><span class="s1">null_style</span>
+                        <span class="s2">)</span>
+
+            <span class="s0">if </span><span class="s1">node</span><span class="s2">.</span><span class="s1">expanded </span><span class="s0">and </span><span class="s1">node</span><span class="s2">.</span><span class="s1">children</span><span class="s2">:</span>
+                <span class="s1">levels</span><span class="s2">[-</span><span class="s5">1</span><span class="s2">] = </span><span class="s1">make_guide</span><span class="s2">(</span>
+                    <span class="s1">SPACE </span><span class="s0">if </span><span class="s1">last </span><span class="s0">else </span><span class="s1">CONTINUE</span><span class="s2">, </span><span class="s1">levels</span><span class="s2">[-</span><span class="s5">1</span><span class="s2">].</span><span class="s1">style </span><span class="s0">or </span><span class="s1">null_style</span>
+                <span class="s2">)</span>
+                <span class="s1">levels</span><span class="s2">.</span><span class="s1">append</span><span class="s2">(</span>
+                    <span class="s1">make_guide</span><span class="s2">(</span><span class="s1">END </span><span class="s0">if </span><span class="s1">len</span><span class="s2">(</span><span class="s1">node</span><span class="s2">.</span><span class="s1">children</span><span class="s2">) == </span><span class="s5">1 </span><span class="s0">else </span><span class="s1">FORK</span><span class="s2">, </span><span class="s1">guide_style</span><span class="s2">)</span>
+                <span class="s2">)</span>
+                <span class="s1">style_stack</span><span class="s2">.</span><span class="s1">push</span><span class="s2">(</span><span class="s1">get_style</span><span class="s2">(</span><span class="s1">node</span><span class="s2">.</span><span class="s1">style</span><span class="s2">))</span>
+                <span class="s1">guide_style_stack</span><span class="s2">.</span><span class="s1">push</span><span class="s2">(</span><span class="s1">get_style</span><span class="s2">(</span><span class="s1">node</span><span class="s2">.</span><span class="s1">guide_style</span><span class="s2">))</span>
+                <span class="s1">push</span><span class="s2">(</span><span class="s1">iter</span><span class="s2">(</span><span class="s1">loop_last</span><span class="s2">(</span><span class="s1">node</span><span class="s2">.</span><span class="s1">children</span><span class="s2">)))</span>
+                <span class="s1">depth </span><span class="s2">+= </span><span class="s5">1</span>
+
+    <span class="s0">def </span><span class="s1">__rich_measure__</span><span class="s2">(</span>
+        <span class="s1">self</span><span class="s2">, </span><span class="s1">console</span><span class="s2">: </span><span class="s4">&quot;Console&quot;</span><span class="s2">, </span><span class="s1">options</span><span class="s2">: </span><span class="s4">&quot;ConsoleOptions&quot;</span>
+    <span class="s2">) </span><span class="s1">-&gt; </span><span class="s4">&quot;Measurement&quot;</span><span class="s2">:</span>
+        <span class="s1">stack</span><span class="s2">: </span><span class="s1">List</span><span class="s2">[</span><span class="s1">Iterator</span><span class="s2">[</span><span class="s1">Tree</span><span class="s2">]] = [</span><span class="s1">iter</span><span class="s2">([</span><span class="s1">self</span><span class="s2">])]</span>
+        <span class="s1">pop </span><span class="s2">= </span><span class="s1">stack</span><span class="s2">.</span><span class="s1">pop</span>
+        <span class="s1">push </span><span class="s2">= </span><span class="s1">stack</span><span class="s2">.</span><span class="s1">append</span>
+        <span class="s1">minimum </span><span class="s2">= </span><span class="s5">0</span>
+        <span class="s1">maximum </span><span class="s2">= </span><span class="s5">0</span>
+        <span class="s1">measure </span><span class="s2">= </span><span class="s1">Measurement</span><span class="s2">.</span><span class="s1">get</span>
+        <span class="s1">level </span><span class="s2">= </span><span class="s5">0</span>
+        <span class="s0">while </span><span class="s1">stack</span><span class="s2">:</span>
+            <span class="s1">iter_tree </span><span class="s2">= </span><span class="s1">pop</span><span class="s2">()</span>
+            <span class="s0">try</span><span class="s2">:</span>
+                <span class="s1">tree </span><span class="s2">= </span><span class="s1">next</span><span class="s2">(</span><span class="s1">iter_tree</span><span class="s2">)</span>
+            <span class="s0">except </span><span class="s1">StopIteration</span><span class="s2">:</span>
+                <span class="s1">level </span><span class="s2">-= </span><span class="s5">1</span>
+                <span class="s0">continue</span>
+            <span class="s1">push</span><span class="s2">(</span><span class="s1">iter_tree</span><span class="s2">)</span>
+            <span class="s1">min_measure</span><span class="s2">, </span><span class="s1">max_measure </span><span class="s2">= </span><span class="s1">measure</span><span class="s2">(</span><span class="s1">console</span><span class="s2">, </span><span class="s1">options</span><span class="s2">, </span><span class="s1">tree</span><span class="s2">.</span><span class="s1">label</span><span class="s2">)</span>
+            <span class="s1">indent </span><span class="s2">= </span><span class="s1">level </span><span class="s2">* </span><span class="s5">4</span>
+            <span class="s1">minimum </span><span class="s2">= </span><span class="s1">max</span><span class="s2">(</span><span class="s1">min_measure </span><span class="s2">+ </span><span class="s1">indent</span><span class="s2">, </span><span class="s1">minimum</span><span class="s2">)</span>
+            <span class="s1">maximum </span><span class="s2">= </span><span class="s1">max</span><span class="s2">(</span><span class="s1">max_measure </span><span class="s2">+ </span><span class="s1">indent</span><span class="s2">, </span><span class="s1">maximum</span><span class="s2">)</span>
+            <span class="s0">if </span><span class="s1">tree</span><span class="s2">.</span><span class="s1">expanded </span><span class="s0">and </span><span class="s1">tree</span><span class="s2">.</span><span class="s1">children</span><span class="s2">:</span>
+                <span class="s1">push</span><span class="s2">(</span><span class="s1">iter</span><span class="s2">(</span><span class="s1">tree</span><span class="s2">.</span><span class="s1">children</span><span class="s2">))</span>
+                <span class="s1">level </span><span class="s2">+= </span><span class="s5">1</span>
+        <span class="s0">return </span><span class="s1">Measurement</span><span class="s2">(</span><span class="s1">minimum</span><span class="s2">, </span><span class="s1">maximum</span><span class="s2">)</span>
+
+
+<span class="s0">if </span><span class="s1">__name__ </span><span class="s2">== </span><span class="s4">&quot;__main__&quot;</span><span class="s2">:  </span><span class="s6"># pragma: no cover</span>
+
+    <span class="s0">from </span><span class="s1">pip</span><span class="s2">.</span><span class="s1">_vendor</span><span class="s2">.</span><span class="s1">rich</span><span class="s2">.</span><span class="s1">console </span><span class="s0">import </span><span class="s1">Group</span>
+    <span class="s0">from </span><span class="s1">pip</span><span class="s2">.</span><span class="s1">_vendor</span><span class="s2">.</span><span class="s1">rich</span><span class="s2">.</span><span class="s1">markdown </span><span class="s0">import </span><span class="s1">Markdown</span>
+    <span class="s0">from </span><span class="s1">pip</span><span class="s2">.</span><span class="s1">_vendor</span><span class="s2">.</span><span class="s1">rich</span><span class="s2">.</span><span class="s1">panel </span><span class="s0">import </span><span class="s1">Panel</span>
+    <span class="s0">from </span><span class="s1">pip</span><span class="s2">.</span><span class="s1">_vendor</span><span class="s2">.</span><span class="s1">rich</span><span class="s2">.</span><span class="s1">syntax </span><span class="s0">import </span><span class="s1">Syntax</span>
+    <span class="s0">from </span><span class="s1">pip</span><span class="s2">.</span><span class="s1">_vendor</span><span class="s2">.</span><span class="s1">rich</span><span class="s2">.</span><span class="s1">table </span><span class="s0">import </span><span class="s1">Table</span>
+
+    <span class="s1">table </span><span class="s2">= </span><span class="s1">Table</span><span class="s2">(</span><span class="s1">row_styles</span><span class="s2">=[</span><span class="s4">&quot;&quot;</span><span class="s2">, </span><span class="s4">&quot;dim&quot;</span><span class="s2">])</span>
+
+    <span class="s1">table</span><span class="s2">.</span><span class="s1">add_column</span><span class="s2">(</span><span class="s4">&quot;Released&quot;</span><span class="s2">, </span><span class="s1">style</span><span class="s2">=</span><span class="s4">&quot;cyan&quot;</span><span class="s2">, </span><span class="s1">no_wrap</span><span class="s2">=</span><span class="s0">True</span><span class="s2">)</span>
+    <span class="s1">table</span><span class="s2">.</span><span class="s1">add_column</span><span class="s2">(</span><span class="s4">&quot;Title&quot;</span><span class="s2">, </span><span class="s1">style</span><span class="s2">=</span><span class="s4">&quot;magenta&quot;</span><span class="s2">)</span>
+    <span class="s1">table</span><span class="s2">.</span><span class="s1">add_column</span><span class="s2">(</span><span class="s4">&quot;Box Office&quot;</span><span class="s2">, </span><span class="s1">justify</span><span class="s2">=</span><span class="s4">&quot;right&quot;</span><span class="s2">, </span><span class="s1">style</span><span class="s2">=</span><span class="s4">&quot;green&quot;</span><span class="s2">)</span>
+
+    <span class="s1">table</span><span class="s2">.</span><span class="s1">add_row</span><span class="s2">(</span><span class="s4">&quot;Dec 20, 2019&quot;</span><span class="s2">, </span><span class="s4">&quot;Star Wars: The Rise of Skywalker&quot;</span><span class="s2">, </span><span class="s4">&quot;$952,110,690&quot;</span><span class="s2">)</span>
+    <span class="s1">table</span><span class="s2">.</span><span class="s1">add_row</span><span class="s2">(</span><span class="s4">&quot;May 25, 2018&quot;</span><span class="s2">, </span><span class="s4">&quot;Solo: A Star Wars Story&quot;</span><span class="s2">, </span><span class="s4">&quot;$393,151,347&quot;</span><span class="s2">)</span>
+    <span class="s1">table</span><span class="s2">.</span><span class="s1">add_row</span><span class="s2">(</span><span class="s4">&quot;Dec 15, 2017&quot;</span><span class="s2">, </span><span class="s4">&quot;Star Wars Ep. V111: The Last Jedi&quot;</span><span class="s2">, </span><span class="s4">&quot;$1,332,539,889&quot;</span><span class="s2">)</span>
+    <span class="s1">table</span><span class="s2">.</span><span class="s1">add_row</span><span class="s2">(</span><span class="s4">&quot;Dec 16, 2016&quot;</span><span class="s2">, </span><span class="s4">&quot;Rogue One: A Star Wars Story&quot;</span><span class="s2">, </span><span class="s4">&quot;$1,332,439,889&quot;</span><span class="s2">)</span>
+
+    <span class="s1">code </span><span class="s2">= </span><span class="s4">&quot;&quot;&quot;</span><span class="s0">\ 
+</span><span class="s4">class Segment(NamedTuple): 
+    text: str = &quot;&quot; 
+    style: Optional[Style] = None 
+    is_control: bool = False 
+&quot;&quot;&quot;</span>
+    <span class="s1">syntax </span><span class="s2">= </span><span class="s1">Syntax</span><span class="s2">(</span><span class="s1">code</span><span class="s2">, </span><span class="s4">&quot;python&quot;</span><span class="s2">, </span><span class="s1">theme</span><span class="s2">=</span><span class="s4">&quot;monokai&quot;</span><span class="s2">, </span><span class="s1">line_numbers</span><span class="s2">=</span><span class="s0">True</span><span class="s2">)</span>
+
+    <span class="s1">markdown </span><span class="s2">= </span><span class="s1">Markdown</span><span class="s2">(</span>
+        <span class="s4">&quot;&quot;&quot;</span><span class="s0">\ 
+</span><span class="s4">### example.md 
+&gt; Hello, World! 
+&gt; 
+&gt; Markdown _all_ the things 
+&quot;&quot;&quot;</span>
+    <span class="s2">)</span>
+
+    <span class="s1">root </span><span class="s2">= </span><span class="s1">Tree</span><span class="s2">(</span><span class="s4">&quot;🌲 [b green]Rich Tree&quot;</span><span class="s2">, </span><span class="s1">highlight</span><span class="s2">=</span><span class="s0">True</span><span class="s2">, </span><span class="s1">hide_root</span><span class="s2">=</span><span class="s0">True</span><span class="s2">)</span>
+
+    <span class="s1">node </span><span class="s2">= </span><span class="s1">root</span><span class="s2">.</span><span class="s1">add</span><span class="s2">(</span><span class="s4">&quot;:file_folder: Renderables&quot;</span><span class="s2">, </span><span class="s1">guide_style</span><span class="s2">=</span><span class="s4">&quot;red&quot;</span><span class="s2">)</span>
+    <span class="s1">simple_node </span><span class="s2">= </span><span class="s1">node</span><span class="s2">.</span><span class="s1">add</span><span class="s2">(</span><span class="s4">&quot;:file_folder: [bold yellow]Atomic&quot;</span><span class="s2">, </span><span class="s1">guide_style</span><span class="s2">=</span><span class="s4">&quot;uu green&quot;</span><span class="s2">)</span>
+    <span class="s1">simple_node</span><span class="s2">.</span><span class="s1">add</span><span class="s2">(</span><span class="s1">Group</span><span class="s2">(</span><span class="s4">&quot;📄 Syntax&quot;</span><span class="s2">, </span><span class="s1">syntax</span><span class="s2">))</span>
+    <span class="s1">simple_node</span><span class="s2">.</span><span class="s1">add</span><span class="s2">(</span><span class="s1">Group</span><span class="s2">(</span><span class="s4">&quot;📄 Markdown&quot;</span><span class="s2">, </span><span class="s1">Panel</span><span class="s2">(</span><span class="s1">markdown</span><span class="s2">, </span><span class="s1">border_style</span><span class="s2">=</span><span class="s4">&quot;green&quot;</span><span class="s2">)))</span>
+
+    <span class="s1">containers_node </span><span class="s2">= </span><span class="s1">node</span><span class="s2">.</span><span class="s1">add</span><span class="s2">(</span>
+        <span class="s4">&quot;:file_folder: [bold magenta]Containers&quot;</span><span class="s2">, </span><span class="s1">guide_style</span><span class="s2">=</span><span class="s4">&quot;bold magenta&quot;</span>
+    <span class="s2">)</span>
+    <span class="s1">containers_node</span><span class="s2">.</span><span class="s1">expanded </span><span class="s2">= </span><span class="s0">True</span>
+    <span class="s1">panel </span><span class="s2">= </span><span class="s1">Panel</span><span class="s2">.</span><span class="s1">fit</span><span class="s2">(</span><span class="s4">&quot;Just a panel&quot;</span><span class="s2">, </span><span class="s1">border_style</span><span class="s2">=</span><span class="s4">&quot;red&quot;</span><span class="s2">)</span>
+    <span class="s1">containers_node</span><span class="s2">.</span><span class="s1">add</span><span class="s2">(</span><span class="s1">Group</span><span class="s2">(</span><span class="s4">&quot;📄 Panels&quot;</span><span class="s2">, </span><span class="s1">panel</span><span class="s2">))</span>
+
+    <span class="s1">containers_node</span><span class="s2">.</span><span class="s1">add</span><span class="s2">(</span><span class="s1">Group</span><span class="s2">(</span><span class="s4">&quot;📄 [b magenta]Table&quot;</span><span class="s2">, </span><span class="s1">table</span><span class="s2">))</span>
+
+    <span class="s1">console </span><span class="s2">= </span><span class="s1">Console</span><span class="s2">()</span>
+
+    <span class="s1">console</span><span class="s2">.</span><span class="s1">print</span><span class="s2">(</span><span class="s1">root</span><span class="s2">)</span>
+</pre>
+</body>
+</html>

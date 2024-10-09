@@ -1,0 +1,136 @@
+<html>
+<head>
+<title>live_render.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cf8e6d;}
+.s1 { color: #bcbec4;}
+.s2 { color: #bcbec4;}
+.s3 { color: #2aacb8;}
+.s4 { color: #7a7e85;}
+.s5 { color: #6aab73;}
+.s6 { color: #5f826b; font-style: italic;}
+</style>
+</head>
+<body bgcolor="#1e1f22">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+live_render.py</font>
+</center></td></tr></table>
+<pre><span class="s0">import </span><span class="s1">sys</span>
+<span class="s0">from </span><span class="s1">typing </span><span class="s0">import </span><span class="s1">Optional</span><span class="s2">, </span><span class="s1">Tuple</span>
+
+<span class="s0">if </span><span class="s1">sys</span><span class="s2">.</span><span class="s1">version_info </span><span class="s2">&gt;= (</span><span class="s3">3</span><span class="s2">, </span><span class="s3">8</span><span class="s2">):</span>
+    <span class="s0">from </span><span class="s1">typing </span><span class="s0">import </span><span class="s1">Literal</span>
+<span class="s0">else</span><span class="s2">:</span>
+    <span class="s0">from </span><span class="s1">pip</span><span class="s2">.</span><span class="s1">_vendor</span><span class="s2">.</span><span class="s1">typing_extensions </span><span class="s0">import </span><span class="s1">Literal  </span><span class="s4"># pragma: no cover</span>
+
+
+<span class="s0">from </span><span class="s2">.</span><span class="s1">_loop </span><span class="s0">import </span><span class="s1">loop_last</span>
+<span class="s0">from </span><span class="s2">.</span><span class="s1">console </span><span class="s0">import </span><span class="s1">Console</span><span class="s2">, </span><span class="s1">ConsoleOptions</span><span class="s2">, </span><span class="s1">RenderableType</span><span class="s2">, </span><span class="s1">RenderResult</span>
+<span class="s0">from </span><span class="s2">.</span><span class="s1">control </span><span class="s0">import </span><span class="s1">Control</span>
+<span class="s0">from </span><span class="s2">.</span><span class="s1">segment </span><span class="s0">import </span><span class="s1">ControlType</span><span class="s2">, </span><span class="s1">Segment</span>
+<span class="s0">from </span><span class="s2">.</span><span class="s1">style </span><span class="s0">import </span><span class="s1">StyleType</span>
+<span class="s0">from </span><span class="s2">.</span><span class="s1">text </span><span class="s0">import </span><span class="s1">Text</span>
+
+<span class="s1">VerticalOverflowMethod </span><span class="s2">= </span><span class="s1">Literal</span><span class="s2">[</span><span class="s5">&quot;crop&quot;</span><span class="s2">, </span><span class="s5">&quot;ellipsis&quot;</span><span class="s2">, </span><span class="s5">&quot;visible&quot;</span><span class="s2">]</span>
+
+
+<span class="s0">class </span><span class="s1">LiveRender</span><span class="s2">:</span>
+    <span class="s6">&quot;&quot;&quot;Creates a renderable that may be updated. 
+ 
+    Args: 
+        renderable (RenderableType): Any renderable object. 
+        style (StyleType, optional): An optional style to apply to the renderable. Defaults to &quot;&quot;. 
+    &quot;&quot;&quot;</span>
+
+    <span class="s0">def </span><span class="s1">__init__</span><span class="s2">(</span>
+        <span class="s1">self</span><span class="s2">,</span>
+        <span class="s1">renderable</span><span class="s2">: </span><span class="s1">RenderableType</span><span class="s2">,</span>
+        <span class="s1">style</span><span class="s2">: </span><span class="s1">StyleType </span><span class="s2">= </span><span class="s5">&quot;&quot;</span><span class="s2">,</span>
+        <span class="s1">vertical_overflow</span><span class="s2">: </span><span class="s1">VerticalOverflowMethod </span><span class="s2">= </span><span class="s5">&quot;ellipsis&quot;</span><span class="s2">,</span>
+    <span class="s2">) </span><span class="s1">-&gt; </span><span class="s0">None</span><span class="s2">:</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">renderable </span><span class="s2">= </span><span class="s1">renderable</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">style </span><span class="s2">= </span><span class="s1">style</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">vertical_overflow </span><span class="s2">= </span><span class="s1">vertical_overflow</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">_shape</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">Tuple</span><span class="s2">[</span><span class="s1">int</span><span class="s2">, </span><span class="s1">int</span><span class="s2">]] = </span><span class="s0">None</span>
+
+    <span class="s0">def </span><span class="s1">set_renderable</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">renderable</span><span class="s2">: </span><span class="s1">RenderableType</span><span class="s2">) </span><span class="s1">-&gt; </span><span class="s0">None</span><span class="s2">:</span>
+        <span class="s6">&quot;&quot;&quot;Set a new renderable. 
+ 
+        Args: 
+            renderable (RenderableType): Any renderable object, including str. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">renderable </span><span class="s2">= </span><span class="s1">renderable</span>
+
+    <span class="s0">def </span><span class="s1">position_cursor</span><span class="s2">(</span><span class="s1">self</span><span class="s2">) </span><span class="s1">-&gt; Control</span><span class="s2">:</span>
+        <span class="s6">&quot;&quot;&quot;Get control codes to move cursor to beginning of live render. 
+ 
+        Returns: 
+            Control: A control instance that may be printed. 
+        &quot;&quot;&quot;</span>
+        <span class="s0">if </span><span class="s1">self</span><span class="s2">.</span><span class="s1">_shape </span><span class="s0">is not None</span><span class="s2">:</span>
+            <span class="s1">_</span><span class="s2">, </span><span class="s1">height </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">_shape</span>
+            <span class="s0">return </span><span class="s1">Control</span><span class="s2">(</span>
+                <span class="s1">ControlType</span><span class="s2">.</span><span class="s1">CARRIAGE_RETURN</span><span class="s2">,</span>
+                <span class="s2">(</span><span class="s1">ControlType</span><span class="s2">.</span><span class="s1">ERASE_IN_LINE</span><span class="s2">, </span><span class="s3">2</span><span class="s2">),</span>
+                <span class="s2">*(</span>
+                    <span class="s2">(</span>
+                        <span class="s2">(</span><span class="s1">ControlType</span><span class="s2">.</span><span class="s1">CURSOR_UP</span><span class="s2">, </span><span class="s3">1</span><span class="s2">),</span>
+                        <span class="s2">(</span><span class="s1">ControlType</span><span class="s2">.</span><span class="s1">ERASE_IN_LINE</span><span class="s2">, </span><span class="s3">2</span><span class="s2">),</span>
+                    <span class="s2">)</span>
+                    <span class="s2">* (</span><span class="s1">height </span><span class="s2">- </span><span class="s3">1</span><span class="s2">)</span>
+                <span class="s2">)</span>
+            <span class="s2">)</span>
+        <span class="s0">return </span><span class="s1">Control</span><span class="s2">()</span>
+
+    <span class="s0">def </span><span class="s1">restore_cursor</span><span class="s2">(</span><span class="s1">self</span><span class="s2">) </span><span class="s1">-&gt; Control</span><span class="s2">:</span>
+        <span class="s6">&quot;&quot;&quot;Get control codes to clear the render and restore the cursor to its previous position. 
+ 
+        Returns: 
+            Control: A Control instance that may be printed. 
+        &quot;&quot;&quot;</span>
+        <span class="s0">if </span><span class="s1">self</span><span class="s2">.</span><span class="s1">_shape </span><span class="s0">is not None</span><span class="s2">:</span>
+            <span class="s1">_</span><span class="s2">, </span><span class="s1">height </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">_shape</span>
+            <span class="s0">return </span><span class="s1">Control</span><span class="s2">(</span>
+                <span class="s1">ControlType</span><span class="s2">.</span><span class="s1">CARRIAGE_RETURN</span><span class="s2">,</span>
+                <span class="s2">*((</span><span class="s1">ControlType</span><span class="s2">.</span><span class="s1">CURSOR_UP</span><span class="s2">, </span><span class="s3">1</span><span class="s2">), (</span><span class="s1">ControlType</span><span class="s2">.</span><span class="s1">ERASE_IN_LINE</span><span class="s2">, </span><span class="s3">2</span><span class="s2">)) * </span><span class="s1">height</span>
+            <span class="s2">)</span>
+        <span class="s0">return </span><span class="s1">Control</span><span class="s2">()</span>
+
+    <span class="s0">def </span><span class="s1">__rich_console__</span><span class="s2">(</span>
+        <span class="s1">self</span><span class="s2">, </span><span class="s1">console</span><span class="s2">: </span><span class="s1">Console</span><span class="s2">, </span><span class="s1">options</span><span class="s2">: </span><span class="s1">ConsoleOptions</span>
+    <span class="s2">) </span><span class="s1">-&gt; RenderResult</span><span class="s2">:</span>
+
+        <span class="s1">renderable </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">renderable</span>
+        <span class="s1">style </span><span class="s2">= </span><span class="s1">console</span><span class="s2">.</span><span class="s1">get_style</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">style</span><span class="s2">)</span>
+        <span class="s1">lines </span><span class="s2">= </span><span class="s1">console</span><span class="s2">.</span><span class="s1">render_lines</span><span class="s2">(</span><span class="s1">renderable</span><span class="s2">, </span><span class="s1">options</span><span class="s2">, </span><span class="s1">style</span><span class="s2">=</span><span class="s1">style</span><span class="s2">, </span><span class="s1">pad</span><span class="s2">=</span><span class="s0">False</span><span class="s2">)</span>
+        <span class="s1">shape </span><span class="s2">= </span><span class="s1">Segment</span><span class="s2">.</span><span class="s1">get_shape</span><span class="s2">(</span><span class="s1">lines</span><span class="s2">)</span>
+
+        <span class="s1">_</span><span class="s2">, </span><span class="s1">height </span><span class="s2">= </span><span class="s1">shape</span>
+        <span class="s0">if </span><span class="s1">height </span><span class="s2">&gt; </span><span class="s1">options</span><span class="s2">.</span><span class="s1">size</span><span class="s2">.</span><span class="s1">height</span><span class="s2">:</span>
+            <span class="s0">if </span><span class="s1">self</span><span class="s2">.</span><span class="s1">vertical_overflow </span><span class="s2">== </span><span class="s5">&quot;crop&quot;</span><span class="s2">:</span>
+                <span class="s1">lines </span><span class="s2">= </span><span class="s1">lines</span><span class="s2">[: </span><span class="s1">options</span><span class="s2">.</span><span class="s1">size</span><span class="s2">.</span><span class="s1">height</span><span class="s2">]</span>
+                <span class="s1">shape </span><span class="s2">= </span><span class="s1">Segment</span><span class="s2">.</span><span class="s1">get_shape</span><span class="s2">(</span><span class="s1">lines</span><span class="s2">)</span>
+            <span class="s0">elif </span><span class="s1">self</span><span class="s2">.</span><span class="s1">vertical_overflow </span><span class="s2">== </span><span class="s5">&quot;ellipsis&quot;</span><span class="s2">:</span>
+                <span class="s1">lines </span><span class="s2">= </span><span class="s1">lines</span><span class="s2">[: (</span><span class="s1">options</span><span class="s2">.</span><span class="s1">size</span><span class="s2">.</span><span class="s1">height </span><span class="s2">- </span><span class="s3">1</span><span class="s2">)]</span>
+                <span class="s1">overflow_text </span><span class="s2">= </span><span class="s1">Text</span><span class="s2">(</span>
+                    <span class="s5">&quot;...&quot;</span><span class="s2">,</span>
+                    <span class="s1">overflow</span><span class="s2">=</span><span class="s5">&quot;crop&quot;</span><span class="s2">,</span>
+                    <span class="s1">justify</span><span class="s2">=</span><span class="s5">&quot;center&quot;</span><span class="s2">,</span>
+                    <span class="s1">end</span><span class="s2">=</span><span class="s5">&quot;&quot;</span><span class="s2">,</span>
+                    <span class="s1">style</span><span class="s2">=</span><span class="s5">&quot;live.ellipsis&quot;</span><span class="s2">,</span>
+                <span class="s2">)</span>
+                <span class="s1">lines</span><span class="s2">.</span><span class="s1">append</span><span class="s2">(</span><span class="s1">list</span><span class="s2">(</span><span class="s1">console</span><span class="s2">.</span><span class="s1">render</span><span class="s2">(</span><span class="s1">overflow_text</span><span class="s2">)))</span>
+                <span class="s1">shape </span><span class="s2">= </span><span class="s1">Segment</span><span class="s2">.</span><span class="s1">get_shape</span><span class="s2">(</span><span class="s1">lines</span><span class="s2">)</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">_shape </span><span class="s2">= </span><span class="s1">shape</span>
+
+        <span class="s1">new_line </span><span class="s2">= </span><span class="s1">Segment</span><span class="s2">.</span><span class="s1">line</span><span class="s2">()</span>
+        <span class="s0">for </span><span class="s1">last</span><span class="s2">, </span><span class="s1">line </span><span class="s0">in </span><span class="s1">loop_last</span><span class="s2">(</span><span class="s1">lines</span><span class="s2">):</span>
+            <span class="s0">yield from </span><span class="s1">line</span>
+            <span class="s0">if not </span><span class="s1">last</span><span class="s2">:</span>
+                <span class="s0">yield </span><span class="s1">new_line</span>
+</pre>
+</body>
+</html>

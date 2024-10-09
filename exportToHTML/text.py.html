@@ -1,0 +1,1330 @@
+<html>
+<head>
+<title>text.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cf8e6d;}
+.s1 { color: #bcbec4;}
+.s2 { color: #bcbec4;}
+.s3 { color: #7a7e85;}
+.s4 { color: #6aab73;}
+.s5 { color: #5f826b; font-style: italic;}
+.s6 { color: #2aacb8;}
+</style>
+</head>
+<body bgcolor="#1e1f22">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+text.py</font>
+</center></td></tr></table>
+<pre><span class="s0">import </span><span class="s1">re</span>
+<span class="s0">from </span><span class="s1">functools </span><span class="s0">import </span><span class="s1">partial</span><span class="s2">, </span><span class="s1">reduce</span>
+<span class="s0">from </span><span class="s1">math </span><span class="s0">import </span><span class="s1">gcd</span>
+<span class="s0">from </span><span class="s1">operator </span><span class="s0">import </span><span class="s1">itemgetter</span>
+<span class="s0">from </span><span class="s1">typing </span><span class="s0">import </span><span class="s2">(</span>
+    <span class="s1">TYPE_CHECKING</span><span class="s2">,</span>
+    <span class="s1">Any</span><span class="s2">,</span>
+    <span class="s1">Callable</span><span class="s2">,</span>
+    <span class="s1">Dict</span><span class="s2">,</span>
+    <span class="s1">Iterable</span><span class="s2">,</span>
+    <span class="s1">List</span><span class="s2">,</span>
+    <span class="s1">NamedTuple</span><span class="s2">,</span>
+    <span class="s1">Optional</span><span class="s2">,</span>
+    <span class="s1">Tuple</span><span class="s2">,</span>
+    <span class="s1">Union</span><span class="s2">,</span>
+<span class="s2">)</span>
+
+<span class="s0">from </span><span class="s2">.</span><span class="s1">_loop </span><span class="s0">import </span><span class="s1">loop_last</span>
+<span class="s0">from </span><span class="s2">.</span><span class="s1">_pick </span><span class="s0">import </span><span class="s1">pick_bool</span>
+<span class="s0">from </span><span class="s2">.</span><span class="s1">_wrap </span><span class="s0">import </span><span class="s1">divide_line</span>
+<span class="s0">from </span><span class="s2">.</span><span class="s1">align </span><span class="s0">import </span><span class="s1">AlignMethod</span>
+<span class="s0">from </span><span class="s2">.</span><span class="s1">cells </span><span class="s0">import </span><span class="s1">cell_len</span><span class="s2">, </span><span class="s1">set_cell_size</span>
+<span class="s0">from </span><span class="s2">.</span><span class="s1">containers </span><span class="s0">import </span><span class="s1">Lines</span>
+<span class="s0">from </span><span class="s2">.</span><span class="s1">control </span><span class="s0">import </span><span class="s1">strip_control_codes</span>
+<span class="s0">from </span><span class="s2">.</span><span class="s1">emoji </span><span class="s0">import </span><span class="s1">EmojiVariant</span>
+<span class="s0">from </span><span class="s2">.</span><span class="s1">jupyter </span><span class="s0">import </span><span class="s1">JupyterMixin</span>
+<span class="s0">from </span><span class="s2">.</span><span class="s1">measure </span><span class="s0">import </span><span class="s1">Measurement</span>
+<span class="s0">from </span><span class="s2">.</span><span class="s1">segment </span><span class="s0">import </span><span class="s1">Segment</span>
+<span class="s0">from </span><span class="s2">.</span><span class="s1">style </span><span class="s0">import </span><span class="s1">Style</span><span class="s2">, </span><span class="s1">StyleType</span>
+
+<span class="s0">if </span><span class="s1">TYPE_CHECKING</span><span class="s2">:  </span><span class="s3"># pragma: no cover</span>
+    <span class="s0">from </span><span class="s2">.</span><span class="s1">console </span><span class="s0">import </span><span class="s1">Console</span><span class="s2">, </span><span class="s1">ConsoleOptions</span><span class="s2">, </span><span class="s1">JustifyMethod</span><span class="s2">, </span><span class="s1">OverflowMethod</span>
+
+<span class="s1">DEFAULT_JUSTIFY</span><span class="s2">: </span><span class="s4">&quot;JustifyMethod&quot; </span><span class="s2">= </span><span class="s4">&quot;default&quot;</span>
+<span class="s1">DEFAULT_OVERFLOW</span><span class="s2">: </span><span class="s4">&quot;OverflowMethod&quot; </span><span class="s2">= </span><span class="s4">&quot;fold&quot;</span>
+
+
+<span class="s1">_re_whitespace </span><span class="s2">= </span><span class="s1">re</span><span class="s2">.</span><span class="s1">compile</span><span class="s2">(</span><span class="s4">r&quot;\s+$&quot;</span><span class="s2">)</span>
+
+<span class="s1">TextType </span><span class="s2">= </span><span class="s1">Union</span><span class="s2">[</span><span class="s1">str</span><span class="s2">, </span><span class="s4">&quot;Text&quot;</span><span class="s2">]</span>
+
+<span class="s1">GetStyleCallable </span><span class="s2">= </span><span class="s1">Callable</span><span class="s2">[[</span><span class="s1">str</span><span class="s2">], </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">StyleType</span><span class="s2">]]</span>
+
+
+<span class="s0">class </span><span class="s1">Span</span><span class="s2">(</span><span class="s1">NamedTuple</span><span class="s2">):</span>
+    <span class="s5">&quot;&quot;&quot;A marked up region in some text.&quot;&quot;&quot;</span>
+
+    <span class="s1">start</span><span class="s2">: </span><span class="s1">int</span>
+    <span class="s4">&quot;&quot;&quot;Span start index.&quot;&quot;&quot;</span>
+    <span class="s1">end</span><span class="s2">: </span><span class="s1">int</span>
+    <span class="s4">&quot;&quot;&quot;Span end index.&quot;&quot;&quot;</span>
+    <span class="s1">style</span><span class="s2">: </span><span class="s1">Union</span><span class="s2">[</span><span class="s1">str</span><span class="s2">, </span><span class="s1">Style</span><span class="s2">]</span>
+    <span class="s4">&quot;&quot;&quot;Style associated with the span.&quot;&quot;&quot;</span>
+
+    <span class="s0">def </span><span class="s1">__repr__</span><span class="s2">(</span><span class="s1">self</span><span class="s2">) </span><span class="s1">-&gt; str</span><span class="s2">:</span>
+        <span class="s0">return </span><span class="s4">f&quot;Span(</span><span class="s0">{</span><span class="s1">self</span><span class="s2">.</span><span class="s1">start</span><span class="s0">}</span><span class="s4">, </span><span class="s0">{</span><span class="s1">self</span><span class="s2">.</span><span class="s1">end</span><span class="s0">}</span><span class="s4">, </span><span class="s0">{</span><span class="s1">self</span><span class="s2">.</span><span class="s1">style</span><span class="s0">!r}</span><span class="s4">)&quot;</span>
+
+    <span class="s0">def </span><span class="s1">__bool__</span><span class="s2">(</span><span class="s1">self</span><span class="s2">) </span><span class="s1">-&gt; bool</span><span class="s2">:</span>
+        <span class="s0">return </span><span class="s1">self</span><span class="s2">.</span><span class="s1">end </span><span class="s2">&gt; </span><span class="s1">self</span><span class="s2">.</span><span class="s1">start</span>
+
+    <span class="s0">def </span><span class="s1">split</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">offset</span><span class="s2">: </span><span class="s1">int</span><span class="s2">) </span><span class="s1">-&gt; Tuple</span><span class="s2">[</span><span class="s4">&quot;Span&quot;</span><span class="s2">, </span><span class="s1">Optional</span><span class="s2">[</span><span class="s4">&quot;Span&quot;</span><span class="s2">]]:</span>
+        <span class="s5">&quot;&quot;&quot;Split a span in to 2 from a given offset.&quot;&quot;&quot;</span>
+
+        <span class="s0">if </span><span class="s1">offset </span><span class="s2">&lt; </span><span class="s1">self</span><span class="s2">.</span><span class="s1">start</span><span class="s2">:</span>
+            <span class="s0">return </span><span class="s1">self</span><span class="s2">, </span><span class="s0">None</span>
+        <span class="s0">if </span><span class="s1">offset </span><span class="s2">&gt;= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">end</span><span class="s2">:</span>
+            <span class="s0">return </span><span class="s1">self</span><span class="s2">, </span><span class="s0">None</span>
+
+        <span class="s1">start</span><span class="s2">, </span><span class="s1">end</span><span class="s2">, </span><span class="s1">style </span><span class="s2">= </span><span class="s1">self</span>
+        <span class="s1">span1 </span><span class="s2">= </span><span class="s1">Span</span><span class="s2">(</span><span class="s1">start</span><span class="s2">, </span><span class="s1">min</span><span class="s2">(</span><span class="s1">end</span><span class="s2">, </span><span class="s1">offset</span><span class="s2">), </span><span class="s1">style</span><span class="s2">)</span>
+        <span class="s1">span2 </span><span class="s2">= </span><span class="s1">Span</span><span class="s2">(</span><span class="s1">span1</span><span class="s2">.</span><span class="s1">end</span><span class="s2">, </span><span class="s1">end</span><span class="s2">, </span><span class="s1">style</span><span class="s2">)</span>
+        <span class="s0">return </span><span class="s1">span1</span><span class="s2">, </span><span class="s1">span2</span>
+
+    <span class="s0">def </span><span class="s1">move</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">offset</span><span class="s2">: </span><span class="s1">int</span><span class="s2">) </span><span class="s1">-&gt; </span><span class="s4">&quot;Span&quot;</span><span class="s2">:</span>
+        <span class="s5">&quot;&quot;&quot;Move start and end by a given offset. 
+ 
+        Args: 
+            offset (int): Number of characters to add to start and end. 
+ 
+        Returns: 
+            TextSpan: A new TextSpan with adjusted position. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">start</span><span class="s2">, </span><span class="s1">end</span><span class="s2">, </span><span class="s1">style </span><span class="s2">= </span><span class="s1">self</span>
+        <span class="s0">return </span><span class="s1">Span</span><span class="s2">(</span><span class="s1">start </span><span class="s2">+ </span><span class="s1">offset</span><span class="s2">, </span><span class="s1">end </span><span class="s2">+ </span><span class="s1">offset</span><span class="s2">, </span><span class="s1">style</span><span class="s2">)</span>
+
+    <span class="s0">def </span><span class="s1">right_crop</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">offset</span><span class="s2">: </span><span class="s1">int</span><span class="s2">) </span><span class="s1">-&gt; </span><span class="s4">&quot;Span&quot;</span><span class="s2">:</span>
+        <span class="s5">&quot;&quot;&quot;Crop the span at the given offset. 
+ 
+        Args: 
+            offset (int): A value between start and end. 
+ 
+        Returns: 
+            Span: A new (possibly smaller) span. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">start</span><span class="s2">, </span><span class="s1">end</span><span class="s2">, </span><span class="s1">style </span><span class="s2">= </span><span class="s1">self</span>
+        <span class="s0">if </span><span class="s1">offset </span><span class="s2">&gt;= </span><span class="s1">end</span><span class="s2">:</span>
+            <span class="s0">return </span><span class="s1">self</span>
+        <span class="s0">return </span><span class="s1">Span</span><span class="s2">(</span><span class="s1">start</span><span class="s2">, </span><span class="s1">min</span><span class="s2">(</span><span class="s1">offset</span><span class="s2">, </span><span class="s1">end</span><span class="s2">), </span><span class="s1">style</span><span class="s2">)</span>
+
+
+<span class="s0">class </span><span class="s1">Text</span><span class="s2">(</span><span class="s1">JupyterMixin</span><span class="s2">):</span>
+    <span class="s5">&quot;&quot;&quot;Text with color / style. 
+ 
+    Args: 
+        text (str, optional): Default unstyled text. Defaults to &quot;&quot;. 
+        style (Union[str, Style], optional): Base style for text. Defaults to &quot;&quot;. 
+        justify (str, optional): Justify method: &quot;left&quot;, &quot;center&quot;, &quot;full&quot;, &quot;right&quot;. Defaults to None. 
+        overflow (str, optional): Overflow method: &quot;crop&quot;, &quot;fold&quot;, &quot;ellipsis&quot;. Defaults to None. 
+        no_wrap (bool, optional): Disable text wrapping, or None for default. Defaults to None. 
+        end (str, optional): Character to end text with. Defaults to &quot;\\\\n&quot;. 
+        tab_size (int): Number of spaces per tab, or ``None`` to use ``console.tab_size``. Defaults to 8. 
+        spans (List[Span], optional). A list of predefined style spans. Defaults to None. 
+    &quot;&quot;&quot;</span>
+
+    <span class="s1">__slots__ </span><span class="s2">= [</span>
+        <span class="s4">&quot;_text&quot;</span><span class="s2">,</span>
+        <span class="s4">&quot;style&quot;</span><span class="s2">,</span>
+        <span class="s4">&quot;justify&quot;</span><span class="s2">,</span>
+        <span class="s4">&quot;overflow&quot;</span><span class="s2">,</span>
+        <span class="s4">&quot;no_wrap&quot;</span><span class="s2">,</span>
+        <span class="s4">&quot;end&quot;</span><span class="s2">,</span>
+        <span class="s4">&quot;tab_size&quot;</span><span class="s2">,</span>
+        <span class="s4">&quot;_spans&quot;</span><span class="s2">,</span>
+        <span class="s4">&quot;_length&quot;</span><span class="s2">,</span>
+    <span class="s2">]</span>
+
+    <span class="s0">def </span><span class="s1">__init__</span><span class="s2">(</span>
+        <span class="s1">self</span><span class="s2">,</span>
+        <span class="s1">text</span><span class="s2">: </span><span class="s1">str </span><span class="s2">= </span><span class="s4">&quot;&quot;</span><span class="s2">,</span>
+        <span class="s1">style</span><span class="s2">: </span><span class="s1">Union</span><span class="s2">[</span><span class="s1">str</span><span class="s2">, </span><span class="s1">Style</span><span class="s2">] = </span><span class="s4">&quot;&quot;</span><span class="s2">,</span>
+        <span class="s2">*,</span>
+        <span class="s1">justify</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s4">&quot;JustifyMethod&quot;</span><span class="s2">] = </span><span class="s0">None</span><span class="s2">,</span>
+        <span class="s1">overflow</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s4">&quot;OverflowMethod&quot;</span><span class="s2">] = </span><span class="s0">None</span><span class="s2">,</span>
+        <span class="s1">no_wrap</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">bool</span><span class="s2">] = </span><span class="s0">None</span><span class="s2">,</span>
+        <span class="s1">end</span><span class="s2">: </span><span class="s1">str </span><span class="s2">= </span><span class="s4">&quot;</span><span class="s0">\n</span><span class="s4">&quot;</span><span class="s2">,</span>
+        <span class="s1">tab_size</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">int</span><span class="s2">] = </span><span class="s6">8</span><span class="s2">,</span>
+        <span class="s1">spans</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">List</span><span class="s2">[</span><span class="s1">Span</span><span class="s2">]] = </span><span class="s0">None</span><span class="s2">,</span>
+    <span class="s2">) </span><span class="s1">-&gt; </span><span class="s0">None</span><span class="s2">:</span>
+        <span class="s1">sanitized_text </span><span class="s2">= </span><span class="s1">strip_control_codes</span><span class="s2">(</span><span class="s1">text</span><span class="s2">)</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">_text </span><span class="s2">= [</span><span class="s1">sanitized_text</span><span class="s2">]</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">style </span><span class="s2">= </span><span class="s1">style</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">justify</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s4">&quot;JustifyMethod&quot;</span><span class="s2">] = </span><span class="s1">justify</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">overflow</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s4">&quot;OverflowMethod&quot;</span><span class="s2">] = </span><span class="s1">overflow</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">no_wrap </span><span class="s2">= </span><span class="s1">no_wrap</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">end </span><span class="s2">= </span><span class="s1">end</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">tab_size </span><span class="s2">= </span><span class="s1">tab_size</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">_spans</span><span class="s2">: </span><span class="s1">List</span><span class="s2">[</span><span class="s1">Span</span><span class="s2">] = </span><span class="s1">spans </span><span class="s0">or </span><span class="s2">[]</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">_length</span><span class="s2">: </span><span class="s1">int </span><span class="s2">= </span><span class="s1">len</span><span class="s2">(</span><span class="s1">sanitized_text</span><span class="s2">)</span>
+
+    <span class="s0">def </span><span class="s1">__len__</span><span class="s2">(</span><span class="s1">self</span><span class="s2">) </span><span class="s1">-&gt; int</span><span class="s2">:</span>
+        <span class="s0">return </span><span class="s1">self</span><span class="s2">.</span><span class="s1">_length</span>
+
+    <span class="s0">def </span><span class="s1">__bool__</span><span class="s2">(</span><span class="s1">self</span><span class="s2">) </span><span class="s1">-&gt; bool</span><span class="s2">:</span>
+        <span class="s0">return </span><span class="s1">bool</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">_length</span><span class="s2">)</span>
+
+    <span class="s0">def </span><span class="s1">__str__</span><span class="s2">(</span><span class="s1">self</span><span class="s2">) </span><span class="s1">-&gt; str</span><span class="s2">:</span>
+        <span class="s0">return </span><span class="s1">self</span><span class="s2">.</span><span class="s1">plain</span>
+
+    <span class="s0">def </span><span class="s1">__repr__</span><span class="s2">(</span><span class="s1">self</span><span class="s2">) </span><span class="s1">-&gt; str</span><span class="s2">:</span>
+        <span class="s0">return </span><span class="s4">f&quot;&lt;text </span><span class="s0">{</span><span class="s1">self</span><span class="s2">.</span><span class="s1">plain</span><span class="s0">!r} {</span><span class="s1">self</span><span class="s2">.</span><span class="s1">_spans</span><span class="s0">!r}</span><span class="s4">&gt;&quot;</span>
+
+    <span class="s0">def </span><span class="s1">__add__</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">other</span><span class="s2">: </span><span class="s1">Any</span><span class="s2">) </span><span class="s1">-&gt; </span><span class="s4">&quot;Text&quot;</span><span class="s2">:</span>
+        <span class="s0">if </span><span class="s1">isinstance</span><span class="s2">(</span><span class="s1">other</span><span class="s2">, (</span><span class="s1">str</span><span class="s2">, </span><span class="s1">Text</span><span class="s2">)):</span>
+            <span class="s1">result </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">copy</span><span class="s2">()</span>
+            <span class="s1">result</span><span class="s2">.</span><span class="s1">append</span><span class="s2">(</span><span class="s1">other</span><span class="s2">)</span>
+            <span class="s0">return </span><span class="s1">result</span>
+        <span class="s0">return </span><span class="s1">NotImplemented</span>
+
+    <span class="s0">def </span><span class="s1">__eq__</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">other</span><span class="s2">: </span><span class="s1">object</span><span class="s2">) </span><span class="s1">-&gt; bool</span><span class="s2">:</span>
+        <span class="s0">if not </span><span class="s1">isinstance</span><span class="s2">(</span><span class="s1">other</span><span class="s2">, </span><span class="s1">Text</span><span class="s2">):</span>
+            <span class="s0">return </span><span class="s1">NotImplemented</span>
+        <span class="s0">return </span><span class="s1">self</span><span class="s2">.</span><span class="s1">plain </span><span class="s2">== </span><span class="s1">other</span><span class="s2">.</span><span class="s1">plain </span><span class="s0">and </span><span class="s1">self</span><span class="s2">.</span><span class="s1">_spans </span><span class="s2">== </span><span class="s1">other</span><span class="s2">.</span><span class="s1">_spans</span>
+
+    <span class="s0">def </span><span class="s1">__contains__</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">other</span><span class="s2">: </span><span class="s1">object</span><span class="s2">) </span><span class="s1">-&gt; bool</span><span class="s2">:</span>
+        <span class="s0">if </span><span class="s1">isinstance</span><span class="s2">(</span><span class="s1">other</span><span class="s2">, </span><span class="s1">str</span><span class="s2">):</span>
+            <span class="s0">return </span><span class="s1">other </span><span class="s0">in </span><span class="s1">self</span><span class="s2">.</span><span class="s1">plain</span>
+        <span class="s0">elif </span><span class="s1">isinstance</span><span class="s2">(</span><span class="s1">other</span><span class="s2">, </span><span class="s1">Text</span><span class="s2">):</span>
+            <span class="s0">return </span><span class="s1">other</span><span class="s2">.</span><span class="s1">plain </span><span class="s0">in </span><span class="s1">self</span><span class="s2">.</span><span class="s1">plain</span>
+        <span class="s0">return False</span>
+
+    <span class="s0">def </span><span class="s1">__getitem__</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">slice</span><span class="s2">: </span><span class="s1">Union</span><span class="s2">[</span><span class="s1">int</span><span class="s2">, </span><span class="s1">slice</span><span class="s2">]) </span><span class="s1">-&gt; </span><span class="s4">&quot;Text&quot;</span><span class="s2">:</span>
+        <span class="s0">def </span><span class="s1">get_text_at</span><span class="s2">(</span><span class="s1">offset</span><span class="s2">: </span><span class="s1">int</span><span class="s2">) </span><span class="s1">-&gt; </span><span class="s4">&quot;Text&quot;</span><span class="s2">:</span>
+            <span class="s1">_Span </span><span class="s2">= </span><span class="s1">Span</span>
+            <span class="s1">text </span><span class="s2">= </span><span class="s1">Text</span><span class="s2">(</span>
+                <span class="s1">self</span><span class="s2">.</span><span class="s1">plain</span><span class="s2">[</span><span class="s1">offset</span><span class="s2">],</span>
+                <span class="s1">spans</span><span class="s2">=[</span>
+                    <span class="s1">_Span</span><span class="s2">(</span><span class="s6">0</span><span class="s2">, </span><span class="s6">1</span><span class="s2">, </span><span class="s1">style</span><span class="s2">)</span>
+                    <span class="s0">for </span><span class="s1">start</span><span class="s2">, </span><span class="s1">end</span><span class="s2">, </span><span class="s1">style </span><span class="s0">in </span><span class="s1">self</span><span class="s2">.</span><span class="s1">_spans</span>
+                    <span class="s0">if </span><span class="s1">end </span><span class="s2">&gt; </span><span class="s1">offset </span><span class="s2">&gt;= </span><span class="s1">start</span>
+                <span class="s2">],</span>
+                <span class="s1">end</span><span class="s2">=</span><span class="s4">&quot;&quot;</span><span class="s2">,</span>
+            <span class="s2">)</span>
+            <span class="s0">return </span><span class="s1">text</span>
+
+        <span class="s0">if </span><span class="s1">isinstance</span><span class="s2">(</span><span class="s1">slice</span><span class="s2">, </span><span class="s1">int</span><span class="s2">):</span>
+            <span class="s0">return </span><span class="s1">get_text_at</span><span class="s2">(</span><span class="s1">slice</span><span class="s2">)</span>
+        <span class="s0">else</span><span class="s2">:</span>
+            <span class="s1">start</span><span class="s2">, </span><span class="s1">stop</span><span class="s2">, </span><span class="s1">step </span><span class="s2">= </span><span class="s1">slice</span><span class="s2">.</span><span class="s1">indices</span><span class="s2">(</span><span class="s1">len</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">plain</span><span class="s2">))</span>
+            <span class="s0">if </span><span class="s1">step </span><span class="s2">== </span><span class="s6">1</span><span class="s2">:</span>
+                <span class="s1">lines </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">divide</span><span class="s2">([</span><span class="s1">start</span><span class="s2">, </span><span class="s1">stop</span><span class="s2">])</span>
+                <span class="s0">return </span><span class="s1">lines</span><span class="s2">[</span><span class="s6">1</span><span class="s2">]</span>
+            <span class="s0">else</span><span class="s2">:</span>
+                <span class="s3"># This would be a bit of work to implement efficiently</span>
+                <span class="s3"># For now, its not required</span>
+                <span class="s0">raise </span><span class="s1">TypeError</span><span class="s2">(</span><span class="s4">&quot;slices with step!=1 are not supported&quot;</span><span class="s2">)</span>
+
+    <span class="s2">@</span><span class="s1">property</span>
+    <span class="s0">def </span><span class="s1">cell_len</span><span class="s2">(</span><span class="s1">self</span><span class="s2">) </span><span class="s1">-&gt; int</span><span class="s2">:</span>
+        <span class="s5">&quot;&quot;&quot;Get the number of cells required to render this text.&quot;&quot;&quot;</span>
+        <span class="s0">return </span><span class="s1">cell_len</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">plain</span><span class="s2">)</span>
+
+    <span class="s2">@</span><span class="s1">property</span>
+    <span class="s0">def </span><span class="s1">markup</span><span class="s2">(</span><span class="s1">self</span><span class="s2">) </span><span class="s1">-&gt; str</span><span class="s2">:</span>
+        <span class="s5">&quot;&quot;&quot;Get console markup to render this Text. 
+ 
+        Returns: 
+            str: A string potentially creating markup tags. 
+        &quot;&quot;&quot;</span>
+        <span class="s0">from </span><span class="s2">.</span><span class="s1">markup </span><span class="s0">import </span><span class="s1">escape</span>
+
+        <span class="s1">output</span><span class="s2">: </span><span class="s1">List</span><span class="s2">[</span><span class="s1">str</span><span class="s2">] = []</span>
+
+        <span class="s1">plain </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">plain</span>
+        <span class="s1">markup_spans </span><span class="s2">= [</span>
+            <span class="s2">(</span><span class="s6">0</span><span class="s2">, </span><span class="s0">False</span><span class="s2">, </span><span class="s1">self</span><span class="s2">.</span><span class="s1">style</span><span class="s2">),</span>
+            <span class="s2">*((</span><span class="s1">span</span><span class="s2">.</span><span class="s1">start</span><span class="s2">, </span><span class="s0">False</span><span class="s2">, </span><span class="s1">span</span><span class="s2">.</span><span class="s1">style</span><span class="s2">) </span><span class="s0">for </span><span class="s1">span </span><span class="s0">in </span><span class="s1">self</span><span class="s2">.</span><span class="s1">_spans</span><span class="s2">),</span>
+            <span class="s2">*((</span><span class="s1">span</span><span class="s2">.</span><span class="s1">end</span><span class="s2">, </span><span class="s0">True</span><span class="s2">, </span><span class="s1">span</span><span class="s2">.</span><span class="s1">style</span><span class="s2">) </span><span class="s0">for </span><span class="s1">span </span><span class="s0">in </span><span class="s1">self</span><span class="s2">.</span><span class="s1">_spans</span><span class="s2">),</span>
+            <span class="s2">(</span><span class="s1">len</span><span class="s2">(</span><span class="s1">plain</span><span class="s2">), </span><span class="s0">True</span><span class="s2">, </span><span class="s1">self</span><span class="s2">.</span><span class="s1">style</span><span class="s2">),</span>
+        <span class="s2">]</span>
+        <span class="s1">markup_spans</span><span class="s2">.</span><span class="s1">sort</span><span class="s2">(</span><span class="s1">key</span><span class="s2">=</span><span class="s1">itemgetter</span><span class="s2">(</span><span class="s6">0</span><span class="s2">, </span><span class="s6">1</span><span class="s2">))</span>
+        <span class="s1">position </span><span class="s2">= </span><span class="s6">0</span>
+        <span class="s1">append </span><span class="s2">= </span><span class="s1">output</span><span class="s2">.</span><span class="s1">append</span>
+        <span class="s0">for </span><span class="s1">offset</span><span class="s2">, </span><span class="s1">closing</span><span class="s2">, </span><span class="s1">style </span><span class="s0">in </span><span class="s1">markup_spans</span><span class="s2">:</span>
+            <span class="s0">if </span><span class="s1">offset </span><span class="s2">&gt; </span><span class="s1">position</span><span class="s2">:</span>
+                <span class="s1">append</span><span class="s2">(</span><span class="s1">escape</span><span class="s2">(</span><span class="s1">plain</span><span class="s2">[</span><span class="s1">position</span><span class="s2">:</span><span class="s1">offset</span><span class="s2">]))</span>
+                <span class="s1">position </span><span class="s2">= </span><span class="s1">offset</span>
+            <span class="s0">if </span><span class="s1">style</span><span class="s2">:</span>
+                <span class="s1">append</span><span class="s2">(</span><span class="s4">f&quot;[/</span><span class="s0">{</span><span class="s1">style</span><span class="s0">}</span><span class="s4">]&quot; </span><span class="s0">if </span><span class="s1">closing </span><span class="s0">else </span><span class="s4">f&quot;[</span><span class="s0">{</span><span class="s1">style</span><span class="s0">}</span><span class="s4">]&quot;</span><span class="s2">)</span>
+        <span class="s1">markup </span><span class="s2">= </span><span class="s4">&quot;&quot;</span><span class="s2">.</span><span class="s1">join</span><span class="s2">(</span><span class="s1">output</span><span class="s2">)</span>
+        <span class="s0">return </span><span class="s1">markup</span>
+
+    <span class="s2">@</span><span class="s1">classmethod</span>
+    <span class="s0">def </span><span class="s1">from_markup</span><span class="s2">(</span>
+        <span class="s1">cls</span><span class="s2">,</span>
+        <span class="s1">text</span><span class="s2">: </span><span class="s1">str</span><span class="s2">,</span>
+        <span class="s2">*,</span>
+        <span class="s1">style</span><span class="s2">: </span><span class="s1">Union</span><span class="s2">[</span><span class="s1">str</span><span class="s2">, </span><span class="s1">Style</span><span class="s2">] = </span><span class="s4">&quot;&quot;</span><span class="s2">,</span>
+        <span class="s1">emoji</span><span class="s2">: </span><span class="s1">bool </span><span class="s2">= </span><span class="s0">True</span><span class="s2">,</span>
+        <span class="s1">emoji_variant</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">EmojiVariant</span><span class="s2">] = </span><span class="s0">None</span><span class="s2">,</span>
+        <span class="s1">justify</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s4">&quot;JustifyMethod&quot;</span><span class="s2">] = </span><span class="s0">None</span><span class="s2">,</span>
+        <span class="s1">overflow</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s4">&quot;OverflowMethod&quot;</span><span class="s2">] = </span><span class="s0">None</span><span class="s2">,</span>
+        <span class="s1">end</span><span class="s2">: </span><span class="s1">str </span><span class="s2">= </span><span class="s4">&quot;</span><span class="s0">\n</span><span class="s4">&quot;</span><span class="s2">,</span>
+    <span class="s2">) </span><span class="s1">-&gt; </span><span class="s4">&quot;Text&quot;</span><span class="s2">:</span>
+        <span class="s5">&quot;&quot;&quot;Create Text instance from markup. 
+ 
+        Args: 
+            text (str): A string containing console markup. 
+            emoji (bool, optional): Also render emoji code. Defaults to True. 
+            justify (str, optional): Justify method: &quot;left&quot;, &quot;center&quot;, &quot;full&quot;, &quot;right&quot;. Defaults to None. 
+            overflow (str, optional): Overflow method: &quot;crop&quot;, &quot;fold&quot;, &quot;ellipsis&quot;. Defaults to None. 
+            end (str, optional): Character to end text with. Defaults to &quot;\\\\n&quot;. 
+ 
+        Returns: 
+            Text: A Text instance with markup rendered. 
+        &quot;&quot;&quot;</span>
+        <span class="s0">from </span><span class="s2">.</span><span class="s1">markup </span><span class="s0">import </span><span class="s1">render</span>
+
+        <span class="s1">rendered_text </span><span class="s2">= </span><span class="s1">render</span><span class="s2">(</span><span class="s1">text</span><span class="s2">, </span><span class="s1">style</span><span class="s2">, </span><span class="s1">emoji</span><span class="s2">=</span><span class="s1">emoji</span><span class="s2">, </span><span class="s1">emoji_variant</span><span class="s2">=</span><span class="s1">emoji_variant</span><span class="s2">)</span>
+        <span class="s1">rendered_text</span><span class="s2">.</span><span class="s1">justify </span><span class="s2">= </span><span class="s1">justify</span>
+        <span class="s1">rendered_text</span><span class="s2">.</span><span class="s1">overflow </span><span class="s2">= </span><span class="s1">overflow</span>
+        <span class="s1">rendered_text</span><span class="s2">.</span><span class="s1">end </span><span class="s2">= </span><span class="s1">end</span>
+        <span class="s0">return </span><span class="s1">rendered_text</span>
+
+    <span class="s2">@</span><span class="s1">classmethod</span>
+    <span class="s0">def </span><span class="s1">from_ansi</span><span class="s2">(</span>
+        <span class="s1">cls</span><span class="s2">,</span>
+        <span class="s1">text</span><span class="s2">: </span><span class="s1">str</span><span class="s2">,</span>
+        <span class="s2">*,</span>
+        <span class="s1">style</span><span class="s2">: </span><span class="s1">Union</span><span class="s2">[</span><span class="s1">str</span><span class="s2">, </span><span class="s1">Style</span><span class="s2">] = </span><span class="s4">&quot;&quot;</span><span class="s2">,</span>
+        <span class="s1">justify</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s4">&quot;JustifyMethod&quot;</span><span class="s2">] = </span><span class="s0">None</span><span class="s2">,</span>
+        <span class="s1">overflow</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s4">&quot;OverflowMethod&quot;</span><span class="s2">] = </span><span class="s0">None</span><span class="s2">,</span>
+        <span class="s1">no_wrap</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">bool</span><span class="s2">] = </span><span class="s0">None</span><span class="s2">,</span>
+        <span class="s1">end</span><span class="s2">: </span><span class="s1">str </span><span class="s2">= </span><span class="s4">&quot;</span><span class="s0">\n</span><span class="s4">&quot;</span><span class="s2">,</span>
+        <span class="s1">tab_size</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">int</span><span class="s2">] = </span><span class="s6">8</span><span class="s2">,</span>
+    <span class="s2">) </span><span class="s1">-&gt; </span><span class="s4">&quot;Text&quot;</span><span class="s2">:</span>
+        <span class="s5">&quot;&quot;&quot;Create a Text object from a string containing ANSI escape codes. 
+ 
+        Args: 
+            text (str): A string containing escape codes. 
+            style (Union[str, Style], optional): Base style for text. Defaults to &quot;&quot;. 
+            justify (str, optional): Justify method: &quot;left&quot;, &quot;center&quot;, &quot;full&quot;, &quot;right&quot;. Defaults to None. 
+            overflow (str, optional): Overflow method: &quot;crop&quot;, &quot;fold&quot;, &quot;ellipsis&quot;. Defaults to None. 
+            no_wrap (bool, optional): Disable text wrapping, or None for default. Defaults to None. 
+            end (str, optional): Character to end text with. Defaults to &quot;\\\\n&quot;. 
+            tab_size (int): Number of spaces per tab, or ``None`` to use ``console.tab_size``. Defaults to 8. 
+        &quot;&quot;&quot;</span>
+        <span class="s0">from </span><span class="s2">.</span><span class="s1">ansi </span><span class="s0">import </span><span class="s1">AnsiDecoder</span>
+
+        <span class="s1">joiner </span><span class="s2">= </span><span class="s1">Text</span><span class="s2">(</span>
+            <span class="s4">&quot;</span><span class="s0">\n</span><span class="s4">&quot;</span><span class="s2">,</span>
+            <span class="s1">justify</span><span class="s2">=</span><span class="s1">justify</span><span class="s2">,</span>
+            <span class="s1">overflow</span><span class="s2">=</span><span class="s1">overflow</span><span class="s2">,</span>
+            <span class="s1">no_wrap</span><span class="s2">=</span><span class="s1">no_wrap</span><span class="s2">,</span>
+            <span class="s1">end</span><span class="s2">=</span><span class="s1">end</span><span class="s2">,</span>
+            <span class="s1">tab_size</span><span class="s2">=</span><span class="s1">tab_size</span><span class="s2">,</span>
+            <span class="s1">style</span><span class="s2">=</span><span class="s1">style</span><span class="s2">,</span>
+        <span class="s2">)</span>
+        <span class="s1">decoder </span><span class="s2">= </span><span class="s1">AnsiDecoder</span><span class="s2">()</span>
+        <span class="s1">result </span><span class="s2">= </span><span class="s1">joiner</span><span class="s2">.</span><span class="s1">join</span><span class="s2">(</span><span class="s1">line </span><span class="s0">for </span><span class="s1">line </span><span class="s0">in </span><span class="s1">decoder</span><span class="s2">.</span><span class="s1">decode</span><span class="s2">(</span><span class="s1">text</span><span class="s2">))</span>
+        <span class="s0">return </span><span class="s1">result</span>
+
+    <span class="s2">@</span><span class="s1">classmethod</span>
+    <span class="s0">def </span><span class="s1">styled</span><span class="s2">(</span>
+        <span class="s1">cls</span><span class="s2">,</span>
+        <span class="s1">text</span><span class="s2">: </span><span class="s1">str</span><span class="s2">,</span>
+        <span class="s1">style</span><span class="s2">: </span><span class="s1">StyleType </span><span class="s2">= </span><span class="s4">&quot;&quot;</span><span class="s2">,</span>
+        <span class="s2">*,</span>
+        <span class="s1">justify</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s4">&quot;JustifyMethod&quot;</span><span class="s2">] = </span><span class="s0">None</span><span class="s2">,</span>
+        <span class="s1">overflow</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s4">&quot;OverflowMethod&quot;</span><span class="s2">] = </span><span class="s0">None</span><span class="s2">,</span>
+    <span class="s2">) </span><span class="s1">-&gt; </span><span class="s4">&quot;Text&quot;</span><span class="s2">:</span>
+        <span class="s5">&quot;&quot;&quot;Construct a Text instance with a pre-applied styled. A style applied in this way won't be used 
+        to pad the text when it is justified. 
+ 
+        Args: 
+            text (str): A string containing console markup. 
+            style (Union[str, Style]): Style to apply to the text. Defaults to &quot;&quot;. 
+            justify (str, optional): Justify method: &quot;left&quot;, &quot;center&quot;, &quot;full&quot;, &quot;right&quot;. Defaults to None. 
+            overflow (str, optional): Overflow method: &quot;crop&quot;, &quot;fold&quot;, &quot;ellipsis&quot;. Defaults to None. 
+ 
+        Returns: 
+            Text: A text instance with a style applied to the entire string. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">styled_text </span><span class="s2">= </span><span class="s1">cls</span><span class="s2">(</span><span class="s1">text</span><span class="s2">, </span><span class="s1">justify</span><span class="s2">=</span><span class="s1">justify</span><span class="s2">, </span><span class="s1">overflow</span><span class="s2">=</span><span class="s1">overflow</span><span class="s2">)</span>
+        <span class="s1">styled_text</span><span class="s2">.</span><span class="s1">stylize</span><span class="s2">(</span><span class="s1">style</span><span class="s2">)</span>
+        <span class="s0">return </span><span class="s1">styled_text</span>
+
+    <span class="s2">@</span><span class="s1">classmethod</span>
+    <span class="s0">def </span><span class="s1">assemble</span><span class="s2">(</span>
+        <span class="s1">cls</span><span class="s2">,</span>
+        <span class="s2">*</span><span class="s1">parts</span><span class="s2">: </span><span class="s1">Union</span><span class="s2">[</span><span class="s1">str</span><span class="s2">, </span><span class="s4">&quot;Text&quot;</span><span class="s2">, </span><span class="s1">Tuple</span><span class="s2">[</span><span class="s1">str</span><span class="s2">, </span><span class="s1">StyleType</span><span class="s2">]],</span>
+        <span class="s1">style</span><span class="s2">: </span><span class="s1">Union</span><span class="s2">[</span><span class="s1">str</span><span class="s2">, </span><span class="s1">Style</span><span class="s2">] = </span><span class="s4">&quot;&quot;</span><span class="s2">,</span>
+        <span class="s1">justify</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s4">&quot;JustifyMethod&quot;</span><span class="s2">] = </span><span class="s0">None</span><span class="s2">,</span>
+        <span class="s1">overflow</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s4">&quot;OverflowMethod&quot;</span><span class="s2">] = </span><span class="s0">None</span><span class="s2">,</span>
+        <span class="s1">no_wrap</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">bool</span><span class="s2">] = </span><span class="s0">None</span><span class="s2">,</span>
+        <span class="s1">end</span><span class="s2">: </span><span class="s1">str </span><span class="s2">= </span><span class="s4">&quot;</span><span class="s0">\n</span><span class="s4">&quot;</span><span class="s2">,</span>
+        <span class="s1">tab_size</span><span class="s2">: </span><span class="s1">int </span><span class="s2">= </span><span class="s6">8</span><span class="s2">,</span>
+        <span class="s1">meta</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">Dict</span><span class="s2">[</span><span class="s1">str</span><span class="s2">, </span><span class="s1">Any</span><span class="s2">]] = </span><span class="s0">None</span><span class="s2">,</span>
+    <span class="s2">) </span><span class="s1">-&gt; </span><span class="s4">&quot;Text&quot;</span><span class="s2">:</span>
+        <span class="s5">&quot;&quot;&quot;Construct a text instance by combining a sequence of strings with optional styles. 
+        The positional arguments should be either strings, or a tuple of string + style. 
+ 
+        Args: 
+            style (Union[str, Style], optional): Base style for text. Defaults to &quot;&quot;. 
+            justify (str, optional): Justify method: &quot;left&quot;, &quot;center&quot;, &quot;full&quot;, &quot;right&quot;. Defaults to None. 
+            overflow (str, optional): Overflow method: &quot;crop&quot;, &quot;fold&quot;, &quot;ellipsis&quot;. Defaults to None. 
+            end (str, optional): Character to end text with. Defaults to &quot;\\\\n&quot;. 
+            tab_size (int): Number of spaces per tab, or ``None`` to use ``console.tab_size``. Defaults to 8. 
+            meta (Dict[str, Any], optional). Meta data to apply to text, or None for no meta data. Default to None 
+ 
+        Returns: 
+            Text: A new text instance. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">text </span><span class="s2">= </span><span class="s1">cls</span><span class="s2">(</span>
+            <span class="s1">style</span><span class="s2">=</span><span class="s1">style</span><span class="s2">,</span>
+            <span class="s1">justify</span><span class="s2">=</span><span class="s1">justify</span><span class="s2">,</span>
+            <span class="s1">overflow</span><span class="s2">=</span><span class="s1">overflow</span><span class="s2">,</span>
+            <span class="s1">no_wrap</span><span class="s2">=</span><span class="s1">no_wrap</span><span class="s2">,</span>
+            <span class="s1">end</span><span class="s2">=</span><span class="s1">end</span><span class="s2">,</span>
+            <span class="s1">tab_size</span><span class="s2">=</span><span class="s1">tab_size</span><span class="s2">,</span>
+        <span class="s2">)</span>
+        <span class="s1">append </span><span class="s2">= </span><span class="s1">text</span><span class="s2">.</span><span class="s1">append</span>
+        <span class="s1">_Text </span><span class="s2">= </span><span class="s1">Text</span>
+        <span class="s0">for </span><span class="s1">part </span><span class="s0">in </span><span class="s1">parts</span><span class="s2">:</span>
+            <span class="s0">if </span><span class="s1">isinstance</span><span class="s2">(</span><span class="s1">part</span><span class="s2">, (</span><span class="s1">_Text</span><span class="s2">, </span><span class="s1">str</span><span class="s2">)):</span>
+                <span class="s1">append</span><span class="s2">(</span><span class="s1">part</span><span class="s2">)</span>
+            <span class="s0">else</span><span class="s2">:</span>
+                <span class="s1">append</span><span class="s2">(*</span><span class="s1">part</span><span class="s2">)</span>
+        <span class="s0">if </span><span class="s1">meta</span><span class="s2">:</span>
+            <span class="s1">text</span><span class="s2">.</span><span class="s1">apply_meta</span><span class="s2">(</span><span class="s1">meta</span><span class="s2">)</span>
+        <span class="s0">return </span><span class="s1">text</span>
+
+    <span class="s2">@</span><span class="s1">property</span>
+    <span class="s0">def </span><span class="s1">plain</span><span class="s2">(</span><span class="s1">self</span><span class="s2">) </span><span class="s1">-&gt; str</span><span class="s2">:</span>
+        <span class="s5">&quot;&quot;&quot;Get the text as a single string.&quot;&quot;&quot;</span>
+        <span class="s0">if </span><span class="s1">len</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">_text</span><span class="s2">) != </span><span class="s6">1</span><span class="s2">:</span>
+            <span class="s1">self</span><span class="s2">.</span><span class="s1">_text</span><span class="s2">[:] = [</span><span class="s4">&quot;&quot;</span><span class="s2">.</span><span class="s1">join</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">_text</span><span class="s2">)]</span>
+        <span class="s0">return </span><span class="s1">self</span><span class="s2">.</span><span class="s1">_text</span><span class="s2">[</span><span class="s6">0</span><span class="s2">]</span>
+
+    <span class="s2">@</span><span class="s1">plain</span><span class="s2">.</span><span class="s1">setter</span>
+    <span class="s0">def </span><span class="s1">plain</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">new_text</span><span class="s2">: </span><span class="s1">str</span><span class="s2">) </span><span class="s1">-&gt; </span><span class="s0">None</span><span class="s2">:</span>
+        <span class="s5">&quot;&quot;&quot;Set the text to a new value.&quot;&quot;&quot;</span>
+        <span class="s0">if </span><span class="s1">new_text </span><span class="s2">!= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">plain</span><span class="s2">:</span>
+            <span class="s1">sanitized_text </span><span class="s2">= </span><span class="s1">strip_control_codes</span><span class="s2">(</span><span class="s1">new_text</span><span class="s2">)</span>
+            <span class="s1">self</span><span class="s2">.</span><span class="s1">_text</span><span class="s2">[:] = [</span><span class="s1">sanitized_text</span><span class="s2">]</span>
+            <span class="s1">old_length </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">_length</span>
+            <span class="s1">self</span><span class="s2">.</span><span class="s1">_length </span><span class="s2">= </span><span class="s1">len</span><span class="s2">(</span><span class="s1">sanitized_text</span><span class="s2">)</span>
+            <span class="s0">if </span><span class="s1">old_length </span><span class="s2">&gt; </span><span class="s1">self</span><span class="s2">.</span><span class="s1">_length</span><span class="s2">:</span>
+                <span class="s1">self</span><span class="s2">.</span><span class="s1">_trim_spans</span><span class="s2">()</span>
+
+    <span class="s2">@</span><span class="s1">property</span>
+    <span class="s0">def </span><span class="s1">spans</span><span class="s2">(</span><span class="s1">self</span><span class="s2">) </span><span class="s1">-&gt; List</span><span class="s2">[</span><span class="s1">Span</span><span class="s2">]:</span>
+        <span class="s5">&quot;&quot;&quot;Get a reference to the internal list of spans.&quot;&quot;&quot;</span>
+        <span class="s0">return </span><span class="s1">self</span><span class="s2">.</span><span class="s1">_spans</span>
+
+    <span class="s2">@</span><span class="s1">spans</span><span class="s2">.</span><span class="s1">setter</span>
+    <span class="s0">def </span><span class="s1">spans</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">spans</span><span class="s2">: </span><span class="s1">List</span><span class="s2">[</span><span class="s1">Span</span><span class="s2">]) </span><span class="s1">-&gt; </span><span class="s0">None</span><span class="s2">:</span>
+        <span class="s5">&quot;&quot;&quot;Set spans.&quot;&quot;&quot;</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">_spans </span><span class="s2">= </span><span class="s1">spans</span><span class="s2">[:]</span>
+
+    <span class="s0">def </span><span class="s1">blank_copy</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">plain</span><span class="s2">: </span><span class="s1">str </span><span class="s2">= </span><span class="s4">&quot;&quot;</span><span class="s2">) </span><span class="s1">-&gt; </span><span class="s4">&quot;Text&quot;</span><span class="s2">:</span>
+        <span class="s5">&quot;&quot;&quot;Return a new Text instance with copied meta data (but not the string or spans).&quot;&quot;&quot;</span>
+        <span class="s1">copy_self </span><span class="s2">= </span><span class="s1">Text</span><span class="s2">(</span>
+            <span class="s1">plain</span><span class="s2">,</span>
+            <span class="s1">style</span><span class="s2">=</span><span class="s1">self</span><span class="s2">.</span><span class="s1">style</span><span class="s2">,</span>
+            <span class="s1">justify</span><span class="s2">=</span><span class="s1">self</span><span class="s2">.</span><span class="s1">justify</span><span class="s2">,</span>
+            <span class="s1">overflow</span><span class="s2">=</span><span class="s1">self</span><span class="s2">.</span><span class="s1">overflow</span><span class="s2">,</span>
+            <span class="s1">no_wrap</span><span class="s2">=</span><span class="s1">self</span><span class="s2">.</span><span class="s1">no_wrap</span><span class="s2">,</span>
+            <span class="s1">end</span><span class="s2">=</span><span class="s1">self</span><span class="s2">.</span><span class="s1">end</span><span class="s2">,</span>
+            <span class="s1">tab_size</span><span class="s2">=</span><span class="s1">self</span><span class="s2">.</span><span class="s1">tab_size</span><span class="s2">,</span>
+        <span class="s2">)</span>
+        <span class="s0">return </span><span class="s1">copy_self</span>
+
+    <span class="s0">def </span><span class="s1">copy</span><span class="s2">(</span><span class="s1">self</span><span class="s2">) </span><span class="s1">-&gt; </span><span class="s4">&quot;Text&quot;</span><span class="s2">:</span>
+        <span class="s5">&quot;&quot;&quot;Return a copy of this instance.&quot;&quot;&quot;</span>
+        <span class="s1">copy_self </span><span class="s2">= </span><span class="s1">Text</span><span class="s2">(</span>
+            <span class="s1">self</span><span class="s2">.</span><span class="s1">plain</span><span class="s2">,</span>
+            <span class="s1">style</span><span class="s2">=</span><span class="s1">self</span><span class="s2">.</span><span class="s1">style</span><span class="s2">,</span>
+            <span class="s1">justify</span><span class="s2">=</span><span class="s1">self</span><span class="s2">.</span><span class="s1">justify</span><span class="s2">,</span>
+            <span class="s1">overflow</span><span class="s2">=</span><span class="s1">self</span><span class="s2">.</span><span class="s1">overflow</span><span class="s2">,</span>
+            <span class="s1">no_wrap</span><span class="s2">=</span><span class="s1">self</span><span class="s2">.</span><span class="s1">no_wrap</span><span class="s2">,</span>
+            <span class="s1">end</span><span class="s2">=</span><span class="s1">self</span><span class="s2">.</span><span class="s1">end</span><span class="s2">,</span>
+            <span class="s1">tab_size</span><span class="s2">=</span><span class="s1">self</span><span class="s2">.</span><span class="s1">tab_size</span><span class="s2">,</span>
+        <span class="s2">)</span>
+        <span class="s1">copy_self</span><span class="s2">.</span><span class="s1">_spans</span><span class="s2">[:] = </span><span class="s1">self</span><span class="s2">.</span><span class="s1">_spans</span>
+        <span class="s0">return </span><span class="s1">copy_self</span>
+
+    <span class="s0">def </span><span class="s1">stylize</span><span class="s2">(</span>
+        <span class="s1">self</span><span class="s2">,</span>
+        <span class="s1">style</span><span class="s2">: </span><span class="s1">Union</span><span class="s2">[</span><span class="s1">str</span><span class="s2">, </span><span class="s1">Style</span><span class="s2">],</span>
+        <span class="s1">start</span><span class="s2">: </span><span class="s1">int </span><span class="s2">= </span><span class="s6">0</span><span class="s2">,</span>
+        <span class="s1">end</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">int</span><span class="s2">] = </span><span class="s0">None</span><span class="s2">,</span>
+    <span class="s2">) </span><span class="s1">-&gt; </span><span class="s0">None</span><span class="s2">:</span>
+        <span class="s5">&quot;&quot;&quot;Apply a style to the text, or a portion of the text. 
+ 
+        Args: 
+            style (Union[str, Style]): Style instance or style definition to apply. 
+            start (int): Start offset (negative indexing is supported). Defaults to 0. 
+            end (Optional[int], optional): End offset (negative indexing is supported), or None for end of text. Defaults to None. 
+        &quot;&quot;&quot;</span>
+        <span class="s0">if </span><span class="s1">style</span><span class="s2">:</span>
+            <span class="s1">length </span><span class="s2">= </span><span class="s1">len</span><span class="s2">(</span><span class="s1">self</span><span class="s2">)</span>
+            <span class="s0">if </span><span class="s1">start </span><span class="s2">&lt; </span><span class="s6">0</span><span class="s2">:</span>
+                <span class="s1">start </span><span class="s2">= </span><span class="s1">length </span><span class="s2">+ </span><span class="s1">start</span>
+            <span class="s0">if </span><span class="s1">end </span><span class="s0">is None</span><span class="s2">:</span>
+                <span class="s1">end </span><span class="s2">= </span><span class="s1">length</span>
+            <span class="s0">if </span><span class="s1">end </span><span class="s2">&lt; </span><span class="s6">0</span><span class="s2">:</span>
+                <span class="s1">end </span><span class="s2">= </span><span class="s1">length </span><span class="s2">+ </span><span class="s1">end</span>
+            <span class="s0">if </span><span class="s1">start </span><span class="s2">&gt;= </span><span class="s1">length </span><span class="s0">or </span><span class="s1">end </span><span class="s2">&lt;= </span><span class="s1">start</span><span class="s2">:</span>
+                <span class="s3"># Span not in text or not valid</span>
+                <span class="s0">return</span>
+            <span class="s1">self</span><span class="s2">.</span><span class="s1">_spans</span><span class="s2">.</span><span class="s1">append</span><span class="s2">(</span><span class="s1">Span</span><span class="s2">(</span><span class="s1">start</span><span class="s2">, </span><span class="s1">min</span><span class="s2">(</span><span class="s1">length</span><span class="s2">, </span><span class="s1">end</span><span class="s2">), </span><span class="s1">style</span><span class="s2">))</span>
+
+    <span class="s0">def </span><span class="s1">stylize_before</span><span class="s2">(</span>
+        <span class="s1">self</span><span class="s2">,</span>
+        <span class="s1">style</span><span class="s2">: </span><span class="s1">Union</span><span class="s2">[</span><span class="s1">str</span><span class="s2">, </span><span class="s1">Style</span><span class="s2">],</span>
+        <span class="s1">start</span><span class="s2">: </span><span class="s1">int </span><span class="s2">= </span><span class="s6">0</span><span class="s2">,</span>
+        <span class="s1">end</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">int</span><span class="s2">] = </span><span class="s0">None</span><span class="s2">,</span>
+    <span class="s2">) </span><span class="s1">-&gt; </span><span class="s0">None</span><span class="s2">:</span>
+        <span class="s5">&quot;&quot;&quot;Apply a style to the text, or a portion of the text. Styles will be applied before other styles already present. 
+ 
+        Args: 
+            style (Union[str, Style]): Style instance or style definition to apply. 
+            start (int): Start offset (negative indexing is supported). Defaults to 0. 
+            end (Optional[int], optional): End offset (negative indexing is supported), or None for end of text. Defaults to None. 
+        &quot;&quot;&quot;</span>
+        <span class="s0">if </span><span class="s1">style</span><span class="s2">:</span>
+            <span class="s1">length </span><span class="s2">= </span><span class="s1">len</span><span class="s2">(</span><span class="s1">self</span><span class="s2">)</span>
+            <span class="s0">if </span><span class="s1">start </span><span class="s2">&lt; </span><span class="s6">0</span><span class="s2">:</span>
+                <span class="s1">start </span><span class="s2">= </span><span class="s1">length </span><span class="s2">+ </span><span class="s1">start</span>
+            <span class="s0">if </span><span class="s1">end </span><span class="s0">is None</span><span class="s2">:</span>
+                <span class="s1">end </span><span class="s2">= </span><span class="s1">length</span>
+            <span class="s0">if </span><span class="s1">end </span><span class="s2">&lt; </span><span class="s6">0</span><span class="s2">:</span>
+                <span class="s1">end </span><span class="s2">= </span><span class="s1">length </span><span class="s2">+ </span><span class="s1">end</span>
+            <span class="s0">if </span><span class="s1">start </span><span class="s2">&gt;= </span><span class="s1">length </span><span class="s0">or </span><span class="s1">end </span><span class="s2">&lt;= </span><span class="s1">start</span><span class="s2">:</span>
+                <span class="s3"># Span not in text or not valid</span>
+                <span class="s0">return</span>
+            <span class="s1">self</span><span class="s2">.</span><span class="s1">_spans</span><span class="s2">.</span><span class="s1">insert</span><span class="s2">(</span><span class="s6">0</span><span class="s2">, </span><span class="s1">Span</span><span class="s2">(</span><span class="s1">start</span><span class="s2">, </span><span class="s1">min</span><span class="s2">(</span><span class="s1">length</span><span class="s2">, </span><span class="s1">end</span><span class="s2">), </span><span class="s1">style</span><span class="s2">))</span>
+
+    <span class="s0">def </span><span class="s1">apply_meta</span><span class="s2">(</span>
+        <span class="s1">self</span><span class="s2">, </span><span class="s1">meta</span><span class="s2">: </span><span class="s1">Dict</span><span class="s2">[</span><span class="s1">str</span><span class="s2">, </span><span class="s1">Any</span><span class="s2">], </span><span class="s1">start</span><span class="s2">: </span><span class="s1">int </span><span class="s2">= </span><span class="s6">0</span><span class="s2">, </span><span class="s1">end</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">int</span><span class="s2">] = </span><span class="s0">None</span>
+    <span class="s2">) </span><span class="s1">-&gt; </span><span class="s0">None</span><span class="s2">:</span>
+        <span class="s5">&quot;&quot;&quot;Apply meta data to the text, or a portion of the text. 
+ 
+        Args: 
+            meta (Dict[str, Any]): A dict of meta information. 
+            start (int): Start offset (negative indexing is supported). Defaults to 0. 
+            end (Optional[int], optional): End offset (negative indexing is supported), or None for end of text. Defaults to None. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s1">style </span><span class="s2">= </span><span class="s1">Style</span><span class="s2">.</span><span class="s1">from_meta</span><span class="s2">(</span><span class="s1">meta</span><span class="s2">)</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">stylize</span><span class="s2">(</span><span class="s1">style</span><span class="s2">, </span><span class="s1">start</span><span class="s2">=</span><span class="s1">start</span><span class="s2">, </span><span class="s1">end</span><span class="s2">=</span><span class="s1">end</span><span class="s2">)</span>
+
+    <span class="s0">def </span><span class="s1">on</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">meta</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">Dict</span><span class="s2">[</span><span class="s1">str</span><span class="s2">, </span><span class="s1">Any</span><span class="s2">]] = </span><span class="s0">None</span><span class="s2">, **</span><span class="s1">handlers</span><span class="s2">: </span><span class="s1">Any</span><span class="s2">) </span><span class="s1">-&gt; </span><span class="s4">&quot;Text&quot;</span><span class="s2">:</span>
+        <span class="s5">&quot;&quot;&quot;Apply event handlers (used by Textual project). 
+ 
+        Example: 
+            &gt;&gt;&gt; from rich.text import Text 
+            &gt;&gt;&gt; text = Text(&quot;hello world&quot;) 
+            &gt;&gt;&gt; text.on(click=&quot;view.toggle('world')&quot;) 
+ 
+        Args: 
+            meta (Dict[str, Any]): Mapping of meta information. 
+            **handlers: Keyword args are prefixed with &quot;@&quot; to defined handlers. 
+ 
+        Returns: 
+            Text: Self is returned to method may be chained. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">meta </span><span class="s2">= {} </span><span class="s0">if </span><span class="s1">meta </span><span class="s0">is None else </span><span class="s1">meta</span>
+        <span class="s1">meta</span><span class="s2">.</span><span class="s1">update</span><span class="s2">({</span><span class="s4">f&quot;@</span><span class="s0">{</span><span class="s1">key</span><span class="s0">}</span><span class="s4">&quot;</span><span class="s2">: </span><span class="s1">value </span><span class="s0">for </span><span class="s1">key</span><span class="s2">, </span><span class="s1">value </span><span class="s0">in </span><span class="s1">handlers</span><span class="s2">.</span><span class="s1">items</span><span class="s2">()})</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">stylize</span><span class="s2">(</span><span class="s1">Style</span><span class="s2">.</span><span class="s1">from_meta</span><span class="s2">(</span><span class="s1">meta</span><span class="s2">))</span>
+        <span class="s0">return </span><span class="s1">self</span>
+
+    <span class="s0">def </span><span class="s1">remove_suffix</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">suffix</span><span class="s2">: </span><span class="s1">str</span><span class="s2">) </span><span class="s1">-&gt; </span><span class="s0">None</span><span class="s2">:</span>
+        <span class="s5">&quot;&quot;&quot;Remove a suffix if it exists. 
+ 
+        Args: 
+            suffix (str): Suffix to remove. 
+        &quot;&quot;&quot;</span>
+        <span class="s0">if </span><span class="s1">self</span><span class="s2">.</span><span class="s1">plain</span><span class="s2">.</span><span class="s1">endswith</span><span class="s2">(</span><span class="s1">suffix</span><span class="s2">):</span>
+            <span class="s1">self</span><span class="s2">.</span><span class="s1">right_crop</span><span class="s2">(</span><span class="s1">len</span><span class="s2">(</span><span class="s1">suffix</span><span class="s2">))</span>
+
+    <span class="s0">def </span><span class="s1">get_style_at_offset</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">console</span><span class="s2">: </span><span class="s4">&quot;Console&quot;</span><span class="s2">, </span><span class="s1">offset</span><span class="s2">: </span><span class="s1">int</span><span class="s2">) </span><span class="s1">-&gt; Style</span><span class="s2">:</span>
+        <span class="s5">&quot;&quot;&quot;Get the style of a character at give offset. 
+ 
+        Args: 
+            console (~Console): Console where text will be rendered. 
+            offset (int): Offset in to text (negative indexing supported) 
+ 
+        Returns: 
+            Style: A Style instance. 
+        &quot;&quot;&quot;</span>
+        <span class="s3"># TODO: This is a little inefficient, it is only used by full justify</span>
+        <span class="s0">if </span><span class="s1">offset </span><span class="s2">&lt; </span><span class="s6">0</span><span class="s2">:</span>
+            <span class="s1">offset </span><span class="s2">= </span><span class="s1">len</span><span class="s2">(</span><span class="s1">self</span><span class="s2">) + </span><span class="s1">offset</span>
+        <span class="s1">get_style </span><span class="s2">= </span><span class="s1">console</span><span class="s2">.</span><span class="s1">get_style</span>
+        <span class="s1">style </span><span class="s2">= </span><span class="s1">get_style</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">style</span><span class="s2">).</span><span class="s1">copy</span><span class="s2">()</span>
+        <span class="s0">for </span><span class="s1">start</span><span class="s2">, </span><span class="s1">end</span><span class="s2">, </span><span class="s1">span_style </span><span class="s0">in </span><span class="s1">self</span><span class="s2">.</span><span class="s1">_spans</span><span class="s2">:</span>
+            <span class="s0">if </span><span class="s1">end </span><span class="s2">&gt; </span><span class="s1">offset </span><span class="s2">&gt;= </span><span class="s1">start</span><span class="s2">:</span>
+                <span class="s1">style </span><span class="s2">+= </span><span class="s1">get_style</span><span class="s2">(</span><span class="s1">span_style</span><span class="s2">, </span><span class="s1">default</span><span class="s2">=</span><span class="s4">&quot;&quot;</span><span class="s2">)</span>
+        <span class="s0">return </span><span class="s1">style</span>
+
+    <span class="s0">def </span><span class="s1">highlight_regex</span><span class="s2">(</span>
+        <span class="s1">self</span><span class="s2">,</span>
+        <span class="s1">re_highlight</span><span class="s2">: </span><span class="s1">str</span><span class="s2">,</span>
+        <span class="s1">style</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">Union</span><span class="s2">[</span><span class="s1">GetStyleCallable</span><span class="s2">, </span><span class="s1">StyleType</span><span class="s2">]] = </span><span class="s0">None</span><span class="s2">,</span>
+        <span class="s2">*,</span>
+        <span class="s1">style_prefix</span><span class="s2">: </span><span class="s1">str </span><span class="s2">= </span><span class="s4">&quot;&quot;</span><span class="s2">,</span>
+    <span class="s2">) </span><span class="s1">-&gt; int</span><span class="s2">:</span>
+        <span class="s5">&quot;&quot;&quot;Highlight text with a regular expression, where group names are 
+        translated to styles. 
+ 
+        Args: 
+            re_highlight (str): A regular expression. 
+            style (Union[GetStyleCallable, StyleType]): Optional style to apply to whole match, or a callable 
+                which accepts the matched text and returns a style. Defaults to None. 
+            style_prefix (str, optional): Optional prefix to add to style group names. 
+ 
+        Returns: 
+            int: Number of regex matches 
+        &quot;&quot;&quot;</span>
+        <span class="s1">count </span><span class="s2">= </span><span class="s6">0</span>
+        <span class="s1">append_span </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">_spans</span><span class="s2">.</span><span class="s1">append</span>
+        <span class="s1">_Span </span><span class="s2">= </span><span class="s1">Span</span>
+        <span class="s1">plain </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">plain</span>
+        <span class="s0">for </span><span class="s1">match </span><span class="s0">in </span><span class="s1">re</span><span class="s2">.</span><span class="s1">finditer</span><span class="s2">(</span><span class="s1">re_highlight</span><span class="s2">, </span><span class="s1">plain</span><span class="s2">):</span>
+            <span class="s1">get_span </span><span class="s2">= </span><span class="s1">match</span><span class="s2">.</span><span class="s1">span</span>
+            <span class="s0">if </span><span class="s1">style</span><span class="s2">:</span>
+                <span class="s1">start</span><span class="s2">, </span><span class="s1">end </span><span class="s2">= </span><span class="s1">get_span</span><span class="s2">()</span>
+                <span class="s1">match_style </span><span class="s2">= </span><span class="s1">style</span><span class="s2">(</span><span class="s1">plain</span><span class="s2">[</span><span class="s1">start</span><span class="s2">:</span><span class="s1">end</span><span class="s2">]) </span><span class="s0">if </span><span class="s1">callable</span><span class="s2">(</span><span class="s1">style</span><span class="s2">) </span><span class="s0">else </span><span class="s1">style</span>
+                <span class="s0">if </span><span class="s1">match_style </span><span class="s0">is not None and </span><span class="s1">end </span><span class="s2">&gt; </span><span class="s1">start</span><span class="s2">:</span>
+                    <span class="s1">append_span</span><span class="s2">(</span><span class="s1">_Span</span><span class="s2">(</span><span class="s1">start</span><span class="s2">, </span><span class="s1">end</span><span class="s2">, </span><span class="s1">match_style</span><span class="s2">))</span>
+
+            <span class="s1">count </span><span class="s2">+= </span><span class="s6">1</span>
+            <span class="s0">for </span><span class="s1">name </span><span class="s0">in </span><span class="s1">match</span><span class="s2">.</span><span class="s1">groupdict</span><span class="s2">().</span><span class="s1">keys</span><span class="s2">():</span>
+                <span class="s1">start</span><span class="s2">, </span><span class="s1">end </span><span class="s2">= </span><span class="s1">get_span</span><span class="s2">(</span><span class="s1">name</span><span class="s2">)</span>
+                <span class="s0">if </span><span class="s1">start </span><span class="s2">!= -</span><span class="s6">1 </span><span class="s0">and </span><span class="s1">end </span><span class="s2">&gt; </span><span class="s1">start</span><span class="s2">:</span>
+                    <span class="s1">append_span</span><span class="s2">(</span><span class="s1">_Span</span><span class="s2">(</span><span class="s1">start</span><span class="s2">, </span><span class="s1">end</span><span class="s2">, </span><span class="s4">f&quot;</span><span class="s0">{</span><span class="s1">style_prefix</span><span class="s0">}{</span><span class="s1">name</span><span class="s0">}</span><span class="s4">&quot;</span><span class="s2">))</span>
+        <span class="s0">return </span><span class="s1">count</span>
+
+    <span class="s0">def </span><span class="s1">highlight_words</span><span class="s2">(</span>
+        <span class="s1">self</span><span class="s2">,</span>
+        <span class="s1">words</span><span class="s2">: </span><span class="s1">Iterable</span><span class="s2">[</span><span class="s1">str</span><span class="s2">],</span>
+        <span class="s1">style</span><span class="s2">: </span><span class="s1">Union</span><span class="s2">[</span><span class="s1">str</span><span class="s2">, </span><span class="s1">Style</span><span class="s2">],</span>
+        <span class="s2">*,</span>
+        <span class="s1">case_sensitive</span><span class="s2">: </span><span class="s1">bool </span><span class="s2">= </span><span class="s0">True</span><span class="s2">,</span>
+    <span class="s2">) </span><span class="s1">-&gt; int</span><span class="s2">:</span>
+        <span class="s5">&quot;&quot;&quot;Highlight words with a style. 
+ 
+        Args: 
+            words (Iterable[str]): Worlds to highlight. 
+            style (Union[str, Style]): Style to apply. 
+            case_sensitive (bool, optional): Enable case sensitive matchings. Defaults to True. 
+ 
+        Returns: 
+            int: Number of words highlighted. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">re_words </span><span class="s2">= </span><span class="s4">&quot;|&quot;</span><span class="s2">.</span><span class="s1">join</span><span class="s2">(</span><span class="s1">re</span><span class="s2">.</span><span class="s1">escape</span><span class="s2">(</span><span class="s1">word</span><span class="s2">) </span><span class="s0">for </span><span class="s1">word </span><span class="s0">in </span><span class="s1">words</span><span class="s2">)</span>
+        <span class="s1">add_span </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">_spans</span><span class="s2">.</span><span class="s1">append</span>
+        <span class="s1">count </span><span class="s2">= </span><span class="s6">0</span>
+        <span class="s1">_Span </span><span class="s2">= </span><span class="s1">Span</span>
+        <span class="s0">for </span><span class="s1">match </span><span class="s0">in </span><span class="s1">re</span><span class="s2">.</span><span class="s1">finditer</span><span class="s2">(</span>
+            <span class="s1">re_words</span><span class="s2">, </span><span class="s1">self</span><span class="s2">.</span><span class="s1">plain</span><span class="s2">, </span><span class="s1">flags</span><span class="s2">=</span><span class="s6">0 </span><span class="s0">if </span><span class="s1">case_sensitive </span><span class="s0">else </span><span class="s1">re</span><span class="s2">.</span><span class="s1">IGNORECASE</span>
+        <span class="s2">):</span>
+            <span class="s1">start</span><span class="s2">, </span><span class="s1">end </span><span class="s2">= </span><span class="s1">match</span><span class="s2">.</span><span class="s1">span</span><span class="s2">(</span><span class="s6">0</span><span class="s2">)</span>
+            <span class="s1">add_span</span><span class="s2">(</span><span class="s1">_Span</span><span class="s2">(</span><span class="s1">start</span><span class="s2">, </span><span class="s1">end</span><span class="s2">, </span><span class="s1">style</span><span class="s2">))</span>
+            <span class="s1">count </span><span class="s2">+= </span><span class="s6">1</span>
+        <span class="s0">return </span><span class="s1">count</span>
+
+    <span class="s0">def </span><span class="s1">rstrip</span><span class="s2">(</span><span class="s1">self</span><span class="s2">) </span><span class="s1">-&gt; </span><span class="s0">None</span><span class="s2">:</span>
+        <span class="s5">&quot;&quot;&quot;Strip whitespace from end of text.&quot;&quot;&quot;</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">plain </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">plain</span><span class="s2">.</span><span class="s1">rstrip</span><span class="s2">()</span>
+
+    <span class="s0">def </span><span class="s1">rstrip_end</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">size</span><span class="s2">: </span><span class="s1">int</span><span class="s2">) </span><span class="s1">-&gt; </span><span class="s0">None</span><span class="s2">:</span>
+        <span class="s5">&quot;&quot;&quot;Remove whitespace beyond a certain width at the end of the text. 
+ 
+        Args: 
+            size (int): The desired size of the text. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">text_length </span><span class="s2">= </span><span class="s1">len</span><span class="s2">(</span><span class="s1">self</span><span class="s2">)</span>
+        <span class="s0">if </span><span class="s1">text_length </span><span class="s2">&gt; </span><span class="s1">size</span><span class="s2">:</span>
+            <span class="s1">excess </span><span class="s2">= </span><span class="s1">text_length </span><span class="s2">- </span><span class="s1">size</span>
+            <span class="s1">whitespace_match </span><span class="s2">= </span><span class="s1">_re_whitespace</span><span class="s2">.</span><span class="s1">search</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">plain</span><span class="s2">)</span>
+            <span class="s0">if </span><span class="s1">whitespace_match </span><span class="s0">is not None</span><span class="s2">:</span>
+                <span class="s1">whitespace_count </span><span class="s2">= </span><span class="s1">len</span><span class="s2">(</span><span class="s1">whitespace_match</span><span class="s2">.</span><span class="s1">group</span><span class="s2">(</span><span class="s6">0</span><span class="s2">))</span>
+                <span class="s1">self</span><span class="s2">.</span><span class="s1">right_crop</span><span class="s2">(</span><span class="s1">min</span><span class="s2">(</span><span class="s1">whitespace_count</span><span class="s2">, </span><span class="s1">excess</span><span class="s2">))</span>
+
+    <span class="s0">def </span><span class="s1">set_length</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">new_length</span><span class="s2">: </span><span class="s1">int</span><span class="s2">) </span><span class="s1">-&gt; </span><span class="s0">None</span><span class="s2">:</span>
+        <span class="s5">&quot;&quot;&quot;Set new length of the text, clipping or padding is required.&quot;&quot;&quot;</span>
+        <span class="s1">length </span><span class="s2">= </span><span class="s1">len</span><span class="s2">(</span><span class="s1">self</span><span class="s2">)</span>
+        <span class="s0">if </span><span class="s1">length </span><span class="s2">!= </span><span class="s1">new_length</span><span class="s2">:</span>
+            <span class="s0">if </span><span class="s1">length </span><span class="s2">&lt; </span><span class="s1">new_length</span><span class="s2">:</span>
+                <span class="s1">self</span><span class="s2">.</span><span class="s1">pad_right</span><span class="s2">(</span><span class="s1">new_length </span><span class="s2">- </span><span class="s1">length</span><span class="s2">)</span>
+            <span class="s0">else</span><span class="s2">:</span>
+                <span class="s1">self</span><span class="s2">.</span><span class="s1">right_crop</span><span class="s2">(</span><span class="s1">length </span><span class="s2">- </span><span class="s1">new_length</span><span class="s2">)</span>
+
+    <span class="s0">def </span><span class="s1">__rich_console__</span><span class="s2">(</span>
+        <span class="s1">self</span><span class="s2">, </span><span class="s1">console</span><span class="s2">: </span><span class="s4">&quot;Console&quot;</span><span class="s2">, </span><span class="s1">options</span><span class="s2">: </span><span class="s4">&quot;ConsoleOptions&quot;</span>
+    <span class="s2">) </span><span class="s1">-&gt; Iterable</span><span class="s2">[</span><span class="s1">Segment</span><span class="s2">]:</span>
+        <span class="s1">tab_size</span><span class="s2">: </span><span class="s1">int </span><span class="s2">= </span><span class="s1">console</span><span class="s2">.</span><span class="s1">tab_size </span><span class="s0">or </span><span class="s1">self</span><span class="s2">.</span><span class="s1">tab_size </span><span class="s0">or </span><span class="s6">8</span>
+        <span class="s1">justify </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">justify </span><span class="s0">or </span><span class="s1">options</span><span class="s2">.</span><span class="s1">justify </span><span class="s0">or </span><span class="s1">DEFAULT_JUSTIFY</span>
+
+        <span class="s1">overflow </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">overflow </span><span class="s0">or </span><span class="s1">options</span><span class="s2">.</span><span class="s1">overflow </span><span class="s0">or </span><span class="s1">DEFAULT_OVERFLOW</span>
+
+        <span class="s1">lines </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">wrap</span><span class="s2">(</span>
+            <span class="s1">console</span><span class="s2">,</span>
+            <span class="s1">options</span><span class="s2">.</span><span class="s1">max_width</span><span class="s2">,</span>
+            <span class="s1">justify</span><span class="s2">=</span><span class="s1">justify</span><span class="s2">,</span>
+            <span class="s1">overflow</span><span class="s2">=</span><span class="s1">overflow</span><span class="s2">,</span>
+            <span class="s1">tab_size</span><span class="s2">=</span><span class="s1">tab_size </span><span class="s0">or </span><span class="s6">8</span><span class="s2">,</span>
+            <span class="s1">no_wrap</span><span class="s2">=</span><span class="s1">pick_bool</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">no_wrap</span><span class="s2">, </span><span class="s1">options</span><span class="s2">.</span><span class="s1">no_wrap</span><span class="s2">, </span><span class="s0">False</span><span class="s2">),</span>
+        <span class="s2">)</span>
+        <span class="s1">all_lines </span><span class="s2">= </span><span class="s1">Text</span><span class="s2">(</span><span class="s4">&quot;</span><span class="s0">\n</span><span class="s4">&quot;</span><span class="s2">).</span><span class="s1">join</span><span class="s2">(</span><span class="s1">lines</span><span class="s2">)</span>
+        <span class="s0">yield from </span><span class="s1">all_lines</span><span class="s2">.</span><span class="s1">render</span><span class="s2">(</span><span class="s1">console</span><span class="s2">, </span><span class="s1">end</span><span class="s2">=</span><span class="s1">self</span><span class="s2">.</span><span class="s1">end</span><span class="s2">)</span>
+
+    <span class="s0">def </span><span class="s1">__rich_measure__</span><span class="s2">(</span>
+        <span class="s1">self</span><span class="s2">, </span><span class="s1">console</span><span class="s2">: </span><span class="s4">&quot;Console&quot;</span><span class="s2">, </span><span class="s1">options</span><span class="s2">: </span><span class="s4">&quot;ConsoleOptions&quot;</span>
+    <span class="s2">) </span><span class="s1">-&gt; Measurement</span><span class="s2">:</span>
+        <span class="s1">text </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">plain</span>
+        <span class="s1">lines </span><span class="s2">= </span><span class="s1">text</span><span class="s2">.</span><span class="s1">splitlines</span><span class="s2">()</span>
+        <span class="s1">max_text_width </span><span class="s2">= </span><span class="s1">max</span><span class="s2">(</span><span class="s1">cell_len</span><span class="s2">(</span><span class="s1">line</span><span class="s2">) </span><span class="s0">for </span><span class="s1">line </span><span class="s0">in </span><span class="s1">lines</span><span class="s2">) </span><span class="s0">if </span><span class="s1">lines </span><span class="s0">else </span><span class="s6">0</span>
+        <span class="s1">words </span><span class="s2">= </span><span class="s1">text</span><span class="s2">.</span><span class="s1">split</span><span class="s2">()</span>
+        <span class="s1">min_text_width </span><span class="s2">= (</span>
+            <span class="s1">max</span><span class="s2">(</span><span class="s1">cell_len</span><span class="s2">(</span><span class="s1">word</span><span class="s2">) </span><span class="s0">for </span><span class="s1">word </span><span class="s0">in </span><span class="s1">words</span><span class="s2">) </span><span class="s0">if </span><span class="s1">words </span><span class="s0">else </span><span class="s1">max_text_width</span>
+        <span class="s2">)</span>
+        <span class="s0">return </span><span class="s1">Measurement</span><span class="s2">(</span><span class="s1">min_text_width</span><span class="s2">, </span><span class="s1">max_text_width</span><span class="s2">)</span>
+
+    <span class="s0">def </span><span class="s1">render</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">console</span><span class="s2">: </span><span class="s4">&quot;Console&quot;</span><span class="s2">, </span><span class="s1">end</span><span class="s2">: </span><span class="s1">str </span><span class="s2">= </span><span class="s4">&quot;&quot;</span><span class="s2">) </span><span class="s1">-&gt; Iterable</span><span class="s2">[</span><span class="s4">&quot;Segment&quot;</span><span class="s2">]:</span>
+        <span class="s5">&quot;&quot;&quot;Render the text as Segments. 
+ 
+        Args: 
+            console (Console): Console instance. 
+            end (Optional[str], optional): Optional end character. 
+ 
+        Returns: 
+            Iterable[Segment]: Result of render that may be written to the console. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">_Segment </span><span class="s2">= </span><span class="s1">Segment</span>
+        <span class="s1">text </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">plain</span>
+        <span class="s0">if not </span><span class="s1">self</span><span class="s2">.</span><span class="s1">_spans</span><span class="s2">:</span>
+            <span class="s0">yield </span><span class="s1">Segment</span><span class="s2">(</span><span class="s1">text</span><span class="s2">)</span>
+            <span class="s0">if </span><span class="s1">end</span><span class="s2">:</span>
+                <span class="s0">yield </span><span class="s1">_Segment</span><span class="s2">(</span><span class="s1">end</span><span class="s2">)</span>
+            <span class="s0">return</span>
+        <span class="s1">get_style </span><span class="s2">= </span><span class="s1">partial</span><span class="s2">(</span><span class="s1">console</span><span class="s2">.</span><span class="s1">get_style</span><span class="s2">, </span><span class="s1">default</span><span class="s2">=</span><span class="s1">Style</span><span class="s2">.</span><span class="s1">null</span><span class="s2">())</span>
+
+        <span class="s1">enumerated_spans </span><span class="s2">= </span><span class="s1">list</span><span class="s2">(</span><span class="s1">enumerate</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">_spans</span><span class="s2">, </span><span class="s6">1</span><span class="s2">))</span>
+        <span class="s1">style_map </span><span class="s2">= {</span><span class="s1">index</span><span class="s2">: </span><span class="s1">get_style</span><span class="s2">(</span><span class="s1">span</span><span class="s2">.</span><span class="s1">style</span><span class="s2">) </span><span class="s0">for </span><span class="s1">index</span><span class="s2">, </span><span class="s1">span </span><span class="s0">in </span><span class="s1">enumerated_spans</span><span class="s2">}</span>
+        <span class="s1">style_map</span><span class="s2">[</span><span class="s6">0</span><span class="s2">] = </span><span class="s1">get_style</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">style</span><span class="s2">)</span>
+
+        <span class="s1">spans </span><span class="s2">= [</span>
+            <span class="s2">(</span><span class="s6">0</span><span class="s2">, </span><span class="s0">False</span><span class="s2">, </span><span class="s6">0</span><span class="s2">),</span>
+            <span class="s2">*((</span><span class="s1">span</span><span class="s2">.</span><span class="s1">start</span><span class="s2">, </span><span class="s0">False</span><span class="s2">, </span><span class="s1">index</span><span class="s2">) </span><span class="s0">for </span><span class="s1">index</span><span class="s2">, </span><span class="s1">span </span><span class="s0">in </span><span class="s1">enumerated_spans</span><span class="s2">),</span>
+            <span class="s2">*((</span><span class="s1">span</span><span class="s2">.</span><span class="s1">end</span><span class="s2">, </span><span class="s0">True</span><span class="s2">, </span><span class="s1">index</span><span class="s2">) </span><span class="s0">for </span><span class="s1">index</span><span class="s2">, </span><span class="s1">span </span><span class="s0">in </span><span class="s1">enumerated_spans</span><span class="s2">),</span>
+            <span class="s2">(</span><span class="s1">len</span><span class="s2">(</span><span class="s1">text</span><span class="s2">), </span><span class="s0">True</span><span class="s2">, </span><span class="s6">0</span><span class="s2">),</span>
+        <span class="s2">]</span>
+        <span class="s1">spans</span><span class="s2">.</span><span class="s1">sort</span><span class="s2">(</span><span class="s1">key</span><span class="s2">=</span><span class="s1">itemgetter</span><span class="s2">(</span><span class="s6">0</span><span class="s2">, </span><span class="s6">1</span><span class="s2">))</span>
+
+        <span class="s1">stack</span><span class="s2">: </span><span class="s1">List</span><span class="s2">[</span><span class="s1">int</span><span class="s2">] = []</span>
+        <span class="s1">stack_append </span><span class="s2">= </span><span class="s1">stack</span><span class="s2">.</span><span class="s1">append</span>
+        <span class="s1">stack_pop </span><span class="s2">= </span><span class="s1">stack</span><span class="s2">.</span><span class="s1">remove</span>
+
+        <span class="s1">style_cache</span><span class="s2">: </span><span class="s1">Dict</span><span class="s2">[</span><span class="s1">Tuple</span><span class="s2">[</span><span class="s1">Style</span><span class="s2">, ...], </span><span class="s1">Style</span><span class="s2">] = {}</span>
+        <span class="s1">style_cache_get </span><span class="s2">= </span><span class="s1">style_cache</span><span class="s2">.</span><span class="s1">get</span>
+        <span class="s1">combine </span><span class="s2">= </span><span class="s1">Style</span><span class="s2">.</span><span class="s1">combine</span>
+
+        <span class="s0">def </span><span class="s1">get_current_style</span><span class="s2">() </span><span class="s1">-&gt; Style</span><span class="s2">:</span>
+            <span class="s5">&quot;&quot;&quot;Construct current style from stack.&quot;&quot;&quot;</span>
+            <span class="s1">styles </span><span class="s2">= </span><span class="s1">tuple</span><span class="s2">(</span><span class="s1">style_map</span><span class="s2">[</span><span class="s1">_style_id</span><span class="s2">] </span><span class="s0">for </span><span class="s1">_style_id </span><span class="s0">in </span><span class="s1">sorted</span><span class="s2">(</span><span class="s1">stack</span><span class="s2">))</span>
+            <span class="s1">cached_style </span><span class="s2">= </span><span class="s1">style_cache_get</span><span class="s2">(</span><span class="s1">styles</span><span class="s2">)</span>
+            <span class="s0">if </span><span class="s1">cached_style </span><span class="s0">is not None</span><span class="s2">:</span>
+                <span class="s0">return </span><span class="s1">cached_style</span>
+            <span class="s1">current_style </span><span class="s2">= </span><span class="s1">combine</span><span class="s2">(</span><span class="s1">styles</span><span class="s2">)</span>
+            <span class="s1">style_cache</span><span class="s2">[</span><span class="s1">styles</span><span class="s2">] = </span><span class="s1">current_style</span>
+            <span class="s0">return </span><span class="s1">current_style</span>
+
+        <span class="s0">for </span><span class="s2">(</span><span class="s1">offset</span><span class="s2">, </span><span class="s1">leaving</span><span class="s2">, </span><span class="s1">style_id</span><span class="s2">), (</span><span class="s1">next_offset</span><span class="s2">, </span><span class="s1">_</span><span class="s2">, </span><span class="s1">_</span><span class="s2">) </span><span class="s0">in </span><span class="s1">zip</span><span class="s2">(</span><span class="s1">spans</span><span class="s2">, </span><span class="s1">spans</span><span class="s2">[</span><span class="s6">1</span><span class="s2">:]):</span>
+            <span class="s0">if </span><span class="s1">leaving</span><span class="s2">:</span>
+                <span class="s1">stack_pop</span><span class="s2">(</span><span class="s1">style_id</span><span class="s2">)</span>
+            <span class="s0">else</span><span class="s2">:</span>
+                <span class="s1">stack_append</span><span class="s2">(</span><span class="s1">style_id</span><span class="s2">)</span>
+            <span class="s0">if </span><span class="s1">next_offset </span><span class="s2">&gt; </span><span class="s1">offset</span><span class="s2">:</span>
+                <span class="s0">yield </span><span class="s1">_Segment</span><span class="s2">(</span><span class="s1">text</span><span class="s2">[</span><span class="s1">offset</span><span class="s2">:</span><span class="s1">next_offset</span><span class="s2">], </span><span class="s1">get_current_style</span><span class="s2">())</span>
+        <span class="s0">if </span><span class="s1">end</span><span class="s2">:</span>
+            <span class="s0">yield </span><span class="s1">_Segment</span><span class="s2">(</span><span class="s1">end</span><span class="s2">)</span>
+
+    <span class="s0">def </span><span class="s1">join</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">lines</span><span class="s2">: </span><span class="s1">Iterable</span><span class="s2">[</span><span class="s4">&quot;Text&quot;</span><span class="s2">]) </span><span class="s1">-&gt; </span><span class="s4">&quot;Text&quot;</span><span class="s2">:</span>
+        <span class="s5">&quot;&quot;&quot;Join text together with this instance as the separator. 
+ 
+        Args: 
+            lines (Iterable[Text]): An iterable of Text instances to join. 
+ 
+        Returns: 
+            Text: A new text instance containing join text. 
+        &quot;&quot;&quot;</span>
+
+        <span class="s1">new_text </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">blank_copy</span><span class="s2">()</span>
+
+        <span class="s0">def </span><span class="s1">iter_text</span><span class="s2">() </span><span class="s1">-&gt; Iterable</span><span class="s2">[</span><span class="s4">&quot;Text&quot;</span><span class="s2">]:</span>
+            <span class="s0">if </span><span class="s1">self</span><span class="s2">.</span><span class="s1">plain</span><span class="s2">:</span>
+                <span class="s0">for </span><span class="s1">last</span><span class="s2">, </span><span class="s1">line </span><span class="s0">in </span><span class="s1">loop_last</span><span class="s2">(</span><span class="s1">lines</span><span class="s2">):</span>
+                    <span class="s0">yield </span><span class="s1">line</span>
+                    <span class="s0">if not </span><span class="s1">last</span><span class="s2">:</span>
+                        <span class="s0">yield </span><span class="s1">self</span>
+            <span class="s0">else</span><span class="s2">:</span>
+                <span class="s0">yield from </span><span class="s1">lines</span>
+
+        <span class="s1">extend_text </span><span class="s2">= </span><span class="s1">new_text</span><span class="s2">.</span><span class="s1">_text</span><span class="s2">.</span><span class="s1">extend</span>
+        <span class="s1">append_span </span><span class="s2">= </span><span class="s1">new_text</span><span class="s2">.</span><span class="s1">_spans</span><span class="s2">.</span><span class="s1">append</span>
+        <span class="s1">extend_spans </span><span class="s2">= </span><span class="s1">new_text</span><span class="s2">.</span><span class="s1">_spans</span><span class="s2">.</span><span class="s1">extend</span>
+        <span class="s1">offset </span><span class="s2">= </span><span class="s6">0</span>
+        <span class="s1">_Span </span><span class="s2">= </span><span class="s1">Span</span>
+
+        <span class="s0">for </span><span class="s1">text </span><span class="s0">in </span><span class="s1">iter_text</span><span class="s2">():</span>
+            <span class="s1">extend_text</span><span class="s2">(</span><span class="s1">text</span><span class="s2">.</span><span class="s1">_text</span><span class="s2">)</span>
+            <span class="s0">if </span><span class="s1">text</span><span class="s2">.</span><span class="s1">style</span><span class="s2">:</span>
+                <span class="s1">append_span</span><span class="s2">(</span><span class="s1">_Span</span><span class="s2">(</span><span class="s1">offset</span><span class="s2">, </span><span class="s1">offset </span><span class="s2">+ </span><span class="s1">len</span><span class="s2">(</span><span class="s1">text</span><span class="s2">), </span><span class="s1">text</span><span class="s2">.</span><span class="s1">style</span><span class="s2">))</span>
+            <span class="s1">extend_spans</span><span class="s2">(</span>
+                <span class="s1">_Span</span><span class="s2">(</span><span class="s1">offset </span><span class="s2">+ </span><span class="s1">start</span><span class="s2">, </span><span class="s1">offset </span><span class="s2">+ </span><span class="s1">end</span><span class="s2">, </span><span class="s1">style</span><span class="s2">)</span>
+                <span class="s0">for </span><span class="s1">start</span><span class="s2">, </span><span class="s1">end</span><span class="s2">, </span><span class="s1">style </span><span class="s0">in </span><span class="s1">text</span><span class="s2">.</span><span class="s1">_spans</span>
+            <span class="s2">)</span>
+            <span class="s1">offset </span><span class="s2">+= </span><span class="s1">len</span><span class="s2">(</span><span class="s1">text</span><span class="s2">)</span>
+        <span class="s1">new_text</span><span class="s2">.</span><span class="s1">_length </span><span class="s2">= </span><span class="s1">offset</span>
+        <span class="s0">return </span><span class="s1">new_text</span>
+
+    <span class="s0">def </span><span class="s1">expand_tabs</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">tab_size</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">int</span><span class="s2">] = </span><span class="s0">None</span><span class="s2">) </span><span class="s1">-&gt; </span><span class="s0">None</span><span class="s2">:</span>
+        <span class="s5">&quot;&quot;&quot;Converts tabs to spaces. 
+ 
+        Args: 
+            tab_size (int, optional): Size of tabs. Defaults to 8. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s0">if </span><span class="s4">&quot;</span><span class="s0">\t</span><span class="s4">&quot; </span><span class="s0">not in </span><span class="s1">self</span><span class="s2">.</span><span class="s1">plain</span><span class="s2">:</span>
+            <span class="s0">return</span>
+        <span class="s1">pos </span><span class="s2">= </span><span class="s6">0</span>
+        <span class="s0">if </span><span class="s1">tab_size </span><span class="s0">is None</span><span class="s2">:</span>
+            <span class="s1">tab_size </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">tab_size</span>
+        <span class="s0">assert </span><span class="s1">tab_size </span><span class="s0">is not None</span>
+        <span class="s1">result </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">blank_copy</span><span class="s2">()</span>
+        <span class="s1">append </span><span class="s2">= </span><span class="s1">result</span><span class="s2">.</span><span class="s1">append</span>
+
+        <span class="s1">_style </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">style</span>
+        <span class="s0">for </span><span class="s1">line </span><span class="s0">in </span><span class="s1">self</span><span class="s2">.</span><span class="s1">split</span><span class="s2">(</span><span class="s4">&quot;</span><span class="s0">\n</span><span class="s4">&quot;</span><span class="s2">, </span><span class="s1">include_separator</span><span class="s2">=</span><span class="s0">True</span><span class="s2">):</span>
+            <span class="s1">parts </span><span class="s2">= </span><span class="s1">line</span><span class="s2">.</span><span class="s1">split</span><span class="s2">(</span><span class="s4">&quot;</span><span class="s0">\t</span><span class="s4">&quot;</span><span class="s2">, </span><span class="s1">include_separator</span><span class="s2">=</span><span class="s0">True</span><span class="s2">)</span>
+            <span class="s0">for </span><span class="s1">part </span><span class="s0">in </span><span class="s1">parts</span><span class="s2">:</span>
+                <span class="s0">if </span><span class="s1">part</span><span class="s2">.</span><span class="s1">plain</span><span class="s2">.</span><span class="s1">endswith</span><span class="s2">(</span><span class="s4">&quot;</span><span class="s0">\t</span><span class="s4">&quot;</span><span class="s2">):</span>
+                    <span class="s1">part</span><span class="s2">.</span><span class="s1">_text </span><span class="s2">= [</span><span class="s1">part</span><span class="s2">.</span><span class="s1">plain</span><span class="s2">[:-</span><span class="s6">1</span><span class="s2">] + </span><span class="s4">&quot; &quot;</span><span class="s2">]</span>
+                    <span class="s1">append</span><span class="s2">(</span><span class="s1">part</span><span class="s2">)</span>
+                    <span class="s1">pos </span><span class="s2">+= </span><span class="s1">len</span><span class="s2">(</span><span class="s1">part</span><span class="s2">)</span>
+                    <span class="s1">spaces </span><span class="s2">= </span><span class="s1">tab_size </span><span class="s2">- ((</span><span class="s1">pos </span><span class="s2">- </span><span class="s6">1</span><span class="s2">) % </span><span class="s1">tab_size</span><span class="s2">) - </span><span class="s6">1</span>
+                    <span class="s0">if </span><span class="s1">spaces</span><span class="s2">:</span>
+                        <span class="s1">append</span><span class="s2">(</span><span class="s4">&quot; &quot; </span><span class="s2">* </span><span class="s1">spaces</span><span class="s2">, </span><span class="s1">_style</span><span class="s2">)</span>
+                        <span class="s1">pos </span><span class="s2">+= </span><span class="s1">spaces</span>
+                <span class="s0">else</span><span class="s2">:</span>
+                    <span class="s1">append</span><span class="s2">(</span><span class="s1">part</span><span class="s2">)</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">_text </span><span class="s2">= [</span><span class="s1">result</span><span class="s2">.</span><span class="s1">plain</span><span class="s2">]</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">_length </span><span class="s2">= </span><span class="s1">len</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">plain</span><span class="s2">)</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">_spans</span><span class="s2">[:] = </span><span class="s1">result</span><span class="s2">.</span><span class="s1">_spans</span>
+
+    <span class="s0">def </span><span class="s1">truncate</span><span class="s2">(</span>
+        <span class="s1">self</span><span class="s2">,</span>
+        <span class="s1">max_width</span><span class="s2">: </span><span class="s1">int</span><span class="s2">,</span>
+        <span class="s2">*,</span>
+        <span class="s1">overflow</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s4">&quot;OverflowMethod&quot;</span><span class="s2">] = </span><span class="s0">None</span><span class="s2">,</span>
+        <span class="s1">pad</span><span class="s2">: </span><span class="s1">bool </span><span class="s2">= </span><span class="s0">False</span><span class="s2">,</span>
+    <span class="s2">) </span><span class="s1">-&gt; </span><span class="s0">None</span><span class="s2">:</span>
+        <span class="s5">&quot;&quot;&quot;Truncate text if it is longer that a given width. 
+ 
+        Args: 
+            max_width (int): Maximum number of characters in text. 
+            overflow (str, optional): Overflow method: &quot;crop&quot;, &quot;fold&quot;, or &quot;ellipsis&quot;. Defaults to None, to use self.overflow. 
+            pad (bool, optional): Pad with spaces if the length is less than max_width. Defaults to False. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">_overflow </span><span class="s2">= </span><span class="s1">overflow </span><span class="s0">or </span><span class="s1">self</span><span class="s2">.</span><span class="s1">overflow </span><span class="s0">or </span><span class="s1">DEFAULT_OVERFLOW</span>
+        <span class="s0">if </span><span class="s1">_overflow </span><span class="s2">!= </span><span class="s4">&quot;ignore&quot;</span><span class="s2">:</span>
+            <span class="s1">length </span><span class="s2">= </span><span class="s1">cell_len</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">plain</span><span class="s2">)</span>
+            <span class="s0">if </span><span class="s1">length </span><span class="s2">&gt; </span><span class="s1">max_width</span><span class="s2">:</span>
+                <span class="s0">if </span><span class="s1">_overflow </span><span class="s2">== </span><span class="s4">&quot;ellipsis&quot;</span><span class="s2">:</span>
+                    <span class="s1">self</span><span class="s2">.</span><span class="s1">plain </span><span class="s2">= </span><span class="s1">set_cell_size</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">plain</span><span class="s2">, </span><span class="s1">max_width </span><span class="s2">- </span><span class="s6">1</span><span class="s2">) + </span><span class="s4">&quot;…&quot;</span>
+                <span class="s0">else</span><span class="s2">:</span>
+                    <span class="s1">self</span><span class="s2">.</span><span class="s1">plain </span><span class="s2">= </span><span class="s1">set_cell_size</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">plain</span><span class="s2">, </span><span class="s1">max_width</span><span class="s2">)</span>
+            <span class="s0">if </span><span class="s1">pad </span><span class="s0">and </span><span class="s1">length </span><span class="s2">&lt; </span><span class="s1">max_width</span><span class="s2">:</span>
+                <span class="s1">spaces </span><span class="s2">= </span><span class="s1">max_width </span><span class="s2">- </span><span class="s1">length</span>
+                <span class="s1">self</span><span class="s2">.</span><span class="s1">_text </span><span class="s2">= [</span><span class="s4">f&quot;</span><span class="s0">{</span><span class="s1">self</span><span class="s2">.</span><span class="s1">plain</span><span class="s0">}{</span><span class="s4">' ' </span><span class="s2">* </span><span class="s1">spaces</span><span class="s0">}</span><span class="s4">&quot;</span><span class="s2">]</span>
+                <span class="s1">self</span><span class="s2">.</span><span class="s1">_length </span><span class="s2">= </span><span class="s1">len</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">plain</span><span class="s2">)</span>
+
+    <span class="s0">def </span><span class="s1">_trim_spans</span><span class="s2">(</span><span class="s1">self</span><span class="s2">) </span><span class="s1">-&gt; </span><span class="s0">None</span><span class="s2">:</span>
+        <span class="s5">&quot;&quot;&quot;Remove or modify any spans that are over the end of the text.&quot;&quot;&quot;</span>
+        <span class="s1">max_offset </span><span class="s2">= </span><span class="s1">len</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">plain</span><span class="s2">)</span>
+        <span class="s1">_Span </span><span class="s2">= </span><span class="s1">Span</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">_spans</span><span class="s2">[:] = [</span>
+            <span class="s2">(</span>
+                <span class="s1">span</span>
+                <span class="s0">if </span><span class="s1">span</span><span class="s2">.</span><span class="s1">end </span><span class="s2">&lt; </span><span class="s1">max_offset</span>
+                <span class="s0">else </span><span class="s1">_Span</span><span class="s2">(</span><span class="s1">span</span><span class="s2">.</span><span class="s1">start</span><span class="s2">, </span><span class="s1">min</span><span class="s2">(</span><span class="s1">max_offset</span><span class="s2">, </span><span class="s1">span</span><span class="s2">.</span><span class="s1">end</span><span class="s2">), </span><span class="s1">span</span><span class="s2">.</span><span class="s1">style</span><span class="s2">)</span>
+            <span class="s2">)</span>
+            <span class="s0">for </span><span class="s1">span </span><span class="s0">in </span><span class="s1">self</span><span class="s2">.</span><span class="s1">_spans</span>
+            <span class="s0">if </span><span class="s1">span</span><span class="s2">.</span><span class="s1">start </span><span class="s2">&lt; </span><span class="s1">max_offset</span>
+        <span class="s2">]</span>
+
+    <span class="s0">def </span><span class="s1">pad</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">count</span><span class="s2">: </span><span class="s1">int</span><span class="s2">, </span><span class="s1">character</span><span class="s2">: </span><span class="s1">str </span><span class="s2">= </span><span class="s4">&quot; &quot;</span><span class="s2">) </span><span class="s1">-&gt; </span><span class="s0">None</span><span class="s2">:</span>
+        <span class="s5">&quot;&quot;&quot;Pad left and right with a given number of characters. 
+ 
+        Args: 
+            count (int): Width of padding. 
+        &quot;&quot;&quot;</span>
+        <span class="s0">assert </span><span class="s1">len</span><span class="s2">(</span><span class="s1">character</span><span class="s2">) == </span><span class="s6">1</span><span class="s2">, </span><span class="s4">&quot;Character must be a string of length 1&quot;</span>
+        <span class="s0">if </span><span class="s1">count</span><span class="s2">:</span>
+            <span class="s1">pad_characters </span><span class="s2">= </span><span class="s1">character </span><span class="s2">* </span><span class="s1">count</span>
+            <span class="s1">self</span><span class="s2">.</span><span class="s1">plain </span><span class="s2">= </span><span class="s4">f&quot;</span><span class="s0">{</span><span class="s1">pad_characters</span><span class="s0">}{</span><span class="s1">self</span><span class="s2">.</span><span class="s1">plain</span><span class="s0">}{</span><span class="s1">pad_characters</span><span class="s0">}</span><span class="s4">&quot;</span>
+            <span class="s1">_Span </span><span class="s2">= </span><span class="s1">Span</span>
+            <span class="s1">self</span><span class="s2">.</span><span class="s1">_spans</span><span class="s2">[:] = [</span>
+                <span class="s1">_Span</span><span class="s2">(</span><span class="s1">start </span><span class="s2">+ </span><span class="s1">count</span><span class="s2">, </span><span class="s1">end </span><span class="s2">+ </span><span class="s1">count</span><span class="s2">, </span><span class="s1">style</span><span class="s2">)</span>
+                <span class="s0">for </span><span class="s1">start</span><span class="s2">, </span><span class="s1">end</span><span class="s2">, </span><span class="s1">style </span><span class="s0">in </span><span class="s1">self</span><span class="s2">.</span><span class="s1">_spans</span>
+            <span class="s2">]</span>
+
+    <span class="s0">def </span><span class="s1">pad_left</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">count</span><span class="s2">: </span><span class="s1">int</span><span class="s2">, </span><span class="s1">character</span><span class="s2">: </span><span class="s1">str </span><span class="s2">= </span><span class="s4">&quot; &quot;</span><span class="s2">) </span><span class="s1">-&gt; </span><span class="s0">None</span><span class="s2">:</span>
+        <span class="s5">&quot;&quot;&quot;Pad the left with a given character. 
+ 
+        Args: 
+            count (int): Number of characters to pad. 
+            character (str, optional): Character to pad with. Defaults to &quot; &quot;. 
+        &quot;&quot;&quot;</span>
+        <span class="s0">assert </span><span class="s1">len</span><span class="s2">(</span><span class="s1">character</span><span class="s2">) == </span><span class="s6">1</span><span class="s2">, </span><span class="s4">&quot;Character must be a string of length 1&quot;</span>
+        <span class="s0">if </span><span class="s1">count</span><span class="s2">:</span>
+            <span class="s1">self</span><span class="s2">.</span><span class="s1">plain </span><span class="s2">= </span><span class="s4">f&quot;</span><span class="s0">{</span><span class="s1">character </span><span class="s2">* </span><span class="s1">count</span><span class="s0">}{</span><span class="s1">self</span><span class="s2">.</span><span class="s1">plain</span><span class="s0">}</span><span class="s4">&quot;</span>
+            <span class="s1">_Span </span><span class="s2">= </span><span class="s1">Span</span>
+            <span class="s1">self</span><span class="s2">.</span><span class="s1">_spans</span><span class="s2">[:] = [</span>
+                <span class="s1">_Span</span><span class="s2">(</span><span class="s1">start </span><span class="s2">+ </span><span class="s1">count</span><span class="s2">, </span><span class="s1">end </span><span class="s2">+ </span><span class="s1">count</span><span class="s2">, </span><span class="s1">style</span><span class="s2">)</span>
+                <span class="s0">for </span><span class="s1">start</span><span class="s2">, </span><span class="s1">end</span><span class="s2">, </span><span class="s1">style </span><span class="s0">in </span><span class="s1">self</span><span class="s2">.</span><span class="s1">_spans</span>
+            <span class="s2">]</span>
+
+    <span class="s0">def </span><span class="s1">pad_right</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">count</span><span class="s2">: </span><span class="s1">int</span><span class="s2">, </span><span class="s1">character</span><span class="s2">: </span><span class="s1">str </span><span class="s2">= </span><span class="s4">&quot; &quot;</span><span class="s2">) </span><span class="s1">-&gt; </span><span class="s0">None</span><span class="s2">:</span>
+        <span class="s5">&quot;&quot;&quot;Pad the right with a given character. 
+ 
+        Args: 
+            count (int): Number of characters to pad. 
+            character (str, optional): Character to pad with. Defaults to &quot; &quot;. 
+        &quot;&quot;&quot;</span>
+        <span class="s0">assert </span><span class="s1">len</span><span class="s2">(</span><span class="s1">character</span><span class="s2">) == </span><span class="s6">1</span><span class="s2">, </span><span class="s4">&quot;Character must be a string of length 1&quot;</span>
+        <span class="s0">if </span><span class="s1">count</span><span class="s2">:</span>
+            <span class="s1">self</span><span class="s2">.</span><span class="s1">plain </span><span class="s2">= </span><span class="s4">f&quot;</span><span class="s0">{</span><span class="s1">self</span><span class="s2">.</span><span class="s1">plain</span><span class="s0">}{</span><span class="s1">character </span><span class="s2">* </span><span class="s1">count</span><span class="s0">}</span><span class="s4">&quot;</span>
+
+    <span class="s0">def </span><span class="s1">align</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">align</span><span class="s2">: </span><span class="s1">AlignMethod</span><span class="s2">, </span><span class="s1">width</span><span class="s2">: </span><span class="s1">int</span><span class="s2">, </span><span class="s1">character</span><span class="s2">: </span><span class="s1">str </span><span class="s2">= </span><span class="s4">&quot; &quot;</span><span class="s2">) </span><span class="s1">-&gt; </span><span class="s0">None</span><span class="s2">:</span>
+        <span class="s5">&quot;&quot;&quot;Align text to a given width. 
+ 
+        Args: 
+            align (AlignMethod): One of &quot;left&quot;, &quot;center&quot;, or &quot;right&quot;. 
+            width (int): Desired width. 
+            character (str, optional): Character to pad with. Defaults to &quot; &quot;. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">truncate</span><span class="s2">(</span><span class="s1">width</span><span class="s2">)</span>
+        <span class="s1">excess_space </span><span class="s2">= </span><span class="s1">width </span><span class="s2">- </span><span class="s1">cell_len</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">plain</span><span class="s2">)</span>
+        <span class="s0">if </span><span class="s1">excess_space</span><span class="s2">:</span>
+            <span class="s0">if </span><span class="s1">align </span><span class="s2">== </span><span class="s4">&quot;left&quot;</span><span class="s2">:</span>
+                <span class="s1">self</span><span class="s2">.</span><span class="s1">pad_right</span><span class="s2">(</span><span class="s1">excess_space</span><span class="s2">, </span><span class="s1">character</span><span class="s2">)</span>
+            <span class="s0">elif </span><span class="s1">align </span><span class="s2">== </span><span class="s4">&quot;center&quot;</span><span class="s2">:</span>
+                <span class="s1">left </span><span class="s2">= </span><span class="s1">excess_space </span><span class="s2">// </span><span class="s6">2</span>
+                <span class="s1">self</span><span class="s2">.</span><span class="s1">pad_left</span><span class="s2">(</span><span class="s1">left</span><span class="s2">, </span><span class="s1">character</span><span class="s2">)</span>
+                <span class="s1">self</span><span class="s2">.</span><span class="s1">pad_right</span><span class="s2">(</span><span class="s1">excess_space </span><span class="s2">- </span><span class="s1">left</span><span class="s2">, </span><span class="s1">character</span><span class="s2">)</span>
+            <span class="s0">else</span><span class="s2">:</span>
+                <span class="s1">self</span><span class="s2">.</span><span class="s1">pad_left</span><span class="s2">(</span><span class="s1">excess_space</span><span class="s2">, </span><span class="s1">character</span><span class="s2">)</span>
+
+    <span class="s0">def </span><span class="s1">append</span><span class="s2">(</span>
+        <span class="s1">self</span><span class="s2">, </span><span class="s1">text</span><span class="s2">: </span><span class="s1">Union</span><span class="s2">[</span><span class="s4">&quot;Text&quot;</span><span class="s2">, </span><span class="s1">str</span><span class="s2">], </span><span class="s1">style</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">Union</span><span class="s2">[</span><span class="s1">str</span><span class="s2">, </span><span class="s4">&quot;Style&quot;</span><span class="s2">]] = </span><span class="s0">None</span>
+    <span class="s2">) </span><span class="s1">-&gt; </span><span class="s4">&quot;Text&quot;</span><span class="s2">:</span>
+        <span class="s5">&quot;&quot;&quot;Add text with an optional style. 
+ 
+        Args: 
+            text (Union[Text, str]): A str or Text to append. 
+            style (str, optional): A style name. Defaults to None. 
+ 
+        Returns: 
+            Text: Returns self for chaining. 
+        &quot;&quot;&quot;</span>
+
+        <span class="s0">if not </span><span class="s1">isinstance</span><span class="s2">(</span><span class="s1">text</span><span class="s2">, (</span><span class="s1">str</span><span class="s2">, </span><span class="s1">Text</span><span class="s2">)):</span>
+            <span class="s0">raise </span><span class="s1">TypeError</span><span class="s2">(</span><span class="s4">&quot;Only str or Text can be appended to Text&quot;</span><span class="s2">)</span>
+
+        <span class="s0">if </span><span class="s1">len</span><span class="s2">(</span><span class="s1">text</span><span class="s2">):</span>
+            <span class="s0">if </span><span class="s1">isinstance</span><span class="s2">(</span><span class="s1">text</span><span class="s2">, </span><span class="s1">str</span><span class="s2">):</span>
+                <span class="s1">sanitized_text </span><span class="s2">= </span><span class="s1">strip_control_codes</span><span class="s2">(</span><span class="s1">text</span><span class="s2">)</span>
+                <span class="s1">self</span><span class="s2">.</span><span class="s1">_text</span><span class="s2">.</span><span class="s1">append</span><span class="s2">(</span><span class="s1">sanitized_text</span><span class="s2">)</span>
+                <span class="s1">offset </span><span class="s2">= </span><span class="s1">len</span><span class="s2">(</span><span class="s1">self</span><span class="s2">)</span>
+                <span class="s1">text_length </span><span class="s2">= </span><span class="s1">len</span><span class="s2">(</span><span class="s1">sanitized_text</span><span class="s2">)</span>
+                <span class="s0">if </span><span class="s1">style </span><span class="s0">is not None</span><span class="s2">:</span>
+                    <span class="s1">self</span><span class="s2">.</span><span class="s1">_spans</span><span class="s2">.</span><span class="s1">append</span><span class="s2">(</span><span class="s1">Span</span><span class="s2">(</span><span class="s1">offset</span><span class="s2">, </span><span class="s1">offset </span><span class="s2">+ </span><span class="s1">text_length</span><span class="s2">, </span><span class="s1">style</span><span class="s2">))</span>
+                <span class="s1">self</span><span class="s2">.</span><span class="s1">_length </span><span class="s2">+= </span><span class="s1">text_length</span>
+            <span class="s0">elif </span><span class="s1">isinstance</span><span class="s2">(</span><span class="s1">text</span><span class="s2">, </span><span class="s1">Text</span><span class="s2">):</span>
+                <span class="s1">_Span </span><span class="s2">= </span><span class="s1">Span</span>
+                <span class="s0">if </span><span class="s1">style </span><span class="s0">is not None</span><span class="s2">:</span>
+                    <span class="s0">raise </span><span class="s1">ValueError</span><span class="s2">(</span>
+                        <span class="s4">&quot;style must not be set when appending Text instance&quot;</span>
+                    <span class="s2">)</span>
+                <span class="s1">text_length </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">_length</span>
+                <span class="s0">if </span><span class="s1">text</span><span class="s2">.</span><span class="s1">style </span><span class="s0">is not None</span><span class="s2">:</span>
+                    <span class="s1">self</span><span class="s2">.</span><span class="s1">_spans</span><span class="s2">.</span><span class="s1">append</span><span class="s2">(</span>
+                        <span class="s1">_Span</span><span class="s2">(</span><span class="s1">text_length</span><span class="s2">, </span><span class="s1">text_length </span><span class="s2">+ </span><span class="s1">len</span><span class="s2">(</span><span class="s1">text</span><span class="s2">), </span><span class="s1">text</span><span class="s2">.</span><span class="s1">style</span><span class="s2">)</span>
+                    <span class="s2">)</span>
+                <span class="s1">self</span><span class="s2">.</span><span class="s1">_text</span><span class="s2">.</span><span class="s1">append</span><span class="s2">(</span><span class="s1">text</span><span class="s2">.</span><span class="s1">plain</span><span class="s2">)</span>
+                <span class="s1">self</span><span class="s2">.</span><span class="s1">_spans</span><span class="s2">.</span><span class="s1">extend</span><span class="s2">(</span>
+                    <span class="s1">_Span</span><span class="s2">(</span><span class="s1">start </span><span class="s2">+ </span><span class="s1">text_length</span><span class="s2">, </span><span class="s1">end </span><span class="s2">+ </span><span class="s1">text_length</span><span class="s2">, </span><span class="s1">style</span><span class="s2">)</span>
+                    <span class="s0">for </span><span class="s1">start</span><span class="s2">, </span><span class="s1">end</span><span class="s2">, </span><span class="s1">style </span><span class="s0">in </span><span class="s1">text</span><span class="s2">.</span><span class="s1">_spans</span>
+                <span class="s2">)</span>
+                <span class="s1">self</span><span class="s2">.</span><span class="s1">_length </span><span class="s2">+= </span><span class="s1">len</span><span class="s2">(</span><span class="s1">text</span><span class="s2">)</span>
+        <span class="s0">return </span><span class="s1">self</span>
+
+    <span class="s0">def </span><span class="s1">append_text</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">text</span><span class="s2">: </span><span class="s4">&quot;Text&quot;</span><span class="s2">) </span><span class="s1">-&gt; </span><span class="s4">&quot;Text&quot;</span><span class="s2">:</span>
+        <span class="s5">&quot;&quot;&quot;Append another Text instance. This method is more performant that Text.append, but 
+        only works for Text. 
+ 
+        Returns: 
+            Text: Returns self for chaining. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">_Span </span><span class="s2">= </span><span class="s1">Span</span>
+        <span class="s1">text_length </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">_length</span>
+        <span class="s0">if </span><span class="s1">text</span><span class="s2">.</span><span class="s1">style </span><span class="s0">is not None</span><span class="s2">:</span>
+            <span class="s1">self</span><span class="s2">.</span><span class="s1">_spans</span><span class="s2">.</span><span class="s1">append</span><span class="s2">(</span><span class="s1">_Span</span><span class="s2">(</span><span class="s1">text_length</span><span class="s2">, </span><span class="s1">text_length </span><span class="s2">+ </span><span class="s1">len</span><span class="s2">(</span><span class="s1">text</span><span class="s2">), </span><span class="s1">text</span><span class="s2">.</span><span class="s1">style</span><span class="s2">))</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">_text</span><span class="s2">.</span><span class="s1">append</span><span class="s2">(</span><span class="s1">text</span><span class="s2">.</span><span class="s1">plain</span><span class="s2">)</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">_spans</span><span class="s2">.</span><span class="s1">extend</span><span class="s2">(</span>
+            <span class="s1">_Span</span><span class="s2">(</span><span class="s1">start </span><span class="s2">+ </span><span class="s1">text_length</span><span class="s2">, </span><span class="s1">end </span><span class="s2">+ </span><span class="s1">text_length</span><span class="s2">, </span><span class="s1">style</span><span class="s2">)</span>
+            <span class="s0">for </span><span class="s1">start</span><span class="s2">, </span><span class="s1">end</span><span class="s2">, </span><span class="s1">style </span><span class="s0">in </span><span class="s1">text</span><span class="s2">.</span><span class="s1">_spans</span>
+        <span class="s2">)</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">_length </span><span class="s2">+= </span><span class="s1">len</span><span class="s2">(</span><span class="s1">text</span><span class="s2">)</span>
+        <span class="s0">return </span><span class="s1">self</span>
+
+    <span class="s0">def </span><span class="s1">append_tokens</span><span class="s2">(</span>
+        <span class="s1">self</span><span class="s2">, </span><span class="s1">tokens</span><span class="s2">: </span><span class="s1">Iterable</span><span class="s2">[</span><span class="s1">Tuple</span><span class="s2">[</span><span class="s1">str</span><span class="s2">, </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">StyleType</span><span class="s2">]]]</span>
+    <span class="s2">) </span><span class="s1">-&gt; </span><span class="s4">&quot;Text&quot;</span><span class="s2">:</span>
+        <span class="s5">&quot;&quot;&quot;Append iterable of str and style. Style may be a Style instance or a str style definition. 
+ 
+        Args: 
+            pairs (Iterable[Tuple[str, Optional[StyleType]]]): An iterable of tuples containing str content and style. 
+ 
+        Returns: 
+            Text: Returns self for chaining. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">append_text </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">_text</span><span class="s2">.</span><span class="s1">append</span>
+        <span class="s1">append_span </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">_spans</span><span class="s2">.</span><span class="s1">append</span>
+        <span class="s1">_Span </span><span class="s2">= </span><span class="s1">Span</span>
+        <span class="s1">offset </span><span class="s2">= </span><span class="s1">len</span><span class="s2">(</span><span class="s1">self</span><span class="s2">)</span>
+        <span class="s0">for </span><span class="s1">content</span><span class="s2">, </span><span class="s1">style </span><span class="s0">in </span><span class="s1">tokens</span><span class="s2">:</span>
+            <span class="s1">append_text</span><span class="s2">(</span><span class="s1">content</span><span class="s2">)</span>
+            <span class="s0">if </span><span class="s1">style </span><span class="s0">is not None</span><span class="s2">:</span>
+                <span class="s1">append_span</span><span class="s2">(</span><span class="s1">_Span</span><span class="s2">(</span><span class="s1">offset</span><span class="s2">, </span><span class="s1">offset </span><span class="s2">+ </span><span class="s1">len</span><span class="s2">(</span><span class="s1">content</span><span class="s2">), </span><span class="s1">style</span><span class="s2">))</span>
+            <span class="s1">offset </span><span class="s2">+= </span><span class="s1">len</span><span class="s2">(</span><span class="s1">content</span><span class="s2">)</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">_length </span><span class="s2">= </span><span class="s1">offset</span>
+        <span class="s0">return </span><span class="s1">self</span>
+
+    <span class="s0">def </span><span class="s1">copy_styles</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">text</span><span class="s2">: </span><span class="s4">&quot;Text&quot;</span><span class="s2">) </span><span class="s1">-&gt; </span><span class="s0">None</span><span class="s2">:</span>
+        <span class="s5">&quot;&quot;&quot;Copy styles from another Text instance. 
+ 
+        Args: 
+            text (Text): A Text instance to copy styles from, must be the same length. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">_spans</span><span class="s2">.</span><span class="s1">extend</span><span class="s2">(</span><span class="s1">text</span><span class="s2">.</span><span class="s1">_spans</span><span class="s2">)</span>
+
+    <span class="s0">def </span><span class="s1">split</span><span class="s2">(</span>
+        <span class="s1">self</span><span class="s2">,</span>
+        <span class="s1">separator</span><span class="s2">: </span><span class="s1">str </span><span class="s2">= </span><span class="s4">&quot;</span><span class="s0">\n</span><span class="s4">&quot;</span><span class="s2">,</span>
+        <span class="s2">*,</span>
+        <span class="s1">include_separator</span><span class="s2">: </span><span class="s1">bool </span><span class="s2">= </span><span class="s0">False</span><span class="s2">,</span>
+        <span class="s1">allow_blank</span><span class="s2">: </span><span class="s1">bool </span><span class="s2">= </span><span class="s0">False</span><span class="s2">,</span>
+    <span class="s2">) </span><span class="s1">-&gt; Lines</span><span class="s2">:</span>
+        <span class="s5">&quot;&quot;&quot;Split rich text in to lines, preserving styles. 
+ 
+        Args: 
+            separator (str, optional): String to split on. Defaults to &quot;\\\\n&quot;. 
+            include_separator (bool, optional): Include the separator in the lines. Defaults to False. 
+            allow_blank (bool, optional): Return a blank line if the text ends with a separator. Defaults to False. 
+ 
+        Returns: 
+            List[RichText]: A list of rich text, one per line of the original. 
+        &quot;&quot;&quot;</span>
+        <span class="s0">assert </span><span class="s1">separator</span><span class="s2">, </span><span class="s4">&quot;separator must not be empty&quot;</span>
+
+        <span class="s1">text </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">plain</span>
+        <span class="s0">if </span><span class="s1">separator </span><span class="s0">not in </span><span class="s1">text</span><span class="s2">:</span>
+            <span class="s0">return </span><span class="s1">Lines</span><span class="s2">([</span><span class="s1">self</span><span class="s2">.</span><span class="s1">copy</span><span class="s2">()])</span>
+
+        <span class="s0">if </span><span class="s1">include_separator</span><span class="s2">:</span>
+            <span class="s1">lines </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">divide</span><span class="s2">(</span>
+                <span class="s1">match</span><span class="s2">.</span><span class="s1">end</span><span class="s2">() </span><span class="s0">for </span><span class="s1">match </span><span class="s0">in </span><span class="s1">re</span><span class="s2">.</span><span class="s1">finditer</span><span class="s2">(</span><span class="s1">re</span><span class="s2">.</span><span class="s1">escape</span><span class="s2">(</span><span class="s1">separator</span><span class="s2">), </span><span class="s1">text</span><span class="s2">)</span>
+            <span class="s2">)</span>
+        <span class="s0">else</span><span class="s2">:</span>
+
+            <span class="s0">def </span><span class="s1">flatten_spans</span><span class="s2">() </span><span class="s1">-&gt; Iterable</span><span class="s2">[</span><span class="s1">int</span><span class="s2">]:</span>
+                <span class="s0">for </span><span class="s1">match </span><span class="s0">in </span><span class="s1">re</span><span class="s2">.</span><span class="s1">finditer</span><span class="s2">(</span><span class="s1">re</span><span class="s2">.</span><span class="s1">escape</span><span class="s2">(</span><span class="s1">separator</span><span class="s2">), </span><span class="s1">text</span><span class="s2">):</span>
+                    <span class="s1">start</span><span class="s2">, </span><span class="s1">end </span><span class="s2">= </span><span class="s1">match</span><span class="s2">.</span><span class="s1">span</span><span class="s2">()</span>
+                    <span class="s0">yield </span><span class="s1">start</span>
+                    <span class="s0">yield </span><span class="s1">end</span>
+
+            <span class="s1">lines </span><span class="s2">= </span><span class="s1">Lines</span><span class="s2">(</span>
+                <span class="s1">line </span><span class="s0">for </span><span class="s1">line </span><span class="s0">in </span><span class="s1">self</span><span class="s2">.</span><span class="s1">divide</span><span class="s2">(</span><span class="s1">flatten_spans</span><span class="s2">()) </span><span class="s0">if </span><span class="s1">line</span><span class="s2">.</span><span class="s1">plain </span><span class="s2">!= </span><span class="s1">separator</span>
+            <span class="s2">)</span>
+
+        <span class="s0">if not </span><span class="s1">allow_blank </span><span class="s0">and </span><span class="s1">text</span><span class="s2">.</span><span class="s1">endswith</span><span class="s2">(</span><span class="s1">separator</span><span class="s2">):</span>
+            <span class="s1">lines</span><span class="s2">.</span><span class="s1">pop</span><span class="s2">()</span>
+
+        <span class="s0">return </span><span class="s1">lines</span>
+
+    <span class="s0">def </span><span class="s1">divide</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">offsets</span><span class="s2">: </span><span class="s1">Iterable</span><span class="s2">[</span><span class="s1">int</span><span class="s2">]) </span><span class="s1">-&gt; Lines</span><span class="s2">:</span>
+        <span class="s5">&quot;&quot;&quot;Divide text in to a number of lines at given offsets. 
+ 
+        Args: 
+            offsets (Iterable[int]): Offsets used to divide text. 
+ 
+        Returns: 
+            Lines: New RichText instances between offsets. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">_offsets </span><span class="s2">= </span><span class="s1">list</span><span class="s2">(</span><span class="s1">offsets</span><span class="s2">)</span>
+
+        <span class="s0">if not </span><span class="s1">_offsets</span><span class="s2">:</span>
+            <span class="s0">return </span><span class="s1">Lines</span><span class="s2">([</span><span class="s1">self</span><span class="s2">.</span><span class="s1">copy</span><span class="s2">()])</span>
+
+        <span class="s1">text </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">plain</span>
+        <span class="s1">text_length </span><span class="s2">= </span><span class="s1">len</span><span class="s2">(</span><span class="s1">text</span><span class="s2">)</span>
+        <span class="s1">divide_offsets </span><span class="s2">= [</span><span class="s6">0</span><span class="s2">, *</span><span class="s1">_offsets</span><span class="s2">, </span><span class="s1">text_length</span><span class="s2">]</span>
+        <span class="s1">line_ranges </span><span class="s2">= </span><span class="s1">list</span><span class="s2">(</span><span class="s1">zip</span><span class="s2">(</span><span class="s1">divide_offsets</span><span class="s2">, </span><span class="s1">divide_offsets</span><span class="s2">[</span><span class="s6">1</span><span class="s2">:]))</span>
+
+        <span class="s1">style </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">style</span>
+        <span class="s1">justify </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">justify</span>
+        <span class="s1">overflow </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">overflow</span>
+        <span class="s1">_Text </span><span class="s2">= </span><span class="s1">Text</span>
+        <span class="s1">new_lines </span><span class="s2">= </span><span class="s1">Lines</span><span class="s2">(</span>
+            <span class="s1">_Text</span><span class="s2">(</span>
+                <span class="s1">text</span><span class="s2">[</span><span class="s1">start</span><span class="s2">:</span><span class="s1">end</span><span class="s2">],</span>
+                <span class="s1">style</span><span class="s2">=</span><span class="s1">style</span><span class="s2">,</span>
+                <span class="s1">justify</span><span class="s2">=</span><span class="s1">justify</span><span class="s2">,</span>
+                <span class="s1">overflow</span><span class="s2">=</span><span class="s1">overflow</span><span class="s2">,</span>
+            <span class="s2">)</span>
+            <span class="s0">for </span><span class="s1">start</span><span class="s2">, </span><span class="s1">end </span><span class="s0">in </span><span class="s1">line_ranges</span>
+        <span class="s2">)</span>
+        <span class="s0">if not </span><span class="s1">self</span><span class="s2">.</span><span class="s1">_spans</span><span class="s2">:</span>
+            <span class="s0">return </span><span class="s1">new_lines</span>
+
+        <span class="s1">_line_appends </span><span class="s2">= [</span><span class="s1">line</span><span class="s2">.</span><span class="s1">_spans</span><span class="s2">.</span><span class="s1">append </span><span class="s0">for </span><span class="s1">line </span><span class="s0">in </span><span class="s1">new_lines</span><span class="s2">.</span><span class="s1">_lines</span><span class="s2">]</span>
+        <span class="s1">line_count </span><span class="s2">= </span><span class="s1">len</span><span class="s2">(</span><span class="s1">line_ranges</span><span class="s2">)</span>
+        <span class="s1">_Span </span><span class="s2">= </span><span class="s1">Span</span>
+
+        <span class="s0">for </span><span class="s1">span_start</span><span class="s2">, </span><span class="s1">span_end</span><span class="s2">, </span><span class="s1">style </span><span class="s0">in </span><span class="s1">self</span><span class="s2">.</span><span class="s1">_spans</span><span class="s2">:</span>
+
+            <span class="s1">lower_bound </span><span class="s2">= </span><span class="s6">0</span>
+            <span class="s1">upper_bound </span><span class="s2">= </span><span class="s1">line_count</span>
+            <span class="s1">start_line_no </span><span class="s2">= (</span><span class="s1">lower_bound </span><span class="s2">+ </span><span class="s1">upper_bound</span><span class="s2">) // </span><span class="s6">2</span>
+
+            <span class="s0">while True</span><span class="s2">:</span>
+                <span class="s1">line_start</span><span class="s2">, </span><span class="s1">line_end </span><span class="s2">= </span><span class="s1">line_ranges</span><span class="s2">[</span><span class="s1">start_line_no</span><span class="s2">]</span>
+                <span class="s0">if </span><span class="s1">span_start </span><span class="s2">&lt; </span><span class="s1">line_start</span><span class="s2">:</span>
+                    <span class="s1">upper_bound </span><span class="s2">= </span><span class="s1">start_line_no </span><span class="s2">- </span><span class="s6">1</span>
+                <span class="s0">elif </span><span class="s1">span_start </span><span class="s2">&gt; </span><span class="s1">line_end</span><span class="s2">:</span>
+                    <span class="s1">lower_bound </span><span class="s2">= </span><span class="s1">start_line_no </span><span class="s2">+ </span><span class="s6">1</span>
+                <span class="s0">else</span><span class="s2">:</span>
+                    <span class="s0">break</span>
+                <span class="s1">start_line_no </span><span class="s2">= (</span><span class="s1">lower_bound </span><span class="s2">+ </span><span class="s1">upper_bound</span><span class="s2">) // </span><span class="s6">2</span>
+
+            <span class="s0">if </span><span class="s1">span_end </span><span class="s2">&lt; </span><span class="s1">line_end</span><span class="s2">:</span>
+                <span class="s1">end_line_no </span><span class="s2">= </span><span class="s1">start_line_no</span>
+            <span class="s0">else</span><span class="s2">:</span>
+                <span class="s1">end_line_no </span><span class="s2">= </span><span class="s1">lower_bound </span><span class="s2">= </span><span class="s1">start_line_no</span>
+                <span class="s1">upper_bound </span><span class="s2">= </span><span class="s1">line_count</span>
+
+                <span class="s0">while True</span><span class="s2">:</span>
+                    <span class="s1">line_start</span><span class="s2">, </span><span class="s1">line_end </span><span class="s2">= </span><span class="s1">line_ranges</span><span class="s2">[</span><span class="s1">end_line_no</span><span class="s2">]</span>
+                    <span class="s0">if </span><span class="s1">span_end </span><span class="s2">&lt; </span><span class="s1">line_start</span><span class="s2">:</span>
+                        <span class="s1">upper_bound </span><span class="s2">= </span><span class="s1">end_line_no </span><span class="s2">- </span><span class="s6">1</span>
+                    <span class="s0">elif </span><span class="s1">span_end </span><span class="s2">&gt; </span><span class="s1">line_end</span><span class="s2">:</span>
+                        <span class="s1">lower_bound </span><span class="s2">= </span><span class="s1">end_line_no </span><span class="s2">+ </span><span class="s6">1</span>
+                    <span class="s0">else</span><span class="s2">:</span>
+                        <span class="s0">break</span>
+                    <span class="s1">end_line_no </span><span class="s2">= (</span><span class="s1">lower_bound </span><span class="s2">+ </span><span class="s1">upper_bound</span><span class="s2">) // </span><span class="s6">2</span>
+
+            <span class="s0">for </span><span class="s1">line_no </span><span class="s0">in </span><span class="s1">range</span><span class="s2">(</span><span class="s1">start_line_no</span><span class="s2">, </span><span class="s1">end_line_no </span><span class="s2">+ </span><span class="s6">1</span><span class="s2">):</span>
+                <span class="s1">line_start</span><span class="s2">, </span><span class="s1">line_end </span><span class="s2">= </span><span class="s1">line_ranges</span><span class="s2">[</span><span class="s1">line_no</span><span class="s2">]</span>
+                <span class="s1">new_start </span><span class="s2">= </span><span class="s1">max</span><span class="s2">(</span><span class="s6">0</span><span class="s2">, </span><span class="s1">span_start </span><span class="s2">- </span><span class="s1">line_start</span><span class="s2">)</span>
+                <span class="s1">new_end </span><span class="s2">= </span><span class="s1">min</span><span class="s2">(</span><span class="s1">span_end </span><span class="s2">- </span><span class="s1">line_start</span><span class="s2">, </span><span class="s1">line_end </span><span class="s2">- </span><span class="s1">line_start</span><span class="s2">)</span>
+                <span class="s0">if </span><span class="s1">new_end </span><span class="s2">&gt; </span><span class="s1">new_start</span><span class="s2">:</span>
+                    <span class="s1">_line_appends</span><span class="s2">[</span><span class="s1">line_no</span><span class="s2">](</span><span class="s1">_Span</span><span class="s2">(</span><span class="s1">new_start</span><span class="s2">, </span><span class="s1">new_end</span><span class="s2">, </span><span class="s1">style</span><span class="s2">))</span>
+
+        <span class="s0">return </span><span class="s1">new_lines</span>
+
+    <span class="s0">def </span><span class="s1">right_crop</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">amount</span><span class="s2">: </span><span class="s1">int </span><span class="s2">= </span><span class="s6">1</span><span class="s2">) </span><span class="s1">-&gt; </span><span class="s0">None</span><span class="s2">:</span>
+        <span class="s5">&quot;&quot;&quot;Remove a number of characters from the end of the text.&quot;&quot;&quot;</span>
+        <span class="s1">max_offset </span><span class="s2">= </span><span class="s1">len</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">plain</span><span class="s2">) - </span><span class="s1">amount</span>
+        <span class="s1">_Span </span><span class="s2">= </span><span class="s1">Span</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">_spans</span><span class="s2">[:] = [</span>
+            <span class="s2">(</span>
+                <span class="s1">span</span>
+                <span class="s0">if </span><span class="s1">span</span><span class="s2">.</span><span class="s1">end </span><span class="s2">&lt; </span><span class="s1">max_offset</span>
+                <span class="s0">else </span><span class="s1">_Span</span><span class="s2">(</span><span class="s1">span</span><span class="s2">.</span><span class="s1">start</span><span class="s2">, </span><span class="s1">min</span><span class="s2">(</span><span class="s1">max_offset</span><span class="s2">, </span><span class="s1">span</span><span class="s2">.</span><span class="s1">end</span><span class="s2">), </span><span class="s1">span</span><span class="s2">.</span><span class="s1">style</span><span class="s2">)</span>
+            <span class="s2">)</span>
+            <span class="s0">for </span><span class="s1">span </span><span class="s0">in </span><span class="s1">self</span><span class="s2">.</span><span class="s1">_spans</span>
+            <span class="s0">if </span><span class="s1">span</span><span class="s2">.</span><span class="s1">start </span><span class="s2">&lt; </span><span class="s1">max_offset</span>
+        <span class="s2">]</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">_text </span><span class="s2">= [</span><span class="s1">self</span><span class="s2">.</span><span class="s1">plain</span><span class="s2">[:-</span><span class="s1">amount</span><span class="s2">]]</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">_length </span><span class="s2">-= </span><span class="s1">amount</span>
+
+    <span class="s0">def </span><span class="s1">wrap</span><span class="s2">(</span>
+        <span class="s1">self</span><span class="s2">,</span>
+        <span class="s1">console</span><span class="s2">: </span><span class="s4">&quot;Console&quot;</span><span class="s2">,</span>
+        <span class="s1">width</span><span class="s2">: </span><span class="s1">int</span><span class="s2">,</span>
+        <span class="s2">*,</span>
+        <span class="s1">justify</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s4">&quot;JustifyMethod&quot;</span><span class="s2">] = </span><span class="s0">None</span><span class="s2">,</span>
+        <span class="s1">overflow</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s4">&quot;OverflowMethod&quot;</span><span class="s2">] = </span><span class="s0">None</span><span class="s2">,</span>
+        <span class="s1">tab_size</span><span class="s2">: </span><span class="s1">int </span><span class="s2">= </span><span class="s6">8</span><span class="s2">,</span>
+        <span class="s1">no_wrap</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">bool</span><span class="s2">] = </span><span class="s0">None</span><span class="s2">,</span>
+    <span class="s2">) </span><span class="s1">-&gt; Lines</span><span class="s2">:</span>
+        <span class="s5">&quot;&quot;&quot;Word wrap the text. 
+ 
+        Args: 
+            console (Console): Console instance. 
+            width (int): Number of characters per line. 
+            emoji (bool, optional): Also render emoji code. Defaults to True. 
+            justify (str, optional): Justify method: &quot;default&quot;, &quot;left&quot;, &quot;center&quot;, &quot;full&quot;, &quot;right&quot;. Defaults to &quot;default&quot;. 
+            overflow (str, optional): Overflow method: &quot;crop&quot;, &quot;fold&quot;, or &quot;ellipsis&quot;. Defaults to None. 
+            tab_size (int, optional): Default tab size. Defaults to 8. 
+            no_wrap (bool, optional): Disable wrapping, Defaults to False. 
+ 
+        Returns: 
+            Lines: Number of lines. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">wrap_justify </span><span class="s2">= </span><span class="s1">justify </span><span class="s0">or </span><span class="s1">self</span><span class="s2">.</span><span class="s1">justify </span><span class="s0">or </span><span class="s1">DEFAULT_JUSTIFY</span>
+        <span class="s1">wrap_overflow </span><span class="s2">= </span><span class="s1">overflow </span><span class="s0">or </span><span class="s1">self</span><span class="s2">.</span><span class="s1">overflow </span><span class="s0">or </span><span class="s1">DEFAULT_OVERFLOW</span>
+
+        <span class="s1">no_wrap </span><span class="s2">= </span><span class="s1">pick_bool</span><span class="s2">(</span><span class="s1">no_wrap</span><span class="s2">, </span><span class="s1">self</span><span class="s2">.</span><span class="s1">no_wrap</span><span class="s2">, </span><span class="s0">False</span><span class="s2">) </span><span class="s0">or </span><span class="s1">overflow </span><span class="s2">== </span><span class="s4">&quot;ignore&quot;</span>
+
+        <span class="s1">lines </span><span class="s2">= </span><span class="s1">Lines</span><span class="s2">()</span>
+        <span class="s0">for </span><span class="s1">line </span><span class="s0">in </span><span class="s1">self</span><span class="s2">.</span><span class="s1">split</span><span class="s2">(</span><span class="s1">allow_blank</span><span class="s2">=</span><span class="s0">True</span><span class="s2">):</span>
+            <span class="s0">if </span><span class="s4">&quot;</span><span class="s0">\t</span><span class="s4">&quot; </span><span class="s0">in </span><span class="s1">line</span><span class="s2">:</span>
+                <span class="s1">line</span><span class="s2">.</span><span class="s1">expand_tabs</span><span class="s2">(</span><span class="s1">tab_size</span><span class="s2">)</span>
+            <span class="s0">if </span><span class="s1">no_wrap</span><span class="s2">:</span>
+                <span class="s1">new_lines </span><span class="s2">= </span><span class="s1">Lines</span><span class="s2">([</span><span class="s1">line</span><span class="s2">])</span>
+            <span class="s0">else</span><span class="s2">:</span>
+                <span class="s1">offsets </span><span class="s2">= </span><span class="s1">divide_line</span><span class="s2">(</span><span class="s1">str</span><span class="s2">(</span><span class="s1">line</span><span class="s2">), </span><span class="s1">width</span><span class="s2">, </span><span class="s1">fold</span><span class="s2">=</span><span class="s1">wrap_overflow </span><span class="s2">== </span><span class="s4">&quot;fold&quot;</span><span class="s2">)</span>
+                <span class="s1">new_lines </span><span class="s2">= </span><span class="s1">line</span><span class="s2">.</span><span class="s1">divide</span><span class="s2">(</span><span class="s1">offsets</span><span class="s2">)</span>
+            <span class="s0">for </span><span class="s1">line </span><span class="s0">in </span><span class="s1">new_lines</span><span class="s2">:</span>
+                <span class="s1">line</span><span class="s2">.</span><span class="s1">rstrip_end</span><span class="s2">(</span><span class="s1">width</span><span class="s2">)</span>
+            <span class="s0">if </span><span class="s1">wrap_justify</span><span class="s2">:</span>
+                <span class="s1">new_lines</span><span class="s2">.</span><span class="s1">justify</span><span class="s2">(</span>
+                    <span class="s1">console</span><span class="s2">, </span><span class="s1">width</span><span class="s2">, </span><span class="s1">justify</span><span class="s2">=</span><span class="s1">wrap_justify</span><span class="s2">, </span><span class="s1">overflow</span><span class="s2">=</span><span class="s1">wrap_overflow</span>
+                <span class="s2">)</span>
+            <span class="s0">for </span><span class="s1">line </span><span class="s0">in </span><span class="s1">new_lines</span><span class="s2">:</span>
+                <span class="s1">line</span><span class="s2">.</span><span class="s1">truncate</span><span class="s2">(</span><span class="s1">width</span><span class="s2">, </span><span class="s1">overflow</span><span class="s2">=</span><span class="s1">wrap_overflow</span><span class="s2">)</span>
+            <span class="s1">lines</span><span class="s2">.</span><span class="s1">extend</span><span class="s2">(</span><span class="s1">new_lines</span><span class="s2">)</span>
+        <span class="s0">return </span><span class="s1">lines</span>
+
+    <span class="s0">def </span><span class="s1">fit</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">width</span><span class="s2">: </span><span class="s1">int</span><span class="s2">) </span><span class="s1">-&gt; Lines</span><span class="s2">:</span>
+        <span class="s5">&quot;&quot;&quot;Fit the text in to given width by chopping in to lines. 
+ 
+        Args: 
+            width (int): Maximum characters in a line. 
+ 
+        Returns: 
+            Lines: Lines container. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">lines</span><span class="s2">: </span><span class="s1">Lines </span><span class="s2">= </span><span class="s1">Lines</span><span class="s2">()</span>
+        <span class="s1">append </span><span class="s2">= </span><span class="s1">lines</span><span class="s2">.</span><span class="s1">append</span>
+        <span class="s0">for </span><span class="s1">line </span><span class="s0">in </span><span class="s1">self</span><span class="s2">.</span><span class="s1">split</span><span class="s2">():</span>
+            <span class="s1">line</span><span class="s2">.</span><span class="s1">set_length</span><span class="s2">(</span><span class="s1">width</span><span class="s2">)</span>
+            <span class="s1">append</span><span class="s2">(</span><span class="s1">line</span><span class="s2">)</span>
+        <span class="s0">return </span><span class="s1">lines</span>
+
+    <span class="s0">def </span><span class="s1">detect_indentation</span><span class="s2">(</span><span class="s1">self</span><span class="s2">) </span><span class="s1">-&gt; int</span><span class="s2">:</span>
+        <span class="s5">&quot;&quot;&quot;Auto-detect indentation of code. 
+ 
+        Returns: 
+            int: Number of spaces used to indent code. 
+        &quot;&quot;&quot;</span>
+
+        <span class="s1">_indentations </span><span class="s2">= {</span>
+            <span class="s1">len</span><span class="s2">(</span><span class="s1">match</span><span class="s2">.</span><span class="s1">group</span><span class="s2">(</span><span class="s6">1</span><span class="s2">))</span>
+            <span class="s0">for </span><span class="s1">match </span><span class="s0">in </span><span class="s1">re</span><span class="s2">.</span><span class="s1">finditer</span><span class="s2">(</span><span class="s4">r&quot;^( *)(.*)$&quot;</span><span class="s2">, </span><span class="s1">self</span><span class="s2">.</span><span class="s1">plain</span><span class="s2">, </span><span class="s1">flags</span><span class="s2">=</span><span class="s1">re</span><span class="s2">.</span><span class="s1">MULTILINE</span><span class="s2">)</span>
+        <span class="s2">}</span>
+
+        <span class="s0">try</span><span class="s2">:</span>
+            <span class="s1">indentation </span><span class="s2">= (</span>
+                <span class="s1">reduce</span><span class="s2">(</span><span class="s1">gcd</span><span class="s2">, [</span><span class="s1">indent </span><span class="s0">for </span><span class="s1">indent </span><span class="s0">in </span><span class="s1">_indentations </span><span class="s0">if not </span><span class="s1">indent </span><span class="s2">% </span><span class="s6">2</span><span class="s2">]) </span><span class="s0">or </span><span class="s6">1</span>
+            <span class="s2">)</span>
+        <span class="s0">except </span><span class="s1">TypeError</span><span class="s2">:</span>
+            <span class="s1">indentation </span><span class="s2">= </span><span class="s6">1</span>
+
+        <span class="s0">return </span><span class="s1">indentation</span>
+
+    <span class="s0">def </span><span class="s1">with_indent_guides</span><span class="s2">(</span>
+        <span class="s1">self</span><span class="s2">,</span>
+        <span class="s1">indent_size</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">int</span><span class="s2">] = </span><span class="s0">None</span><span class="s2">,</span>
+        <span class="s2">*,</span>
+        <span class="s1">character</span><span class="s2">: </span><span class="s1">str </span><span class="s2">= </span><span class="s4">&quot;│&quot;</span><span class="s2">,</span>
+        <span class="s1">style</span><span class="s2">: </span><span class="s1">StyleType </span><span class="s2">= </span><span class="s4">&quot;dim green&quot;</span><span class="s2">,</span>
+    <span class="s2">) </span><span class="s1">-&gt; </span><span class="s4">&quot;Text&quot;</span><span class="s2">:</span>
+        <span class="s5">&quot;&quot;&quot;Adds indent guide lines to text. 
+ 
+        Args: 
+            indent_size (Optional[int]): Size of indentation, or None to auto detect. Defaults to None. 
+            character (str, optional): Character to use for indentation. Defaults to &quot;│&quot;. 
+            style (Union[Style, str], optional): Style of indent guides. 
+ 
+        Returns: 
+            Text: New text with indentation guides. 
+        &quot;&quot;&quot;</span>
+
+        <span class="s1">_indent_size </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">detect_indentation</span><span class="s2">() </span><span class="s0">if </span><span class="s1">indent_size </span><span class="s0">is None else </span><span class="s1">indent_size</span>
+
+        <span class="s1">text </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">copy</span><span class="s2">()</span>
+        <span class="s1">text</span><span class="s2">.</span><span class="s1">expand_tabs</span><span class="s2">()</span>
+        <span class="s1">indent_line </span><span class="s2">= </span><span class="s4">f&quot;</span><span class="s0">{</span><span class="s1">character</span><span class="s0">}{</span><span class="s4">' ' </span><span class="s2">* (</span><span class="s1">_indent_size </span><span class="s2">- </span><span class="s6">1</span><span class="s2">)</span><span class="s0">}</span><span class="s4">&quot;</span>
+
+        <span class="s1">re_indent </span><span class="s2">= </span><span class="s1">re</span><span class="s2">.</span><span class="s1">compile</span><span class="s2">(</span><span class="s4">r&quot;^( *)(.*)$&quot;</span><span class="s2">)</span>
+        <span class="s1">new_lines</span><span class="s2">: </span><span class="s1">List</span><span class="s2">[</span><span class="s1">Text</span><span class="s2">] = []</span>
+        <span class="s1">add_line </span><span class="s2">= </span><span class="s1">new_lines</span><span class="s2">.</span><span class="s1">append</span>
+        <span class="s1">blank_lines </span><span class="s2">= </span><span class="s6">0</span>
+        <span class="s0">for </span><span class="s1">line </span><span class="s0">in </span><span class="s1">text</span><span class="s2">.</span><span class="s1">split</span><span class="s2">(</span><span class="s1">allow_blank</span><span class="s2">=</span><span class="s0">True</span><span class="s2">):</span>
+            <span class="s1">match </span><span class="s2">= </span><span class="s1">re_indent</span><span class="s2">.</span><span class="s1">match</span><span class="s2">(</span><span class="s1">line</span><span class="s2">.</span><span class="s1">plain</span><span class="s2">)</span>
+            <span class="s0">if not </span><span class="s1">match </span><span class="s0">or not </span><span class="s1">match</span><span class="s2">.</span><span class="s1">group</span><span class="s2">(</span><span class="s6">2</span><span class="s2">):</span>
+                <span class="s1">blank_lines </span><span class="s2">+= </span><span class="s6">1</span>
+                <span class="s0">continue</span>
+            <span class="s1">indent </span><span class="s2">= </span><span class="s1">match</span><span class="s2">.</span><span class="s1">group</span><span class="s2">(</span><span class="s6">1</span><span class="s2">)</span>
+            <span class="s1">full_indents</span><span class="s2">, </span><span class="s1">remaining_space </span><span class="s2">= </span><span class="s1">divmod</span><span class="s2">(</span><span class="s1">len</span><span class="s2">(</span><span class="s1">indent</span><span class="s2">), </span><span class="s1">_indent_size</span><span class="s2">)</span>
+            <span class="s1">new_indent </span><span class="s2">= </span><span class="s4">f&quot;</span><span class="s0">{</span><span class="s1">indent_line </span><span class="s2">* </span><span class="s1">full_indents</span><span class="s0">}{</span><span class="s4">' ' </span><span class="s2">* </span><span class="s1">remaining_space</span><span class="s0">}</span><span class="s4">&quot;</span>
+            <span class="s1">line</span><span class="s2">.</span><span class="s1">plain </span><span class="s2">= </span><span class="s1">new_indent </span><span class="s2">+ </span><span class="s1">line</span><span class="s2">.</span><span class="s1">plain</span><span class="s2">[</span><span class="s1">len</span><span class="s2">(</span><span class="s1">new_indent</span><span class="s2">) :]</span>
+            <span class="s1">line</span><span class="s2">.</span><span class="s1">stylize</span><span class="s2">(</span><span class="s1">style</span><span class="s2">, </span><span class="s6">0</span><span class="s2">, </span><span class="s1">len</span><span class="s2">(</span><span class="s1">new_indent</span><span class="s2">))</span>
+            <span class="s0">if </span><span class="s1">blank_lines</span><span class="s2">:</span>
+                <span class="s1">new_lines</span><span class="s2">.</span><span class="s1">extend</span><span class="s2">([</span><span class="s1">Text</span><span class="s2">(</span><span class="s1">new_indent</span><span class="s2">, </span><span class="s1">style</span><span class="s2">=</span><span class="s1">style</span><span class="s2">)] * </span><span class="s1">blank_lines</span><span class="s2">)</span>
+                <span class="s1">blank_lines </span><span class="s2">= </span><span class="s6">0</span>
+            <span class="s1">add_line</span><span class="s2">(</span><span class="s1">line</span><span class="s2">)</span>
+        <span class="s0">if </span><span class="s1">blank_lines</span><span class="s2">:</span>
+            <span class="s1">new_lines</span><span class="s2">.</span><span class="s1">extend</span><span class="s2">([</span><span class="s1">Text</span><span class="s2">(</span><span class="s4">&quot;&quot;</span><span class="s2">, </span><span class="s1">style</span><span class="s2">=</span><span class="s1">style</span><span class="s2">)] * </span><span class="s1">blank_lines</span><span class="s2">)</span>
+
+        <span class="s1">new_text </span><span class="s2">= </span><span class="s1">text</span><span class="s2">.</span><span class="s1">blank_copy</span><span class="s2">(</span><span class="s4">&quot;</span><span class="s0">\n</span><span class="s4">&quot;</span><span class="s2">).</span><span class="s1">join</span><span class="s2">(</span><span class="s1">new_lines</span><span class="s2">)</span>
+        <span class="s0">return </span><span class="s1">new_text</span>
+
+
+<span class="s0">if </span><span class="s1">__name__ </span><span class="s2">== </span><span class="s4">&quot;__main__&quot;</span><span class="s2">:  </span><span class="s3"># pragma: no cover</span>
+    <span class="s0">from </span><span class="s1">pip</span><span class="s2">.</span><span class="s1">_vendor</span><span class="s2">.</span><span class="s1">rich</span><span class="s2">.</span><span class="s1">console </span><span class="s0">import </span><span class="s1">Console</span>
+
+    <span class="s1">text </span><span class="s2">= </span><span class="s1">Text</span><span class="s2">(</span>
+        <span class="s4">&quot;&quot;&quot;</span><span class="s0">\n</span><span class="s4">Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.</span><span class="s0">\n</span><span class="s4">&quot;&quot;&quot;</span>
+    <span class="s2">)</span>
+    <span class="s1">text</span><span class="s2">.</span><span class="s1">highlight_words</span><span class="s2">([</span><span class="s4">&quot;Lorem&quot;</span><span class="s2">], </span><span class="s4">&quot;bold&quot;</span><span class="s2">)</span>
+    <span class="s1">text</span><span class="s2">.</span><span class="s1">highlight_words</span><span class="s2">([</span><span class="s4">&quot;ipsum&quot;</span><span class="s2">], </span><span class="s4">&quot;italic&quot;</span><span class="s2">)</span>
+
+    <span class="s1">console </span><span class="s2">= </span><span class="s1">Console</span><span class="s2">()</span>
+
+    <span class="s1">console</span><span class="s2">.</span><span class="s1">rule</span><span class="s2">(</span><span class="s4">&quot;justify='left'&quot;</span><span class="s2">)</span>
+    <span class="s1">console</span><span class="s2">.</span><span class="s1">print</span><span class="s2">(</span><span class="s1">text</span><span class="s2">, </span><span class="s1">style</span><span class="s2">=</span><span class="s4">&quot;red&quot;</span><span class="s2">)</span>
+    <span class="s1">console</span><span class="s2">.</span><span class="s1">print</span><span class="s2">()</span>
+
+    <span class="s1">console</span><span class="s2">.</span><span class="s1">rule</span><span class="s2">(</span><span class="s4">&quot;justify='center'&quot;</span><span class="s2">)</span>
+    <span class="s1">console</span><span class="s2">.</span><span class="s1">print</span><span class="s2">(</span><span class="s1">text</span><span class="s2">, </span><span class="s1">style</span><span class="s2">=</span><span class="s4">&quot;green&quot;</span><span class="s2">, </span><span class="s1">justify</span><span class="s2">=</span><span class="s4">&quot;center&quot;</span><span class="s2">)</span>
+    <span class="s1">console</span><span class="s2">.</span><span class="s1">print</span><span class="s2">()</span>
+
+    <span class="s1">console</span><span class="s2">.</span><span class="s1">rule</span><span class="s2">(</span><span class="s4">&quot;justify='right'&quot;</span><span class="s2">)</span>
+    <span class="s1">console</span><span class="s2">.</span><span class="s1">print</span><span class="s2">(</span><span class="s1">text</span><span class="s2">, </span><span class="s1">style</span><span class="s2">=</span><span class="s4">&quot;blue&quot;</span><span class="s2">, </span><span class="s1">justify</span><span class="s2">=</span><span class="s4">&quot;right&quot;</span><span class="s2">)</span>
+    <span class="s1">console</span><span class="s2">.</span><span class="s1">print</span><span class="s2">()</span>
+
+    <span class="s1">console</span><span class="s2">.</span><span class="s1">rule</span><span class="s2">(</span><span class="s4">&quot;justify='full'&quot;</span><span class="s2">)</span>
+    <span class="s1">console</span><span class="s2">.</span><span class="s1">print</span><span class="s2">(</span><span class="s1">text</span><span class="s2">, </span><span class="s1">style</span><span class="s2">=</span><span class="s4">&quot;magenta&quot;</span><span class="s2">, </span><span class="s1">justify</span><span class="s2">=</span><span class="s4">&quot;full&quot;</span><span class="s2">)</span>
+    <span class="s1">console</span><span class="s2">.</span><span class="s1">print</span><span class="s2">()</span>
+</pre>
+</body>
+</html>

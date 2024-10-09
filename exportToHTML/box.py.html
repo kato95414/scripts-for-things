@@ -1,0 +1,540 @@
+<html>
+<head>
+<title>box.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cf8e6d;}
+.s1 { color: #bcbec4;}
+.s2 { color: #bcbec4;}
+.s3 { color: #2aacb8;}
+.s4 { color: #7a7e85;}
+.s5 { color: #5f826b; font-style: italic;}
+.s6 { color: #6aab73;}
+</style>
+</head>
+<body bgcolor="#1e1f22">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+box.py</font>
+</center></td></tr></table>
+<pre><span class="s0">import </span><span class="s1">sys</span>
+<span class="s0">from </span><span class="s1">typing </span><span class="s0">import </span><span class="s1">TYPE_CHECKING</span><span class="s2">, </span><span class="s1">Iterable</span><span class="s2">, </span><span class="s1">List</span>
+
+<span class="s0">if </span><span class="s1">sys</span><span class="s2">.</span><span class="s1">version_info </span><span class="s2">&gt;= (</span><span class="s3">3</span><span class="s2">, </span><span class="s3">8</span><span class="s2">):</span>
+    <span class="s0">from </span><span class="s1">typing </span><span class="s0">import </span><span class="s1">Literal</span>
+<span class="s0">else</span><span class="s2">:</span>
+    <span class="s0">from </span><span class="s1">pip</span><span class="s2">.</span><span class="s1">_vendor</span><span class="s2">.</span><span class="s1">typing_extensions </span><span class="s0">import </span><span class="s1">Literal  </span><span class="s4"># pragma: no cover</span>
+
+
+<span class="s0">from </span><span class="s2">.</span><span class="s1">_loop </span><span class="s0">import </span><span class="s1">loop_last</span>
+
+<span class="s0">if </span><span class="s1">TYPE_CHECKING</span><span class="s2">:</span>
+    <span class="s0">from </span><span class="s1">pip</span><span class="s2">.</span><span class="s1">_vendor</span><span class="s2">.</span><span class="s1">rich</span><span class="s2">.</span><span class="s1">console </span><span class="s0">import </span><span class="s1">ConsoleOptions</span>
+
+
+<span class="s0">class </span><span class="s1">Box</span><span class="s2">:</span>
+    <span class="s5">&quot;&quot;&quot;Defines characters to render boxes. 
+ 
+    ┌─┬┐ top 
+    │ ││ head 
+    ├─┼┤ head_row 
+    │ ││ mid 
+    ├─┼┤ row 
+    ├─┼┤ foot_row 
+    │ ││ foot 
+    └─┴┘ bottom 
+ 
+    Args: 
+        box (str): Characters making up box. 
+        ascii (bool, optional): True if this box uses ascii characters only. Default is False. 
+    &quot;&quot;&quot;</span>
+
+    <span class="s0">def </span><span class="s1">__init__</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">box</span><span class="s2">: </span><span class="s1">str</span><span class="s2">, *, </span><span class="s1">ascii</span><span class="s2">: </span><span class="s1">bool </span><span class="s2">= </span><span class="s0">False</span><span class="s2">) </span><span class="s1">-&gt; </span><span class="s0">None</span><span class="s2">:</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">_box </span><span class="s2">= </span><span class="s1">box</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">ascii </span><span class="s2">= </span><span class="s1">ascii</span>
+        <span class="s1">line1</span><span class="s2">, </span><span class="s1">line2</span><span class="s2">, </span><span class="s1">line3</span><span class="s2">, </span><span class="s1">line4</span><span class="s2">, </span><span class="s1">line5</span><span class="s2">, </span><span class="s1">line6</span><span class="s2">, </span><span class="s1">line7</span><span class="s2">, </span><span class="s1">line8 </span><span class="s2">= </span><span class="s1">box</span><span class="s2">.</span><span class="s1">splitlines</span><span class="s2">()</span>
+        <span class="s4"># top</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">top_left</span><span class="s2">, </span><span class="s1">self</span><span class="s2">.</span><span class="s1">top</span><span class="s2">, </span><span class="s1">self</span><span class="s2">.</span><span class="s1">top_divider</span><span class="s2">, </span><span class="s1">self</span><span class="s2">.</span><span class="s1">top_right </span><span class="s2">= </span><span class="s1">iter</span><span class="s2">(</span><span class="s1">line1</span><span class="s2">)</span>
+        <span class="s4"># head</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">head_left</span><span class="s2">, </span><span class="s1">_</span><span class="s2">, </span><span class="s1">self</span><span class="s2">.</span><span class="s1">head_vertical</span><span class="s2">, </span><span class="s1">self</span><span class="s2">.</span><span class="s1">head_right </span><span class="s2">= </span><span class="s1">iter</span><span class="s2">(</span><span class="s1">line2</span><span class="s2">)</span>
+        <span class="s4"># head_row</span>
+        <span class="s2">(</span>
+            <span class="s1">self</span><span class="s2">.</span><span class="s1">head_row_left</span><span class="s2">,</span>
+            <span class="s1">self</span><span class="s2">.</span><span class="s1">head_row_horizontal</span><span class="s2">,</span>
+            <span class="s1">self</span><span class="s2">.</span><span class="s1">head_row_cross</span><span class="s2">,</span>
+            <span class="s1">self</span><span class="s2">.</span><span class="s1">head_row_right</span><span class="s2">,</span>
+        <span class="s2">) = </span><span class="s1">iter</span><span class="s2">(</span><span class="s1">line3</span><span class="s2">)</span>
+
+        <span class="s4"># mid</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">mid_left</span><span class="s2">, </span><span class="s1">_</span><span class="s2">, </span><span class="s1">self</span><span class="s2">.</span><span class="s1">mid_vertical</span><span class="s2">, </span><span class="s1">self</span><span class="s2">.</span><span class="s1">mid_right </span><span class="s2">= </span><span class="s1">iter</span><span class="s2">(</span><span class="s1">line4</span><span class="s2">)</span>
+        <span class="s4"># row</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">row_left</span><span class="s2">, </span><span class="s1">self</span><span class="s2">.</span><span class="s1">row_horizontal</span><span class="s2">, </span><span class="s1">self</span><span class="s2">.</span><span class="s1">row_cross</span><span class="s2">, </span><span class="s1">self</span><span class="s2">.</span><span class="s1">row_right </span><span class="s2">= </span><span class="s1">iter</span><span class="s2">(</span><span class="s1">line5</span><span class="s2">)</span>
+        <span class="s4"># foot_row</span>
+        <span class="s2">(</span>
+            <span class="s1">self</span><span class="s2">.</span><span class="s1">foot_row_left</span><span class="s2">,</span>
+            <span class="s1">self</span><span class="s2">.</span><span class="s1">foot_row_horizontal</span><span class="s2">,</span>
+            <span class="s1">self</span><span class="s2">.</span><span class="s1">foot_row_cross</span><span class="s2">,</span>
+            <span class="s1">self</span><span class="s2">.</span><span class="s1">foot_row_right</span><span class="s2">,</span>
+        <span class="s2">) = </span><span class="s1">iter</span><span class="s2">(</span><span class="s1">line6</span><span class="s2">)</span>
+        <span class="s4"># foot</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">foot_left</span><span class="s2">, </span><span class="s1">_</span><span class="s2">, </span><span class="s1">self</span><span class="s2">.</span><span class="s1">foot_vertical</span><span class="s2">, </span><span class="s1">self</span><span class="s2">.</span><span class="s1">foot_right </span><span class="s2">= </span><span class="s1">iter</span><span class="s2">(</span><span class="s1">line7</span><span class="s2">)</span>
+        <span class="s4"># bottom</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">bottom_left</span><span class="s2">, </span><span class="s1">self</span><span class="s2">.</span><span class="s1">bottom</span><span class="s2">, </span><span class="s1">self</span><span class="s2">.</span><span class="s1">bottom_divider</span><span class="s2">, </span><span class="s1">self</span><span class="s2">.</span><span class="s1">bottom_right </span><span class="s2">= </span><span class="s1">iter</span><span class="s2">(</span>
+            <span class="s1">line8</span>
+        <span class="s2">)</span>
+
+    <span class="s0">def </span><span class="s1">__repr__</span><span class="s2">(</span><span class="s1">self</span><span class="s2">) </span><span class="s1">-&gt; str</span><span class="s2">:</span>
+        <span class="s0">return </span><span class="s6">&quot;Box(...)&quot;</span>
+
+    <span class="s0">def </span><span class="s1">__str__</span><span class="s2">(</span><span class="s1">self</span><span class="s2">) </span><span class="s1">-&gt; str</span><span class="s2">:</span>
+        <span class="s0">return </span><span class="s1">self</span><span class="s2">.</span><span class="s1">_box</span>
+
+    <span class="s0">def </span><span class="s1">substitute</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">options</span><span class="s2">: </span><span class="s6">&quot;ConsoleOptions&quot;</span><span class="s2">, </span><span class="s1">safe</span><span class="s2">: </span><span class="s1">bool </span><span class="s2">= </span><span class="s0">True</span><span class="s2">) </span><span class="s1">-&gt; </span><span class="s6">&quot;Box&quot;</span><span class="s2">:</span>
+        <span class="s5">&quot;&quot;&quot;Substitute this box for another if it won't render due to platform issues. 
+ 
+        Args: 
+            options (ConsoleOptions): Console options used in rendering. 
+            safe (bool, optional): Substitute this for another Box if there are known problems 
+                displaying on the platform (currently only relevant on Windows). Default is True. 
+ 
+        Returns: 
+            Box: A different Box or the same Box. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">box </span><span class="s2">= </span><span class="s1">self</span>
+        <span class="s0">if </span><span class="s1">options</span><span class="s2">.</span><span class="s1">legacy_windows </span><span class="s0">and </span><span class="s1">safe</span><span class="s2">:</span>
+            <span class="s1">box </span><span class="s2">= </span><span class="s1">LEGACY_WINDOWS_SUBSTITUTIONS</span><span class="s2">.</span><span class="s1">get</span><span class="s2">(</span><span class="s1">box</span><span class="s2">, </span><span class="s1">box</span><span class="s2">)</span>
+        <span class="s0">if </span><span class="s1">options</span><span class="s2">.</span><span class="s1">ascii_only </span><span class="s0">and not </span><span class="s1">box</span><span class="s2">.</span><span class="s1">ascii</span><span class="s2">:</span>
+            <span class="s1">box </span><span class="s2">= </span><span class="s1">ASCII</span>
+        <span class="s0">return </span><span class="s1">box</span>
+
+    <span class="s0">def </span><span class="s1">get_plain_headed_box</span><span class="s2">(</span><span class="s1">self</span><span class="s2">) </span><span class="s1">-&gt; </span><span class="s6">&quot;Box&quot;</span><span class="s2">:</span>
+        <span class="s5">&quot;&quot;&quot;If this box uses special characters for the borders of the header, then 
+        return the equivalent box that does not. 
+ 
+        Returns: 
+            Box: The most similar Box that doesn't use header-specific box characters. 
+                If the current Box already satisfies this criterion, then it's returned. 
+        &quot;&quot;&quot;</span>
+        <span class="s0">return </span><span class="s1">PLAIN_HEADED_SUBSTITUTIONS</span><span class="s2">.</span><span class="s1">get</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">self</span><span class="s2">)</span>
+
+    <span class="s0">def </span><span class="s1">get_top</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">widths</span><span class="s2">: </span><span class="s1">Iterable</span><span class="s2">[</span><span class="s1">int</span><span class="s2">]) </span><span class="s1">-&gt; str</span><span class="s2">:</span>
+        <span class="s5">&quot;&quot;&quot;Get the top of a simple box. 
+ 
+        Args: 
+            widths (List[int]): Widths of columns. 
+ 
+        Returns: 
+            str: A string of box characters. 
+        &quot;&quot;&quot;</span>
+
+        <span class="s1">parts</span><span class="s2">: </span><span class="s1">List</span><span class="s2">[</span><span class="s1">str</span><span class="s2">] = []</span>
+        <span class="s1">append </span><span class="s2">= </span><span class="s1">parts</span><span class="s2">.</span><span class="s1">append</span>
+        <span class="s1">append</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">top_left</span><span class="s2">)</span>
+        <span class="s0">for </span><span class="s1">last</span><span class="s2">, </span><span class="s1">width </span><span class="s0">in </span><span class="s1">loop_last</span><span class="s2">(</span><span class="s1">widths</span><span class="s2">):</span>
+            <span class="s1">append</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">top </span><span class="s2">* </span><span class="s1">width</span><span class="s2">)</span>
+            <span class="s0">if not </span><span class="s1">last</span><span class="s2">:</span>
+                <span class="s1">append</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">top_divider</span><span class="s2">)</span>
+        <span class="s1">append</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">top_right</span><span class="s2">)</span>
+        <span class="s0">return </span><span class="s6">&quot;&quot;</span><span class="s2">.</span><span class="s1">join</span><span class="s2">(</span><span class="s1">parts</span><span class="s2">)</span>
+
+    <span class="s0">def </span><span class="s1">get_row</span><span class="s2">(</span>
+        <span class="s1">self</span><span class="s2">,</span>
+        <span class="s1">widths</span><span class="s2">: </span><span class="s1">Iterable</span><span class="s2">[</span><span class="s1">int</span><span class="s2">],</span>
+        <span class="s1">level</span><span class="s2">: </span><span class="s1">Literal</span><span class="s2">[</span><span class="s6">&quot;head&quot;</span><span class="s2">, </span><span class="s6">&quot;row&quot;</span><span class="s2">, </span><span class="s6">&quot;foot&quot;</span><span class="s2">, </span><span class="s6">&quot;mid&quot;</span><span class="s2">] = </span><span class="s6">&quot;row&quot;</span><span class="s2">,</span>
+        <span class="s1">edge</span><span class="s2">: </span><span class="s1">bool </span><span class="s2">= </span><span class="s0">True</span><span class="s2">,</span>
+    <span class="s2">) </span><span class="s1">-&gt; str</span><span class="s2">:</span>
+        <span class="s5">&quot;&quot;&quot;Get the top of a simple box. 
+ 
+        Args: 
+            width (List[int]): Widths of columns. 
+ 
+        Returns: 
+            str: A string of box characters. 
+        &quot;&quot;&quot;</span>
+        <span class="s0">if </span><span class="s1">level </span><span class="s2">== </span><span class="s6">&quot;head&quot;</span><span class="s2">:</span>
+            <span class="s1">left </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">head_row_left</span>
+            <span class="s1">horizontal </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">head_row_horizontal</span>
+            <span class="s1">cross </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">head_row_cross</span>
+            <span class="s1">right </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">head_row_right</span>
+        <span class="s0">elif </span><span class="s1">level </span><span class="s2">== </span><span class="s6">&quot;row&quot;</span><span class="s2">:</span>
+            <span class="s1">left </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">row_left</span>
+            <span class="s1">horizontal </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">row_horizontal</span>
+            <span class="s1">cross </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">row_cross</span>
+            <span class="s1">right </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">row_right</span>
+        <span class="s0">elif </span><span class="s1">level </span><span class="s2">== </span><span class="s6">&quot;mid&quot;</span><span class="s2">:</span>
+            <span class="s1">left </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">mid_left</span>
+            <span class="s1">horizontal </span><span class="s2">= </span><span class="s6">&quot; &quot;</span>
+            <span class="s1">cross </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">mid_vertical</span>
+            <span class="s1">right </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">mid_right</span>
+        <span class="s0">elif </span><span class="s1">level </span><span class="s2">== </span><span class="s6">&quot;foot&quot;</span><span class="s2">:</span>
+            <span class="s1">left </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">foot_row_left</span>
+            <span class="s1">horizontal </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">foot_row_horizontal</span>
+            <span class="s1">cross </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">foot_row_cross</span>
+            <span class="s1">right </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">foot_row_right</span>
+        <span class="s0">else</span><span class="s2">:</span>
+            <span class="s0">raise </span><span class="s1">ValueError</span><span class="s2">(</span><span class="s6">&quot;level must be 'head', 'row' or 'foot'&quot;</span><span class="s2">)</span>
+
+        <span class="s1">parts</span><span class="s2">: </span><span class="s1">List</span><span class="s2">[</span><span class="s1">str</span><span class="s2">] = []</span>
+        <span class="s1">append </span><span class="s2">= </span><span class="s1">parts</span><span class="s2">.</span><span class="s1">append</span>
+        <span class="s0">if </span><span class="s1">edge</span><span class="s2">:</span>
+            <span class="s1">append</span><span class="s2">(</span><span class="s1">left</span><span class="s2">)</span>
+        <span class="s0">for </span><span class="s1">last</span><span class="s2">, </span><span class="s1">width </span><span class="s0">in </span><span class="s1">loop_last</span><span class="s2">(</span><span class="s1">widths</span><span class="s2">):</span>
+            <span class="s1">append</span><span class="s2">(</span><span class="s1">horizontal </span><span class="s2">* </span><span class="s1">width</span><span class="s2">)</span>
+            <span class="s0">if not </span><span class="s1">last</span><span class="s2">:</span>
+                <span class="s1">append</span><span class="s2">(</span><span class="s1">cross</span><span class="s2">)</span>
+        <span class="s0">if </span><span class="s1">edge</span><span class="s2">:</span>
+            <span class="s1">append</span><span class="s2">(</span><span class="s1">right</span><span class="s2">)</span>
+        <span class="s0">return </span><span class="s6">&quot;&quot;</span><span class="s2">.</span><span class="s1">join</span><span class="s2">(</span><span class="s1">parts</span><span class="s2">)</span>
+
+    <span class="s0">def </span><span class="s1">get_bottom</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">widths</span><span class="s2">: </span><span class="s1">Iterable</span><span class="s2">[</span><span class="s1">int</span><span class="s2">]) </span><span class="s1">-&gt; str</span><span class="s2">:</span>
+        <span class="s5">&quot;&quot;&quot;Get the bottom of a simple box. 
+ 
+        Args: 
+            widths (List[int]): Widths of columns. 
+ 
+        Returns: 
+            str: A string of box characters. 
+        &quot;&quot;&quot;</span>
+
+        <span class="s1">parts</span><span class="s2">: </span><span class="s1">List</span><span class="s2">[</span><span class="s1">str</span><span class="s2">] = []</span>
+        <span class="s1">append </span><span class="s2">= </span><span class="s1">parts</span><span class="s2">.</span><span class="s1">append</span>
+        <span class="s1">append</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">bottom_left</span><span class="s2">)</span>
+        <span class="s0">for </span><span class="s1">last</span><span class="s2">, </span><span class="s1">width </span><span class="s0">in </span><span class="s1">loop_last</span><span class="s2">(</span><span class="s1">widths</span><span class="s2">):</span>
+            <span class="s1">append</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">bottom </span><span class="s2">* </span><span class="s1">width</span><span class="s2">)</span>
+            <span class="s0">if not </span><span class="s1">last</span><span class="s2">:</span>
+                <span class="s1">append</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">bottom_divider</span><span class="s2">)</span>
+        <span class="s1">append</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">bottom_right</span><span class="s2">)</span>
+        <span class="s0">return </span><span class="s6">&quot;&quot;</span><span class="s2">.</span><span class="s1">join</span><span class="s2">(</span><span class="s1">parts</span><span class="s2">)</span>
+
+
+<span class="s1">ASCII</span><span class="s2">: </span><span class="s1">Box </span><span class="s2">= </span><span class="s1">Box</span><span class="s2">(</span>
+    <span class="s6">&quot;&quot;&quot;</span><span class="s0">\ 
+</span><span class="s6">+--+ 
+| || 
+|-+| 
+| || 
+|-+| 
+|-+| 
+| || 
++--+ 
+&quot;&quot;&quot;</span><span class="s2">,</span>
+    <span class="s1">ascii</span><span class="s2">=</span><span class="s0">True</span><span class="s2">,</span>
+<span class="s2">)</span>
+
+<span class="s1">ASCII2</span><span class="s2">: </span><span class="s1">Box </span><span class="s2">= </span><span class="s1">Box</span><span class="s2">(</span>
+    <span class="s6">&quot;&quot;&quot;</span><span class="s0">\ 
+</span><span class="s6">+-++ 
+| || 
++-++ 
+| || 
++-++ 
++-++ 
+| || 
++-++ 
+&quot;&quot;&quot;</span><span class="s2">,</span>
+    <span class="s1">ascii</span><span class="s2">=</span><span class="s0">True</span><span class="s2">,</span>
+<span class="s2">)</span>
+
+<span class="s1">ASCII_DOUBLE_HEAD</span><span class="s2">: </span><span class="s1">Box </span><span class="s2">= </span><span class="s1">Box</span><span class="s2">(</span>
+    <span class="s6">&quot;&quot;&quot;</span><span class="s0">\ 
+</span><span class="s6">+-++ 
+| || 
++=++ 
+| || 
++-++ 
++-++ 
+| || 
++-++ 
+&quot;&quot;&quot;</span><span class="s2">,</span>
+    <span class="s1">ascii</span><span class="s2">=</span><span class="s0">True</span><span class="s2">,</span>
+<span class="s2">)</span>
+
+<span class="s1">SQUARE</span><span class="s2">: </span><span class="s1">Box </span><span class="s2">= </span><span class="s1">Box</span><span class="s2">(</span>
+    <span class="s6">&quot;&quot;&quot;</span><span class="s0">\ 
+</span><span class="s6">┌─┬┐ 
+│ ││ 
+├─┼┤ 
+│ ││ 
+├─┼┤ 
+├─┼┤ 
+│ ││ 
+└─┴┘ 
+&quot;&quot;&quot;</span>
+<span class="s2">)</span>
+
+<span class="s1">SQUARE_DOUBLE_HEAD</span><span class="s2">: </span><span class="s1">Box </span><span class="s2">= </span><span class="s1">Box</span><span class="s2">(</span>
+    <span class="s6">&quot;&quot;&quot;</span><span class="s0">\ 
+</span><span class="s6">┌─┬┐ 
+│ ││ 
+╞═╪╡ 
+│ ││ 
+├─┼┤ 
+├─┼┤ 
+│ ││ 
+└─┴┘ 
+&quot;&quot;&quot;</span>
+<span class="s2">)</span>
+
+<span class="s1">MINIMAL</span><span class="s2">: </span><span class="s1">Box </span><span class="s2">= </span><span class="s1">Box</span><span class="s2">(</span>
+    <span class="s6">&quot;&quot;&quot;</span><span class="s0">\ 
+  </span><span class="s6">╷  
+  │  
+╶─┼╴ 
+  │  
+╶─┼╴ 
+╶─┼╴ 
+  │  
+  ╵  
+&quot;&quot;&quot;</span>
+<span class="s2">)</span>
+
+
+<span class="s1">MINIMAL_HEAVY_HEAD</span><span class="s2">: </span><span class="s1">Box </span><span class="s2">= </span><span class="s1">Box</span><span class="s2">(</span>
+    <span class="s6">&quot;&quot;&quot;</span><span class="s0">\ 
+  </span><span class="s6">╷  
+  │  
+╺━┿╸ 
+  │  
+╶─┼╴ 
+╶─┼╴ 
+  │  
+  ╵  
+&quot;&quot;&quot;</span>
+<span class="s2">)</span>
+
+<span class="s1">MINIMAL_DOUBLE_HEAD</span><span class="s2">: </span><span class="s1">Box </span><span class="s2">= </span><span class="s1">Box</span><span class="s2">(</span>
+    <span class="s6">&quot;&quot;&quot;</span><span class="s0">\ 
+  </span><span class="s6">╷  
+  │  
+ ═╪  
+  │  
+ ─┼  
+ ─┼  
+  │  
+  ╵  
+&quot;&quot;&quot;</span>
+<span class="s2">)</span>
+
+
+<span class="s1">SIMPLE</span><span class="s2">: </span><span class="s1">Box </span><span class="s2">= </span><span class="s1">Box</span><span class="s2">(</span>
+    <span class="s6">&quot;&quot;&quot;</span><span class="s0">\ 
+    </span>
+    
+ <span class="s6">──  
+     
+     
+ ──  
+     
+     
+&quot;&quot;&quot;</span>
+<span class="s2">)</span>
+
+<span class="s1">SIMPLE_HEAD</span><span class="s2">: </span><span class="s1">Box </span><span class="s2">= </span><span class="s1">Box</span><span class="s2">(</span>
+    <span class="s6">&quot;&quot;&quot;</span><span class="s0">\ 
+    </span>
+    
+ <span class="s6">──  
+     
+     
+     
+     
+     
+&quot;&quot;&quot;</span>
+<span class="s2">)</span>
+
+
+<span class="s1">SIMPLE_HEAVY</span><span class="s2">: </span><span class="s1">Box </span><span class="s2">= </span><span class="s1">Box</span><span class="s2">(</span>
+    <span class="s6">&quot;&quot;&quot;</span><span class="s0">\ 
+    </span>
+    
+ <span class="s6">━━  
+     
+     
+ ━━  
+     
+     
+&quot;&quot;&quot;</span>
+<span class="s2">)</span>
+
+
+<span class="s1">HORIZONTALS</span><span class="s2">: </span><span class="s1">Box </span><span class="s2">= </span><span class="s1">Box</span><span class="s2">(</span>
+    <span class="s6">&quot;&quot;&quot;</span><span class="s0">\ 
+ </span><span class="s6">──  
+     
+ ──  
+     
+ ──  
+ ──  
+     
+ ──  
+&quot;&quot;&quot;</span>
+<span class="s2">)</span>
+
+<span class="s1">ROUNDED</span><span class="s2">: </span><span class="s1">Box </span><span class="s2">= </span><span class="s1">Box</span><span class="s2">(</span>
+    <span class="s6">&quot;&quot;&quot;</span><span class="s0">\ 
+</span><span class="s6">╭─┬╮ 
+│ ││ 
+├─┼┤ 
+│ ││ 
+├─┼┤ 
+├─┼┤ 
+│ ││ 
+╰─┴╯ 
+&quot;&quot;&quot;</span>
+<span class="s2">)</span>
+
+<span class="s1">HEAVY</span><span class="s2">: </span><span class="s1">Box </span><span class="s2">= </span><span class="s1">Box</span><span class="s2">(</span>
+    <span class="s6">&quot;&quot;&quot;</span><span class="s0">\ 
+</span><span class="s6">┏━┳┓ 
+┃ ┃┃ 
+┣━╋┫ 
+┃ ┃┃ 
+┣━╋┫ 
+┣━╋┫ 
+┃ ┃┃ 
+┗━┻┛ 
+&quot;&quot;&quot;</span>
+<span class="s2">)</span>
+
+<span class="s1">HEAVY_EDGE</span><span class="s2">: </span><span class="s1">Box </span><span class="s2">= </span><span class="s1">Box</span><span class="s2">(</span>
+    <span class="s6">&quot;&quot;&quot;</span><span class="s0">\ 
+</span><span class="s6">┏━┯┓ 
+┃ │┃ 
+┠─┼┨ 
+┃ │┃ 
+┠─┼┨ 
+┠─┼┨ 
+┃ │┃ 
+┗━┷┛ 
+&quot;&quot;&quot;</span>
+<span class="s2">)</span>
+
+<span class="s1">HEAVY_HEAD</span><span class="s2">: </span><span class="s1">Box </span><span class="s2">= </span><span class="s1">Box</span><span class="s2">(</span>
+    <span class="s6">&quot;&quot;&quot;</span><span class="s0">\ 
+</span><span class="s6">┏━┳┓ 
+┃ ┃┃ 
+┡━╇┩ 
+│ ││ 
+├─┼┤ 
+├─┼┤ 
+│ ││ 
+└─┴┘ 
+&quot;&quot;&quot;</span>
+<span class="s2">)</span>
+
+<span class="s1">DOUBLE</span><span class="s2">: </span><span class="s1">Box </span><span class="s2">= </span><span class="s1">Box</span><span class="s2">(</span>
+    <span class="s6">&quot;&quot;&quot;</span><span class="s0">\ 
+</span><span class="s6">╔═╦╗ 
+║ ║║ 
+╠═╬╣ 
+║ ║║ 
+╠═╬╣ 
+╠═╬╣ 
+║ ║║ 
+╚═╩╝ 
+&quot;&quot;&quot;</span>
+<span class="s2">)</span>
+
+<span class="s1">DOUBLE_EDGE</span><span class="s2">: </span><span class="s1">Box </span><span class="s2">= </span><span class="s1">Box</span><span class="s2">(</span>
+    <span class="s6">&quot;&quot;&quot;</span><span class="s0">\ 
+</span><span class="s6">╔═╤╗ 
+║ │║ 
+╟─┼╢ 
+║ │║ 
+╟─┼╢ 
+╟─┼╢ 
+║ │║ 
+╚═╧╝ 
+&quot;&quot;&quot;</span>
+<span class="s2">)</span>
+
+<span class="s1">MARKDOWN</span><span class="s2">: </span><span class="s1">Box </span><span class="s2">= </span><span class="s1">Box</span><span class="s2">(</span>
+    <span class="s6">&quot;&quot;&quot;</span><span class="s0">\ 
+    </span>
+<span class="s6">| || 
+|-|| 
+| || 
+|-|| 
+|-|| 
+| || 
+     
+&quot;&quot;&quot;</span><span class="s2">,</span>
+    <span class="s1">ascii</span><span class="s2">=</span><span class="s0">True</span><span class="s2">,</span>
+<span class="s2">)</span>
+
+<span class="s4"># Map Boxes that don't render with raster fonts on to equivalent that do</span>
+<span class="s1">LEGACY_WINDOWS_SUBSTITUTIONS </span><span class="s2">= {</span>
+    <span class="s1">ROUNDED</span><span class="s2">: </span><span class="s1">SQUARE</span><span class="s2">,</span>
+    <span class="s1">MINIMAL_HEAVY_HEAD</span><span class="s2">: </span><span class="s1">MINIMAL</span><span class="s2">,</span>
+    <span class="s1">SIMPLE_HEAVY</span><span class="s2">: </span><span class="s1">SIMPLE</span><span class="s2">,</span>
+    <span class="s1">HEAVY</span><span class="s2">: </span><span class="s1">SQUARE</span><span class="s2">,</span>
+    <span class="s1">HEAVY_EDGE</span><span class="s2">: </span><span class="s1">SQUARE</span><span class="s2">,</span>
+    <span class="s1">HEAVY_HEAD</span><span class="s2">: </span><span class="s1">SQUARE</span><span class="s2">,</span>
+<span class="s2">}</span>
+
+<span class="s4"># Map headed boxes to their headerless equivalents</span>
+<span class="s1">PLAIN_HEADED_SUBSTITUTIONS </span><span class="s2">= {</span>
+    <span class="s1">HEAVY_HEAD</span><span class="s2">: </span><span class="s1">SQUARE</span><span class="s2">,</span>
+    <span class="s1">SQUARE_DOUBLE_HEAD</span><span class="s2">: </span><span class="s1">SQUARE</span><span class="s2">,</span>
+    <span class="s1">MINIMAL_DOUBLE_HEAD</span><span class="s2">: </span><span class="s1">MINIMAL</span><span class="s2">,</span>
+    <span class="s1">MINIMAL_HEAVY_HEAD</span><span class="s2">: </span><span class="s1">MINIMAL</span><span class="s2">,</span>
+    <span class="s1">ASCII_DOUBLE_HEAD</span><span class="s2">: </span><span class="s1">ASCII2</span><span class="s2">,</span>
+<span class="s2">}</span>
+
+
+<span class="s0">if </span><span class="s1">__name__ </span><span class="s2">== </span><span class="s6">&quot;__main__&quot;</span><span class="s2">:  </span><span class="s4"># pragma: no cover</span>
+
+    <span class="s0">from </span><span class="s1">pip</span><span class="s2">.</span><span class="s1">_vendor</span><span class="s2">.</span><span class="s1">rich</span><span class="s2">.</span><span class="s1">columns </span><span class="s0">import </span><span class="s1">Columns</span>
+    <span class="s0">from </span><span class="s1">pip</span><span class="s2">.</span><span class="s1">_vendor</span><span class="s2">.</span><span class="s1">rich</span><span class="s2">.</span><span class="s1">panel </span><span class="s0">import </span><span class="s1">Panel</span>
+
+    <span class="s0">from </span><span class="s2">. </span><span class="s0">import </span><span class="s1">box </span><span class="s0">as </span><span class="s1">box</span>
+    <span class="s0">from </span><span class="s2">.</span><span class="s1">console </span><span class="s0">import </span><span class="s1">Console</span>
+    <span class="s0">from </span><span class="s2">.</span><span class="s1">table </span><span class="s0">import </span><span class="s1">Table</span>
+    <span class="s0">from </span><span class="s2">.</span><span class="s1">text </span><span class="s0">import </span><span class="s1">Text</span>
+
+    <span class="s1">console </span><span class="s2">= </span><span class="s1">Console</span><span class="s2">(</span><span class="s1">record</span><span class="s2">=</span><span class="s0">True</span><span class="s2">)</span>
+
+    <span class="s1">BOXES </span><span class="s2">= [</span>
+        <span class="s6">&quot;ASCII&quot;</span><span class="s2">,</span>
+        <span class="s6">&quot;ASCII2&quot;</span><span class="s2">,</span>
+        <span class="s6">&quot;ASCII_DOUBLE_HEAD&quot;</span><span class="s2">,</span>
+        <span class="s6">&quot;SQUARE&quot;</span><span class="s2">,</span>
+        <span class="s6">&quot;SQUARE_DOUBLE_HEAD&quot;</span><span class="s2">,</span>
+        <span class="s6">&quot;MINIMAL&quot;</span><span class="s2">,</span>
+        <span class="s6">&quot;MINIMAL_HEAVY_HEAD&quot;</span><span class="s2">,</span>
+        <span class="s6">&quot;MINIMAL_DOUBLE_HEAD&quot;</span><span class="s2">,</span>
+        <span class="s6">&quot;SIMPLE&quot;</span><span class="s2">,</span>
+        <span class="s6">&quot;SIMPLE_HEAD&quot;</span><span class="s2">,</span>
+        <span class="s6">&quot;SIMPLE_HEAVY&quot;</span><span class="s2">,</span>
+        <span class="s6">&quot;HORIZONTALS&quot;</span><span class="s2">,</span>
+        <span class="s6">&quot;ROUNDED&quot;</span><span class="s2">,</span>
+        <span class="s6">&quot;HEAVY&quot;</span><span class="s2">,</span>
+        <span class="s6">&quot;HEAVY_EDGE&quot;</span><span class="s2">,</span>
+        <span class="s6">&quot;HEAVY_HEAD&quot;</span><span class="s2">,</span>
+        <span class="s6">&quot;DOUBLE&quot;</span><span class="s2">,</span>
+        <span class="s6">&quot;DOUBLE_EDGE&quot;</span><span class="s2">,</span>
+        <span class="s6">&quot;MARKDOWN&quot;</span><span class="s2">,</span>
+    <span class="s2">]</span>
+
+    <span class="s1">console</span><span class="s2">.</span><span class="s1">print</span><span class="s2">(</span><span class="s1">Panel</span><span class="s2">(</span><span class="s6">&quot;[bold green]Box Constants&quot;</span><span class="s2">, </span><span class="s1">style</span><span class="s2">=</span><span class="s6">&quot;green&quot;</span><span class="s2">), </span><span class="s1">justify</span><span class="s2">=</span><span class="s6">&quot;center&quot;</span><span class="s2">)</span>
+    <span class="s1">console</span><span class="s2">.</span><span class="s1">print</span><span class="s2">()</span>
+
+    <span class="s1">columns </span><span class="s2">= </span><span class="s1">Columns</span><span class="s2">(</span><span class="s1">expand</span><span class="s2">=</span><span class="s0">True</span><span class="s2">, </span><span class="s1">padding</span><span class="s2">=</span><span class="s3">2</span><span class="s2">)</span>
+    <span class="s0">for </span><span class="s1">box_name </span><span class="s0">in </span><span class="s1">sorted</span><span class="s2">(</span><span class="s1">BOXES</span><span class="s2">):</span>
+        <span class="s1">table </span><span class="s2">= </span><span class="s1">Table</span><span class="s2">(</span>
+            <span class="s1">show_footer</span><span class="s2">=</span><span class="s0">True</span><span class="s2">, </span><span class="s1">style</span><span class="s2">=</span><span class="s6">&quot;dim&quot;</span><span class="s2">, </span><span class="s1">border_style</span><span class="s2">=</span><span class="s6">&quot;not dim&quot;</span><span class="s2">, </span><span class="s1">expand</span><span class="s2">=</span><span class="s0">True</span>
+        <span class="s2">)</span>
+        <span class="s1">table</span><span class="s2">.</span><span class="s1">add_column</span><span class="s2">(</span><span class="s6">&quot;Header 1&quot;</span><span class="s2">, </span><span class="s6">&quot;Footer 1&quot;</span><span class="s2">)</span>
+        <span class="s1">table</span><span class="s2">.</span><span class="s1">add_column</span><span class="s2">(</span><span class="s6">&quot;Header 2&quot;</span><span class="s2">, </span><span class="s6">&quot;Footer 2&quot;</span><span class="s2">)</span>
+        <span class="s1">table</span><span class="s2">.</span><span class="s1">add_row</span><span class="s2">(</span><span class="s6">&quot;Cell&quot;</span><span class="s2">, </span><span class="s6">&quot;Cell&quot;</span><span class="s2">)</span>
+        <span class="s1">table</span><span class="s2">.</span><span class="s1">add_row</span><span class="s2">(</span><span class="s6">&quot;Cell&quot;</span><span class="s2">, </span><span class="s6">&quot;Cell&quot;</span><span class="s2">)</span>
+        <span class="s1">table</span><span class="s2">.</span><span class="s1">box </span><span class="s2">= </span><span class="s1">getattr</span><span class="s2">(</span><span class="s1">box</span><span class="s2">, </span><span class="s1">box_name</span><span class="s2">)</span>
+        <span class="s1">table</span><span class="s2">.</span><span class="s1">title </span><span class="s2">= </span><span class="s1">Text</span><span class="s2">(</span><span class="s6">f&quot;box.</span><span class="s0">{</span><span class="s1">box_name</span><span class="s0">}</span><span class="s6">&quot;</span><span class="s2">, </span><span class="s1">style</span><span class="s2">=</span><span class="s6">&quot;magenta&quot;</span><span class="s2">)</span>
+        <span class="s1">columns</span><span class="s2">.</span><span class="s1">add_renderable</span><span class="s2">(</span><span class="s1">table</span><span class="s2">)</span>
+    <span class="s1">console</span><span class="s2">.</span><span class="s1">print</span><span class="s2">(</span><span class="s1">columns</span><span class="s2">)</span>
+
+    <span class="s4"># console.save_svg(&quot;box.svg&quot;)</span>
+</pre>
+</body>
+</html>

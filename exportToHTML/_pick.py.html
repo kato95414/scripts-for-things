@@ -1,0 +1,38 @@
+<html>
+<head>
+<title>_pick.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cf8e6d;}
+.s1 { color: #bcbec4;}
+.s2 { color: #bcbec4;}
+.s3 { color: #5f826b; font-style: italic;}
+.s4 { color: #6aab73;}
+</style>
+</head>
+<body bgcolor="#1e1f22">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+_pick.py</font>
+</center></td></tr></table>
+<pre><span class="s0">from </span><span class="s1">typing </span><span class="s0">import </span><span class="s1">Optional</span>
+
+
+<span class="s0">def </span><span class="s1">pick_bool</span><span class="s2">(*</span><span class="s1">values</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">bool</span><span class="s2">]) </span><span class="s1">-&gt; bool</span><span class="s2">:</span>
+    <span class="s3">&quot;&quot;&quot;Pick the first non-none bool or return the last value. 
+ 
+    Args: 
+        *values (bool): Any number of boolean or None values. 
+ 
+    Returns: 
+        bool: First non-none boolean. 
+    &quot;&quot;&quot;</span>
+    <span class="s0">assert </span><span class="s1">values</span><span class="s2">, </span><span class="s4">&quot;1 or more values required&quot;</span>
+    <span class="s0">for </span><span class="s1">value </span><span class="s0">in </span><span class="s1">values</span><span class="s2">:</span>
+        <span class="s0">if </span><span class="s1">value </span><span class="s0">is not None</span><span class="s2">:</span>
+            <span class="s0">return </span><span class="s1">value</span>
+    <span class="s0">return </span><span class="s1">bool</span><span class="s2">(</span><span class="s1">value</span><span class="s2">)</span>
+</pre>
+</body>
+</html>

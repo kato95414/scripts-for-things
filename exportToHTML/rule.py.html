@@ -1,0 +1,153 @@
+<html>
+<head>
+<title>rule.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cf8e6d;}
+.s1 { color: #bcbec4;}
+.s2 { color: #bcbec4;}
+.s3 { color: #5f826b; font-style: italic;}
+.s4 { color: #6aab73;}
+.s5 { color: #2aacb8;}
+.s6 { color: #7a7e85;}
+</style>
+</head>
+<body bgcolor="#1e1f22">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+rule.py</font>
+</center></td></tr></table>
+<pre><span class="s0">from </span><span class="s1">typing </span><span class="s0">import </span><span class="s1">Union</span>
+
+<span class="s0">from </span><span class="s2">.</span><span class="s1">align </span><span class="s0">import </span><span class="s1">AlignMethod</span>
+<span class="s0">from </span><span class="s2">.</span><span class="s1">cells </span><span class="s0">import </span><span class="s1">cell_len</span><span class="s2">, </span><span class="s1">set_cell_size</span>
+<span class="s0">from </span><span class="s2">.</span><span class="s1">console </span><span class="s0">import </span><span class="s1">Console</span><span class="s2">, </span><span class="s1">ConsoleOptions</span><span class="s2">, </span><span class="s1">RenderResult</span>
+<span class="s0">from </span><span class="s2">.</span><span class="s1">jupyter </span><span class="s0">import </span><span class="s1">JupyterMixin</span>
+<span class="s0">from </span><span class="s2">.</span><span class="s1">measure </span><span class="s0">import </span><span class="s1">Measurement</span>
+<span class="s0">from </span><span class="s2">.</span><span class="s1">style </span><span class="s0">import </span><span class="s1">Style</span>
+<span class="s0">from </span><span class="s2">.</span><span class="s1">text </span><span class="s0">import </span><span class="s1">Text</span>
+
+
+<span class="s0">class </span><span class="s1">Rule</span><span class="s2">(</span><span class="s1">JupyterMixin</span><span class="s2">):</span>
+    <span class="s3">&quot;&quot;&quot;A console renderable to draw a horizontal rule (line). 
+ 
+    Args: 
+        title (Union[str, Text], optional): Text to render in the rule. Defaults to &quot;&quot;. 
+        characters (str, optional): Character(s) used to draw the line. Defaults to &quot;─&quot;. 
+        style (StyleType, optional): Style of Rule. Defaults to &quot;rule.line&quot;. 
+        end (str, optional): Character at end of Rule. defaults to &quot;\\\\n&quot; 
+        align (str, optional): How to align the title, one of &quot;left&quot;, &quot;center&quot;, or &quot;right&quot;. Defaults to &quot;center&quot;. 
+    &quot;&quot;&quot;</span>
+
+    <span class="s0">def </span><span class="s1">__init__</span><span class="s2">(</span>
+        <span class="s1">self</span><span class="s2">,</span>
+        <span class="s1">title</span><span class="s2">: </span><span class="s1">Union</span><span class="s2">[</span><span class="s1">str</span><span class="s2">, </span><span class="s1">Text</span><span class="s2">] = </span><span class="s4">&quot;&quot;</span><span class="s2">,</span>
+        <span class="s2">*,</span>
+        <span class="s1">characters</span><span class="s2">: </span><span class="s1">str </span><span class="s2">= </span><span class="s4">&quot;─&quot;</span><span class="s2">,</span>
+        <span class="s1">style</span><span class="s2">: </span><span class="s1">Union</span><span class="s2">[</span><span class="s1">str</span><span class="s2">, </span><span class="s1">Style</span><span class="s2">] = </span><span class="s4">&quot;rule.line&quot;</span><span class="s2">,</span>
+        <span class="s1">end</span><span class="s2">: </span><span class="s1">str </span><span class="s2">= </span><span class="s4">&quot;</span><span class="s0">\n</span><span class="s4">&quot;</span><span class="s2">,</span>
+        <span class="s1">align</span><span class="s2">: </span><span class="s1">AlignMethod </span><span class="s2">= </span><span class="s4">&quot;center&quot;</span><span class="s2">,</span>
+    <span class="s2">) </span><span class="s1">-&gt; </span><span class="s0">None</span><span class="s2">:</span>
+        <span class="s0">if </span><span class="s1">cell_len</span><span class="s2">(</span><span class="s1">characters</span><span class="s2">) &lt; </span><span class="s5">1</span><span class="s2">:</span>
+            <span class="s0">raise </span><span class="s1">ValueError</span><span class="s2">(</span>
+                <span class="s4">&quot;'characters' argument must have a cell width of at least 1&quot;</span>
+            <span class="s2">)</span>
+        <span class="s0">if </span><span class="s1">align </span><span class="s0">not in </span><span class="s2">(</span><span class="s4">&quot;left&quot;</span><span class="s2">, </span><span class="s4">&quot;center&quot;</span><span class="s2">, </span><span class="s4">&quot;right&quot;</span><span class="s2">):</span>
+            <span class="s0">raise </span><span class="s1">ValueError</span><span class="s2">(</span>
+                <span class="s4">f'invalid value for align, expected &quot;left&quot;, &quot;center&quot;, &quot;right&quot; (not </span><span class="s0">{</span><span class="s1">align</span><span class="s0">!r}</span><span class="s4">)'</span>
+            <span class="s2">)</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">title </span><span class="s2">= </span><span class="s1">title</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">characters </span><span class="s2">= </span><span class="s1">characters</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">style </span><span class="s2">= </span><span class="s1">style</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">end </span><span class="s2">= </span><span class="s1">end</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">align </span><span class="s2">= </span><span class="s1">align</span>
+
+    <span class="s0">def </span><span class="s1">__repr__</span><span class="s2">(</span><span class="s1">self</span><span class="s2">) </span><span class="s1">-&gt; str</span><span class="s2">:</span>
+        <span class="s0">return </span><span class="s4">f&quot;Rule(</span><span class="s0">{</span><span class="s1">self</span><span class="s2">.</span><span class="s1">title</span><span class="s0">!r}</span><span class="s4">, </span><span class="s0">{</span><span class="s1">self</span><span class="s2">.</span><span class="s1">characters</span><span class="s0">!r}</span><span class="s4">)&quot;</span>
+
+    <span class="s0">def </span><span class="s1">__rich_console__</span><span class="s2">(</span>
+        <span class="s1">self</span><span class="s2">, </span><span class="s1">console</span><span class="s2">: </span><span class="s1">Console</span><span class="s2">, </span><span class="s1">options</span><span class="s2">: </span><span class="s1">ConsoleOptions</span>
+    <span class="s2">) </span><span class="s1">-&gt; RenderResult</span><span class="s2">:</span>
+        <span class="s1">width </span><span class="s2">= </span><span class="s1">options</span><span class="s2">.</span><span class="s1">max_width</span>
+
+        <span class="s1">characters </span><span class="s2">= (</span>
+            <span class="s4">&quot;-&quot;</span>
+            <span class="s0">if </span><span class="s2">(</span><span class="s1">options</span><span class="s2">.</span><span class="s1">ascii_only </span><span class="s0">and not </span><span class="s1">self</span><span class="s2">.</span><span class="s1">characters</span><span class="s2">.</span><span class="s1">isascii</span><span class="s2">())</span>
+            <span class="s0">else </span><span class="s1">self</span><span class="s2">.</span><span class="s1">characters</span>
+        <span class="s2">)</span>
+
+        <span class="s1">chars_len </span><span class="s2">= </span><span class="s1">cell_len</span><span class="s2">(</span><span class="s1">characters</span><span class="s2">)</span>
+        <span class="s0">if not </span><span class="s1">self</span><span class="s2">.</span><span class="s1">title</span><span class="s2">:</span>
+            <span class="s0">yield </span><span class="s1">self</span><span class="s2">.</span><span class="s1">_rule_line</span><span class="s2">(</span><span class="s1">chars_len</span><span class="s2">, </span><span class="s1">width</span><span class="s2">)</span>
+            <span class="s0">return</span>
+
+        <span class="s0">if </span><span class="s1">isinstance</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">title</span><span class="s2">, </span><span class="s1">Text</span><span class="s2">):</span>
+            <span class="s1">title_text </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">title</span>
+        <span class="s0">else</span><span class="s2">:</span>
+            <span class="s1">title_text </span><span class="s2">= </span><span class="s1">console</span><span class="s2">.</span><span class="s1">render_str</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">title</span><span class="s2">, </span><span class="s1">style</span><span class="s2">=</span><span class="s4">&quot;rule.text&quot;</span><span class="s2">)</span>
+
+        <span class="s1">title_text</span><span class="s2">.</span><span class="s1">plain </span><span class="s2">= </span><span class="s1">title_text</span><span class="s2">.</span><span class="s1">plain</span><span class="s2">.</span><span class="s1">replace</span><span class="s2">(</span><span class="s4">&quot;</span><span class="s0">\n</span><span class="s4">&quot;</span><span class="s2">, </span><span class="s4">&quot; &quot;</span><span class="s2">)</span>
+        <span class="s1">title_text</span><span class="s2">.</span><span class="s1">expand_tabs</span><span class="s2">()</span>
+
+        <span class="s1">required_space </span><span class="s2">= </span><span class="s5">4 </span><span class="s0">if </span><span class="s1">self</span><span class="s2">.</span><span class="s1">align </span><span class="s2">== </span><span class="s4">&quot;center&quot; </span><span class="s0">else </span><span class="s5">2</span>
+        <span class="s1">truncate_width </span><span class="s2">= </span><span class="s1">max</span><span class="s2">(</span><span class="s5">0</span><span class="s2">, </span><span class="s1">width </span><span class="s2">- </span><span class="s1">required_space</span><span class="s2">)</span>
+        <span class="s0">if not </span><span class="s1">truncate_width</span><span class="s2">:</span>
+            <span class="s0">yield </span><span class="s1">self</span><span class="s2">.</span><span class="s1">_rule_line</span><span class="s2">(</span><span class="s1">chars_len</span><span class="s2">, </span><span class="s1">width</span><span class="s2">)</span>
+            <span class="s0">return</span>
+
+        <span class="s1">rule_text </span><span class="s2">= </span><span class="s1">Text</span><span class="s2">(</span><span class="s1">end</span><span class="s2">=</span><span class="s1">self</span><span class="s2">.</span><span class="s1">end</span><span class="s2">)</span>
+        <span class="s0">if </span><span class="s1">self</span><span class="s2">.</span><span class="s1">align </span><span class="s2">== </span><span class="s4">&quot;center&quot;</span><span class="s2">:</span>
+            <span class="s1">title_text</span><span class="s2">.</span><span class="s1">truncate</span><span class="s2">(</span><span class="s1">truncate_width</span><span class="s2">, </span><span class="s1">overflow</span><span class="s2">=</span><span class="s4">&quot;ellipsis&quot;</span><span class="s2">)</span>
+            <span class="s1">side_width </span><span class="s2">= (</span><span class="s1">width </span><span class="s2">- </span><span class="s1">cell_len</span><span class="s2">(</span><span class="s1">title_text</span><span class="s2">.</span><span class="s1">plain</span><span class="s2">)) // </span><span class="s5">2</span>
+            <span class="s1">left </span><span class="s2">= </span><span class="s1">Text</span><span class="s2">(</span><span class="s1">characters </span><span class="s2">* (</span><span class="s1">side_width </span><span class="s2">// </span><span class="s1">chars_len </span><span class="s2">+ </span><span class="s5">1</span><span class="s2">))</span>
+            <span class="s1">left</span><span class="s2">.</span><span class="s1">truncate</span><span class="s2">(</span><span class="s1">side_width </span><span class="s2">- </span><span class="s5">1</span><span class="s2">)</span>
+            <span class="s1">right_length </span><span class="s2">= </span><span class="s1">width </span><span class="s2">- </span><span class="s1">cell_len</span><span class="s2">(</span><span class="s1">left</span><span class="s2">.</span><span class="s1">plain</span><span class="s2">) - </span><span class="s1">cell_len</span><span class="s2">(</span><span class="s1">title_text</span><span class="s2">.</span><span class="s1">plain</span><span class="s2">)</span>
+            <span class="s1">right </span><span class="s2">= </span><span class="s1">Text</span><span class="s2">(</span><span class="s1">characters </span><span class="s2">* (</span><span class="s1">side_width </span><span class="s2">// </span><span class="s1">chars_len </span><span class="s2">+ </span><span class="s5">1</span><span class="s2">))</span>
+            <span class="s1">right</span><span class="s2">.</span><span class="s1">truncate</span><span class="s2">(</span><span class="s1">right_length</span><span class="s2">)</span>
+            <span class="s1">rule_text</span><span class="s2">.</span><span class="s1">append</span><span class="s2">(</span><span class="s1">left</span><span class="s2">.</span><span class="s1">plain </span><span class="s2">+ </span><span class="s4">&quot; &quot;</span><span class="s2">, </span><span class="s1">self</span><span class="s2">.</span><span class="s1">style</span><span class="s2">)</span>
+            <span class="s1">rule_text</span><span class="s2">.</span><span class="s1">append</span><span class="s2">(</span><span class="s1">title_text</span><span class="s2">)</span>
+            <span class="s1">rule_text</span><span class="s2">.</span><span class="s1">append</span><span class="s2">(</span><span class="s4">&quot; &quot; </span><span class="s2">+ </span><span class="s1">right</span><span class="s2">.</span><span class="s1">plain</span><span class="s2">, </span><span class="s1">self</span><span class="s2">.</span><span class="s1">style</span><span class="s2">)</span>
+        <span class="s0">elif </span><span class="s1">self</span><span class="s2">.</span><span class="s1">align </span><span class="s2">== </span><span class="s4">&quot;left&quot;</span><span class="s2">:</span>
+            <span class="s1">title_text</span><span class="s2">.</span><span class="s1">truncate</span><span class="s2">(</span><span class="s1">truncate_width</span><span class="s2">, </span><span class="s1">overflow</span><span class="s2">=</span><span class="s4">&quot;ellipsis&quot;</span><span class="s2">)</span>
+            <span class="s1">rule_text</span><span class="s2">.</span><span class="s1">append</span><span class="s2">(</span><span class="s1">title_text</span><span class="s2">)</span>
+            <span class="s1">rule_text</span><span class="s2">.</span><span class="s1">append</span><span class="s2">(</span><span class="s4">&quot; &quot;</span><span class="s2">)</span>
+            <span class="s1">rule_text</span><span class="s2">.</span><span class="s1">append</span><span class="s2">(</span><span class="s1">characters </span><span class="s2">* (</span><span class="s1">width </span><span class="s2">- </span><span class="s1">rule_text</span><span class="s2">.</span><span class="s1">cell_len</span><span class="s2">), </span><span class="s1">self</span><span class="s2">.</span><span class="s1">style</span><span class="s2">)</span>
+        <span class="s0">elif </span><span class="s1">self</span><span class="s2">.</span><span class="s1">align </span><span class="s2">== </span><span class="s4">&quot;right&quot;</span><span class="s2">:</span>
+            <span class="s1">title_text</span><span class="s2">.</span><span class="s1">truncate</span><span class="s2">(</span><span class="s1">truncate_width</span><span class="s2">, </span><span class="s1">overflow</span><span class="s2">=</span><span class="s4">&quot;ellipsis&quot;</span><span class="s2">)</span>
+            <span class="s1">rule_text</span><span class="s2">.</span><span class="s1">append</span><span class="s2">(</span><span class="s1">characters </span><span class="s2">* (</span><span class="s1">width </span><span class="s2">- </span><span class="s1">title_text</span><span class="s2">.</span><span class="s1">cell_len </span><span class="s2">- </span><span class="s5">1</span><span class="s2">), </span><span class="s1">self</span><span class="s2">.</span><span class="s1">style</span><span class="s2">)</span>
+            <span class="s1">rule_text</span><span class="s2">.</span><span class="s1">append</span><span class="s2">(</span><span class="s4">&quot; &quot;</span><span class="s2">)</span>
+            <span class="s1">rule_text</span><span class="s2">.</span><span class="s1">append</span><span class="s2">(</span><span class="s1">title_text</span><span class="s2">)</span>
+
+        <span class="s1">rule_text</span><span class="s2">.</span><span class="s1">plain </span><span class="s2">= </span><span class="s1">set_cell_size</span><span class="s2">(</span><span class="s1">rule_text</span><span class="s2">.</span><span class="s1">plain</span><span class="s2">, </span><span class="s1">width</span><span class="s2">)</span>
+        <span class="s0">yield </span><span class="s1">rule_text</span>
+
+    <span class="s0">def </span><span class="s1">_rule_line</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">chars_len</span><span class="s2">: </span><span class="s1">int</span><span class="s2">, </span><span class="s1">width</span><span class="s2">: </span><span class="s1">int</span><span class="s2">) </span><span class="s1">-&gt; Text</span><span class="s2">:</span>
+        <span class="s1">rule_text </span><span class="s2">= </span><span class="s1">Text</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">characters </span><span class="s2">* ((</span><span class="s1">width </span><span class="s2">// </span><span class="s1">chars_len</span><span class="s2">) + </span><span class="s5">1</span><span class="s2">), </span><span class="s1">self</span><span class="s2">.</span><span class="s1">style</span><span class="s2">)</span>
+        <span class="s1">rule_text</span><span class="s2">.</span><span class="s1">truncate</span><span class="s2">(</span><span class="s1">width</span><span class="s2">)</span>
+        <span class="s1">rule_text</span><span class="s2">.</span><span class="s1">plain </span><span class="s2">= </span><span class="s1">set_cell_size</span><span class="s2">(</span><span class="s1">rule_text</span><span class="s2">.</span><span class="s1">plain</span><span class="s2">, </span><span class="s1">width</span><span class="s2">)</span>
+        <span class="s0">return </span><span class="s1">rule_text</span>
+
+    <span class="s0">def </span><span class="s1">__rich_measure__</span><span class="s2">(</span>
+        <span class="s1">self</span><span class="s2">, </span><span class="s1">console</span><span class="s2">: </span><span class="s1">Console</span><span class="s2">, </span><span class="s1">options</span><span class="s2">: </span><span class="s1">ConsoleOptions</span>
+    <span class="s2">) </span><span class="s1">-&gt; Measurement</span><span class="s2">:</span>
+        <span class="s0">return </span><span class="s1">Measurement</span><span class="s2">(</span><span class="s5">1</span><span class="s2">, </span><span class="s5">1</span><span class="s2">)</span>
+
+
+<span class="s0">if </span><span class="s1">__name__ </span><span class="s2">== </span><span class="s4">&quot;__main__&quot;</span><span class="s2">:  </span><span class="s6"># pragma: no cover</span>
+    <span class="s0">import </span><span class="s1">sys</span>
+
+    <span class="s0">from </span><span class="s1">pip</span><span class="s2">.</span><span class="s1">_vendor</span><span class="s2">.</span><span class="s1">rich</span><span class="s2">.</span><span class="s1">console </span><span class="s0">import </span><span class="s1">Console</span>
+
+    <span class="s0">try</span><span class="s2">:</span>
+        <span class="s1">text </span><span class="s2">= </span><span class="s1">sys</span><span class="s2">.</span><span class="s1">argv</span><span class="s2">[</span><span class="s5">1</span><span class="s2">]</span>
+    <span class="s0">except </span><span class="s1">IndexError</span><span class="s2">:</span>
+        <span class="s1">text </span><span class="s2">= </span><span class="s4">&quot;Hello, World&quot;</span>
+    <span class="s1">console </span><span class="s2">= </span><span class="s1">Console</span><span class="s2">()</span>
+    <span class="s1">console</span><span class="s2">.</span><span class="s1">print</span><span class="s2">(</span><span class="s1">Rule</span><span class="s2">(</span><span class="s1">title</span><span class="s2">=</span><span class="s1">text</span><span class="s2">))</span>
+
+    <span class="s1">console </span><span class="s2">= </span><span class="s1">Console</span><span class="s2">()</span>
+    <span class="s1">console</span><span class="s2">.</span><span class="s1">print</span><span class="s2">(</span><span class="s1">Rule</span><span class="s2">(</span><span class="s4">&quot;foo&quot;</span><span class="s2">), </span><span class="s1">width</span><span class="s2">=</span><span class="s5">4</span><span class="s2">)</span>
+</pre>
+</body>
+</html>

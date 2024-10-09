@@ -1,0 +1,183 @@
+<html>
+<head>
+<title>_ratio.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cf8e6d;}
+.s1 { color: #bcbec4;}
+.s2 { color: #bcbec4;}
+.s3 { color: #2aacb8;}
+.s4 { color: #7a7e85;}
+.s5 { color: #5f826b; font-style: italic;}
+.s6 { color: #6aab73;}
+</style>
+</head>
+<body bgcolor="#1e1f22">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+_ratio.py</font>
+</center></td></tr></table>
+<pre><span class="s0">import </span><span class="s1">sys</span>
+<span class="s0">from </span><span class="s1">fractions </span><span class="s0">import </span><span class="s1">Fraction</span>
+<span class="s0">from </span><span class="s1">math </span><span class="s0">import </span><span class="s1">ceil</span>
+<span class="s0">from </span><span class="s1">typing </span><span class="s0">import </span><span class="s1">cast</span><span class="s2">, </span><span class="s1">List</span><span class="s2">, </span><span class="s1">Optional</span><span class="s2">, </span><span class="s1">Sequence</span>
+
+<span class="s0">if </span><span class="s1">sys</span><span class="s2">.</span><span class="s1">version_info </span><span class="s2">&gt;= (</span><span class="s3">3</span><span class="s2">, </span><span class="s3">8</span><span class="s2">):</span>
+    <span class="s0">from </span><span class="s1">typing </span><span class="s0">import </span><span class="s1">Protocol</span>
+<span class="s0">else</span><span class="s2">:</span>
+    <span class="s0">from </span><span class="s1">pip</span><span class="s2">.</span><span class="s1">_vendor</span><span class="s2">.</span><span class="s1">typing_extensions </span><span class="s0">import </span><span class="s1">Protocol  </span><span class="s4"># pragma: no cover</span>
+
+
+<span class="s0">class </span><span class="s1">Edge</span><span class="s2">(</span><span class="s1">Protocol</span><span class="s2">):</span>
+    <span class="s5">&quot;&quot;&quot;Any object that defines an edge (such as Layout).&quot;&quot;&quot;</span>
+
+    <span class="s1">size</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">int</span><span class="s2">] = </span><span class="s0">None</span>
+    <span class="s1">ratio</span><span class="s2">: </span><span class="s1">int </span><span class="s2">= </span><span class="s3">1</span>
+    <span class="s1">minimum_size</span><span class="s2">: </span><span class="s1">int </span><span class="s2">= </span><span class="s3">1</span>
+
+
+<span class="s0">def </span><span class="s1">ratio_resolve</span><span class="s2">(</span><span class="s1">total</span><span class="s2">: </span><span class="s1">int</span><span class="s2">, </span><span class="s1">edges</span><span class="s2">: </span><span class="s1">Sequence</span><span class="s2">[</span><span class="s1">Edge</span><span class="s2">]) </span><span class="s1">-&gt; List</span><span class="s2">[</span><span class="s1">int</span><span class="s2">]:</span>
+    <span class="s5">&quot;&quot;&quot;Divide total space to satisfy size, ratio, and minimum_size, constraints. 
+ 
+    The returned list of integers should add up to total in most cases, unless it is 
+    impossible to satisfy all the constraints. For instance, if there are two edges 
+    with a minimum size of 20 each and `total` is 30 then the returned list will be 
+    greater than total. In practice, this would mean that a Layout object would 
+    clip the rows that would overflow the screen height. 
+ 
+    Args: 
+        total (int): Total number of characters. 
+        edges (List[Edge]): Edges within total space. 
+ 
+    Returns: 
+        List[int]: Number of characters for each edge. 
+    &quot;&quot;&quot;</span>
+    <span class="s4"># Size of edge or None for yet to be determined</span>
+    <span class="s1">sizes </span><span class="s2">= [(</span><span class="s1">edge</span><span class="s2">.</span><span class="s1">size </span><span class="s0">or None</span><span class="s2">) </span><span class="s0">for </span><span class="s1">edge </span><span class="s0">in </span><span class="s1">edges</span><span class="s2">]</span>
+
+    <span class="s1">_Fraction </span><span class="s2">= </span><span class="s1">Fraction</span>
+
+    <span class="s4"># While any edges haven't been calculated</span>
+    <span class="s0">while None in </span><span class="s1">sizes</span><span class="s2">:</span>
+        <span class="s4"># Get flexible edges and index to map these back on to sizes list</span>
+        <span class="s1">flexible_edges </span><span class="s2">= [</span>
+            <span class="s2">(</span><span class="s1">index</span><span class="s2">, </span><span class="s1">edge</span><span class="s2">)</span>
+            <span class="s0">for </span><span class="s1">index</span><span class="s2">, (</span><span class="s1">size</span><span class="s2">, </span><span class="s1">edge</span><span class="s2">) </span><span class="s0">in </span><span class="s1">enumerate</span><span class="s2">(</span><span class="s1">zip</span><span class="s2">(</span><span class="s1">sizes</span><span class="s2">, </span><span class="s1">edges</span><span class="s2">))</span>
+            <span class="s0">if </span><span class="s1">size </span><span class="s0">is None</span>
+        <span class="s2">]</span>
+        <span class="s4"># Remaining space in total</span>
+        <span class="s1">remaining </span><span class="s2">= </span><span class="s1">total </span><span class="s2">- </span><span class="s1">sum</span><span class="s2">(</span><span class="s1">size </span><span class="s0">or </span><span class="s3">0 </span><span class="s0">for </span><span class="s1">size </span><span class="s0">in </span><span class="s1">sizes</span><span class="s2">)</span>
+        <span class="s0">if </span><span class="s1">remaining </span><span class="s2">&lt;= </span><span class="s3">0</span><span class="s2">:</span>
+            <span class="s4"># No room for flexible edges</span>
+            <span class="s0">return </span><span class="s2">[</span>
+                <span class="s2">((</span><span class="s1">edge</span><span class="s2">.</span><span class="s1">minimum_size </span><span class="s0">or </span><span class="s3">1</span><span class="s2">) </span><span class="s0">if </span><span class="s1">size </span><span class="s0">is None else </span><span class="s1">size</span><span class="s2">)</span>
+                <span class="s0">for </span><span class="s1">size</span><span class="s2">, </span><span class="s1">edge </span><span class="s0">in </span><span class="s1">zip</span><span class="s2">(</span><span class="s1">sizes</span><span class="s2">, </span><span class="s1">edges</span><span class="s2">)</span>
+            <span class="s2">]</span>
+        <span class="s4"># Calculate number of characters in a ratio portion</span>
+        <span class="s1">portion </span><span class="s2">= </span><span class="s1">_Fraction</span><span class="s2">(</span>
+            <span class="s1">remaining</span><span class="s2">, </span><span class="s1">sum</span><span class="s2">((</span><span class="s1">edge</span><span class="s2">.</span><span class="s1">ratio </span><span class="s0">or </span><span class="s3">1</span><span class="s2">) </span><span class="s0">for </span><span class="s1">_</span><span class="s2">, </span><span class="s1">edge </span><span class="s0">in </span><span class="s1">flexible_edges</span><span class="s2">)</span>
+        <span class="s2">)</span>
+
+        <span class="s4"># If any edges will be less than their minimum, replace size with the minimum</span>
+        <span class="s0">for </span><span class="s1">index</span><span class="s2">, </span><span class="s1">edge </span><span class="s0">in </span><span class="s1">flexible_edges</span><span class="s2">:</span>
+            <span class="s0">if </span><span class="s1">portion </span><span class="s2">* </span><span class="s1">edge</span><span class="s2">.</span><span class="s1">ratio </span><span class="s2">&lt;= </span><span class="s1">edge</span><span class="s2">.</span><span class="s1">minimum_size</span><span class="s2">:</span>
+                <span class="s1">sizes</span><span class="s2">[</span><span class="s1">index</span><span class="s2">] = </span><span class="s1">edge</span><span class="s2">.</span><span class="s1">minimum_size</span>
+                <span class="s4"># New fixed size will invalidate calculations, so we need to repeat the process</span>
+                <span class="s0">break</span>
+        <span class="s0">else</span><span class="s2">:</span>
+            <span class="s4"># Distribute flexible space and compensate for rounding error</span>
+            <span class="s4"># Since edge sizes can only be integers we need to add the remainder</span>
+            <span class="s4"># to the following line</span>
+            <span class="s1">remainder </span><span class="s2">= </span><span class="s1">_Fraction</span><span class="s2">(</span><span class="s3">0</span><span class="s2">)</span>
+            <span class="s0">for </span><span class="s1">index</span><span class="s2">, </span><span class="s1">edge </span><span class="s0">in </span><span class="s1">flexible_edges</span><span class="s2">:</span>
+                <span class="s1">size</span><span class="s2">, </span><span class="s1">remainder </span><span class="s2">= </span><span class="s1">divmod</span><span class="s2">(</span><span class="s1">portion </span><span class="s2">* </span><span class="s1">edge</span><span class="s2">.</span><span class="s1">ratio </span><span class="s2">+ </span><span class="s1">remainder</span><span class="s2">, </span><span class="s3">1</span><span class="s2">)</span>
+                <span class="s1">sizes</span><span class="s2">[</span><span class="s1">index</span><span class="s2">] = </span><span class="s1">size</span>
+            <span class="s0">break</span>
+    <span class="s4"># Sizes now contains integers only</span>
+    <span class="s0">return </span><span class="s1">cast</span><span class="s2">(</span><span class="s1">List</span><span class="s2">[</span><span class="s1">int</span><span class="s2">], </span><span class="s1">sizes</span><span class="s2">)</span>
+
+
+<span class="s0">def </span><span class="s1">ratio_reduce</span><span class="s2">(</span>
+    <span class="s1">total</span><span class="s2">: </span><span class="s1">int</span><span class="s2">, </span><span class="s1">ratios</span><span class="s2">: </span><span class="s1">List</span><span class="s2">[</span><span class="s1">int</span><span class="s2">], </span><span class="s1">maximums</span><span class="s2">: </span><span class="s1">List</span><span class="s2">[</span><span class="s1">int</span><span class="s2">], </span><span class="s1">values</span><span class="s2">: </span><span class="s1">List</span><span class="s2">[</span><span class="s1">int</span><span class="s2">]</span>
+<span class="s2">) </span><span class="s1">-&gt; List</span><span class="s2">[</span><span class="s1">int</span><span class="s2">]:</span>
+    <span class="s5">&quot;&quot;&quot;Divide an integer total in to parts based on ratios. 
+ 
+    Args: 
+        total (int): The total to divide. 
+        ratios (List[int]): A list of integer ratios. 
+        maximums (List[int]): List of maximums values for each slot. 
+        values (List[int]): List of values 
+ 
+    Returns: 
+        List[int]: A list of integers guaranteed to sum to total. 
+    &quot;&quot;&quot;</span>
+    <span class="s1">ratios </span><span class="s2">= [</span><span class="s1">ratio </span><span class="s0">if </span><span class="s1">_max </span><span class="s0">else </span><span class="s3">0 </span><span class="s0">for </span><span class="s1">ratio</span><span class="s2">, </span><span class="s1">_max </span><span class="s0">in </span><span class="s1">zip</span><span class="s2">(</span><span class="s1">ratios</span><span class="s2">, </span><span class="s1">maximums</span><span class="s2">)]</span>
+    <span class="s1">total_ratio </span><span class="s2">= </span><span class="s1">sum</span><span class="s2">(</span><span class="s1">ratios</span><span class="s2">)</span>
+    <span class="s0">if not </span><span class="s1">total_ratio</span><span class="s2">:</span>
+        <span class="s0">return </span><span class="s1">values</span><span class="s2">[:]</span>
+    <span class="s1">total_remaining </span><span class="s2">= </span><span class="s1">total</span>
+    <span class="s1">result</span><span class="s2">: </span><span class="s1">List</span><span class="s2">[</span><span class="s1">int</span><span class="s2">] = []</span>
+    <span class="s1">append </span><span class="s2">= </span><span class="s1">result</span><span class="s2">.</span><span class="s1">append</span>
+    <span class="s0">for </span><span class="s1">ratio</span><span class="s2">, </span><span class="s1">maximum</span><span class="s2">, </span><span class="s1">value </span><span class="s0">in </span><span class="s1">zip</span><span class="s2">(</span><span class="s1">ratios</span><span class="s2">, </span><span class="s1">maximums</span><span class="s2">, </span><span class="s1">values</span><span class="s2">):</span>
+        <span class="s0">if </span><span class="s1">ratio </span><span class="s0">and </span><span class="s1">total_ratio </span><span class="s2">&gt; </span><span class="s3">0</span><span class="s2">:</span>
+            <span class="s1">distributed </span><span class="s2">= </span><span class="s1">min</span><span class="s2">(</span><span class="s1">maximum</span><span class="s2">, </span><span class="s1">round</span><span class="s2">(</span><span class="s1">ratio </span><span class="s2">* </span><span class="s1">total_remaining </span><span class="s2">/ </span><span class="s1">total_ratio</span><span class="s2">))</span>
+            <span class="s1">append</span><span class="s2">(</span><span class="s1">value </span><span class="s2">- </span><span class="s1">distributed</span><span class="s2">)</span>
+            <span class="s1">total_remaining </span><span class="s2">-= </span><span class="s1">distributed</span>
+            <span class="s1">total_ratio </span><span class="s2">-= </span><span class="s1">ratio</span>
+        <span class="s0">else</span><span class="s2">:</span>
+            <span class="s1">append</span><span class="s2">(</span><span class="s1">value</span><span class="s2">)</span>
+    <span class="s0">return </span><span class="s1">result</span>
+
+
+<span class="s0">def </span><span class="s1">ratio_distribute</span><span class="s2">(</span>
+    <span class="s1">total</span><span class="s2">: </span><span class="s1">int</span><span class="s2">, </span><span class="s1">ratios</span><span class="s2">: </span><span class="s1">List</span><span class="s2">[</span><span class="s1">int</span><span class="s2">], </span><span class="s1">minimums</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">List</span><span class="s2">[</span><span class="s1">int</span><span class="s2">]] = </span><span class="s0">None</span>
+<span class="s2">) </span><span class="s1">-&gt; List</span><span class="s2">[</span><span class="s1">int</span><span class="s2">]:</span>
+    <span class="s5">&quot;&quot;&quot;Distribute an integer total in to parts based on ratios. 
+ 
+    Args: 
+        total (int): The total to divide. 
+        ratios (List[int]): A list of integer ratios. 
+        minimums (List[int]): List of minimum values for each slot. 
+ 
+    Returns: 
+        List[int]: A list of integers guaranteed to sum to total. 
+    &quot;&quot;&quot;</span>
+    <span class="s0">if </span><span class="s1">minimums</span><span class="s2">:</span>
+        <span class="s1">ratios </span><span class="s2">= [</span><span class="s1">ratio </span><span class="s0">if </span><span class="s1">_min </span><span class="s0">else </span><span class="s3">0 </span><span class="s0">for </span><span class="s1">ratio</span><span class="s2">, </span><span class="s1">_min </span><span class="s0">in </span><span class="s1">zip</span><span class="s2">(</span><span class="s1">ratios</span><span class="s2">, </span><span class="s1">minimums</span><span class="s2">)]</span>
+    <span class="s1">total_ratio </span><span class="s2">= </span><span class="s1">sum</span><span class="s2">(</span><span class="s1">ratios</span><span class="s2">)</span>
+    <span class="s0">assert </span><span class="s1">total_ratio </span><span class="s2">&gt; </span><span class="s3">0</span><span class="s2">, </span><span class="s6">&quot;Sum of ratios must be &gt; 0&quot;</span>
+
+    <span class="s1">total_remaining </span><span class="s2">= </span><span class="s1">total</span>
+    <span class="s1">distributed_total</span><span class="s2">: </span><span class="s1">List</span><span class="s2">[</span><span class="s1">int</span><span class="s2">] = []</span>
+    <span class="s1">append </span><span class="s2">= </span><span class="s1">distributed_total</span><span class="s2">.</span><span class="s1">append</span>
+    <span class="s0">if </span><span class="s1">minimums </span><span class="s0">is None</span><span class="s2">:</span>
+        <span class="s1">_minimums </span><span class="s2">= [</span><span class="s3">0</span><span class="s2">] * </span><span class="s1">len</span><span class="s2">(</span><span class="s1">ratios</span><span class="s2">)</span>
+    <span class="s0">else</span><span class="s2">:</span>
+        <span class="s1">_minimums </span><span class="s2">= </span><span class="s1">minimums</span>
+    <span class="s0">for </span><span class="s1">ratio</span><span class="s2">, </span><span class="s1">minimum </span><span class="s0">in </span><span class="s1">zip</span><span class="s2">(</span><span class="s1">ratios</span><span class="s2">, </span><span class="s1">_minimums</span><span class="s2">):</span>
+        <span class="s0">if </span><span class="s1">total_ratio </span><span class="s2">&gt; </span><span class="s3">0</span><span class="s2">:</span>
+            <span class="s1">distributed </span><span class="s2">= </span><span class="s1">max</span><span class="s2">(</span><span class="s1">minimum</span><span class="s2">, </span><span class="s1">ceil</span><span class="s2">(</span><span class="s1">ratio </span><span class="s2">* </span><span class="s1">total_remaining </span><span class="s2">/ </span><span class="s1">total_ratio</span><span class="s2">))</span>
+        <span class="s0">else</span><span class="s2">:</span>
+            <span class="s1">distributed </span><span class="s2">= </span><span class="s1">total_remaining</span>
+        <span class="s1">append</span><span class="s2">(</span><span class="s1">distributed</span><span class="s2">)</span>
+        <span class="s1">total_ratio </span><span class="s2">-= </span><span class="s1">ratio</span>
+        <span class="s1">total_remaining </span><span class="s2">-= </span><span class="s1">distributed</span>
+    <span class="s0">return </span><span class="s1">distributed_total</span>
+
+
+<span class="s0">if </span><span class="s1">__name__ </span><span class="s2">== </span><span class="s6">&quot;__main__&quot;</span><span class="s2">:</span>
+    <span class="s0">from </span><span class="s1">dataclasses </span><span class="s0">import </span><span class="s1">dataclass</span>
+
+    <span class="s2">@</span><span class="s1">dataclass</span>
+    <span class="s0">class </span><span class="s1">E</span><span class="s2">:</span>
+
+        <span class="s1">size</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">int</span><span class="s2">] = </span><span class="s0">None</span>
+        <span class="s1">ratio</span><span class="s2">: </span><span class="s1">int </span><span class="s2">= </span><span class="s3">1</span>
+        <span class="s1">minimum_size</span><span class="s2">: </span><span class="s1">int </span><span class="s2">= </span><span class="s3">1</span>
+
+    <span class="s1">resolved </span><span class="s2">= </span><span class="s1">ratio_resolve</span><span class="s2">(</span><span class="s3">110</span><span class="s2">, [</span><span class="s1">E</span><span class="s2">(</span><span class="s0">None</span><span class="s2">, </span><span class="s3">1</span><span class="s2">, </span><span class="s3">1</span><span class="s2">), </span><span class="s1">E</span><span class="s2">(</span><span class="s0">None</span><span class="s2">, </span><span class="s3">1</span><span class="s2">, </span><span class="s3">1</span><span class="s2">), </span><span class="s1">E</span><span class="s2">(</span><span class="s0">None</span><span class="s2">, </span><span class="s3">1</span><span class="s2">, </span><span class="s3">1</span><span class="s2">)])</span>
+    <span class="s1">print</span><span class="s2">(</span><span class="s1">sum</span><span class="s2">(</span><span class="s1">resolved</span><span class="s2">))</span>
+</pre>
+</body>
+</html>

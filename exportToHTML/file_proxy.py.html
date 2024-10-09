@@ -1,0 +1,78 @@
+<html>
+<head>
+<title>file_proxy.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cf8e6d;}
+.s1 { color: #bcbec4;}
+.s2 { color: #bcbec4;}
+.s3 { color: #5f826b; font-style: italic;}
+.s4 { color: #6aab73;}
+</style>
+</head>
+<body bgcolor="#1e1f22">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+file_proxy.py</font>
+</center></td></tr></table>
+<pre><span class="s0">import </span><span class="s1">io</span>
+<span class="s0">from </span><span class="s1">typing </span><span class="s0">import </span><span class="s1">IO</span><span class="s2">, </span><span class="s1">TYPE_CHECKING</span><span class="s2">, </span><span class="s1">Any</span><span class="s2">, </span><span class="s1">List</span>
+
+<span class="s0">from </span><span class="s2">.</span><span class="s1">ansi </span><span class="s0">import </span><span class="s1">AnsiDecoder</span>
+<span class="s0">from </span><span class="s2">.</span><span class="s1">text </span><span class="s0">import </span><span class="s1">Text</span>
+
+<span class="s0">if </span><span class="s1">TYPE_CHECKING</span><span class="s2">:</span>
+    <span class="s0">from </span><span class="s2">.</span><span class="s1">console </span><span class="s0">import </span><span class="s1">Console</span>
+
+
+<span class="s0">class </span><span class="s1">FileProxy</span><span class="s2">(</span><span class="s1">io</span><span class="s2">.</span><span class="s1">TextIOBase</span><span class="s2">):</span>
+    <span class="s3">&quot;&quot;&quot;Wraps a file (e.g. sys.stdout) and redirects writes to a console.&quot;&quot;&quot;</span>
+
+    <span class="s0">def </span><span class="s1">__init__</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">console</span><span class="s2">: </span><span class="s4">&quot;Console&quot;</span><span class="s2">, </span><span class="s1">file</span><span class="s2">: </span><span class="s1">IO</span><span class="s2">[</span><span class="s1">str</span><span class="s2">]) </span><span class="s1">-&gt; </span><span class="s0">None</span><span class="s2">:</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">__console </span><span class="s2">= </span><span class="s1">console</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">__file </span><span class="s2">= </span><span class="s1">file</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">__buffer</span><span class="s2">: </span><span class="s1">List</span><span class="s2">[</span><span class="s1">str</span><span class="s2">] = []</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">__ansi_decoder </span><span class="s2">= </span><span class="s1">AnsiDecoder</span><span class="s2">()</span>
+
+    <span class="s2">@</span><span class="s1">property</span>
+    <span class="s0">def </span><span class="s1">rich_proxied_file</span><span class="s2">(</span><span class="s1">self</span><span class="s2">) </span><span class="s1">-&gt; IO</span><span class="s2">[</span><span class="s1">str</span><span class="s2">]:</span>
+        <span class="s3">&quot;&quot;&quot;Get proxied file.&quot;&quot;&quot;</span>
+        <span class="s0">return </span><span class="s1">self</span><span class="s2">.</span><span class="s1">__file</span>
+
+    <span class="s0">def </span><span class="s1">__getattr__</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">name</span><span class="s2">: </span><span class="s1">str</span><span class="s2">) </span><span class="s1">-&gt; Any</span><span class="s2">:</span>
+        <span class="s0">return </span><span class="s1">getattr</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">__file</span><span class="s2">, </span><span class="s1">name</span><span class="s2">)</span>
+
+    <span class="s0">def </span><span class="s1">write</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">text</span><span class="s2">: </span><span class="s1">str</span><span class="s2">) </span><span class="s1">-&gt; int</span><span class="s2">:</span>
+        <span class="s0">if not </span><span class="s1">isinstance</span><span class="s2">(</span><span class="s1">text</span><span class="s2">, </span><span class="s1">str</span><span class="s2">):</span>
+            <span class="s0">raise </span><span class="s1">TypeError</span><span class="s2">(</span><span class="s4">f&quot;write() argument must be str, not </span><span class="s0">{</span><span class="s1">type</span><span class="s2">(</span><span class="s1">text</span><span class="s2">).</span><span class="s1">__name__</span><span class="s0">}</span><span class="s4">&quot;</span><span class="s2">)</span>
+        <span class="s1">buffer </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">__buffer</span>
+        <span class="s1">lines</span><span class="s2">: </span><span class="s1">List</span><span class="s2">[</span><span class="s1">str</span><span class="s2">] = []</span>
+        <span class="s0">while </span><span class="s1">text</span><span class="s2">:</span>
+            <span class="s1">line</span><span class="s2">, </span><span class="s1">new_line</span><span class="s2">, </span><span class="s1">text </span><span class="s2">= </span><span class="s1">text</span><span class="s2">.</span><span class="s1">partition</span><span class="s2">(</span><span class="s4">&quot;</span><span class="s0">\n</span><span class="s4">&quot;</span><span class="s2">)</span>
+            <span class="s0">if </span><span class="s1">new_line</span><span class="s2">:</span>
+                <span class="s1">lines</span><span class="s2">.</span><span class="s1">append</span><span class="s2">(</span><span class="s4">&quot;&quot;</span><span class="s2">.</span><span class="s1">join</span><span class="s2">(</span><span class="s1">buffer</span><span class="s2">) + </span><span class="s1">line</span><span class="s2">)</span>
+                <span class="s1">buffer</span><span class="s2">.</span><span class="s1">clear</span><span class="s2">()</span>
+            <span class="s0">else</span><span class="s2">:</span>
+                <span class="s1">buffer</span><span class="s2">.</span><span class="s1">append</span><span class="s2">(</span><span class="s1">line</span><span class="s2">)</span>
+                <span class="s0">break</span>
+        <span class="s0">if </span><span class="s1">lines</span><span class="s2">:</span>
+            <span class="s1">console </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">__console</span>
+            <span class="s0">with </span><span class="s1">console</span><span class="s2">:</span>
+                <span class="s1">output </span><span class="s2">= </span><span class="s1">Text</span><span class="s2">(</span><span class="s4">&quot;</span><span class="s0">\n</span><span class="s4">&quot;</span><span class="s2">).</span><span class="s1">join</span><span class="s2">(</span>
+                    <span class="s1">self</span><span class="s2">.</span><span class="s1">__ansi_decoder</span><span class="s2">.</span><span class="s1">decode_line</span><span class="s2">(</span><span class="s1">line</span><span class="s2">) </span><span class="s0">for </span><span class="s1">line </span><span class="s0">in </span><span class="s1">lines</span>
+                <span class="s2">)</span>
+                <span class="s1">console</span><span class="s2">.</span><span class="s1">print</span><span class="s2">(</span><span class="s1">output</span><span class="s2">)</span>
+        <span class="s0">return </span><span class="s1">len</span><span class="s2">(</span><span class="s1">text</span><span class="s2">)</span>
+
+    <span class="s0">def </span><span class="s1">flush</span><span class="s2">(</span><span class="s1">self</span><span class="s2">) </span><span class="s1">-&gt; </span><span class="s0">None</span><span class="s2">:</span>
+        <span class="s1">output </span><span class="s2">= </span><span class="s4">&quot;&quot;</span><span class="s2">.</span><span class="s1">join</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">__buffer</span><span class="s2">)</span>
+        <span class="s0">if </span><span class="s1">output</span><span class="s2">:</span>
+            <span class="s1">self</span><span class="s2">.</span><span class="s1">__console</span><span class="s2">.</span><span class="s1">print</span><span class="s2">(</span><span class="s1">output</span><span class="s2">)</span>
+        <span class="s0">del </span><span class="s1">self</span><span class="s2">.</span><span class="s1">__buffer</span><span class="s2">[:]</span>
+
+    <span class="s0">def </span><span class="s1">fileno</span><span class="s2">(</span><span class="s1">self</span><span class="s2">) </span><span class="s1">-&gt; int</span><span class="s2">:</span>
+        <span class="s0">return </span><span class="s1">self</span><span class="s2">.</span><span class="s1">__file</span><span class="s2">.</span><span class="s1">fileno</span><span class="s2">()</span>
+</pre>
+</body>
+</html>

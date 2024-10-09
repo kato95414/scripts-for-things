@@ -1,0 +1,714 @@
+<html>
+<head>
+<title>_parser.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #7a7e85;}
+.s1 { color: #bcbec4;}
+.s2 { color: #cf8e6d;}
+.s3 { color: #bcbec4;}
+.s4 { color: #2aacb8;}
+.s5 { color: #6aab73;}
+.s6 { color: #5f826b; font-style: italic;}
+</style>
+</head>
+<body bgcolor="#1e1f22">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+_parser.py</font>
+</center></td></tr></table>
+<pre><span class="s0"># SPDX-License-Identifier: MIT</span>
+<span class="s0"># SPDX-FileCopyrightText: 2021 Taneli Hukkinen</span>
+<span class="s0"># Licensed to PSF under a Contributor Agreement.</span>
+
+<span class="s2">from </span><span class="s1">__future__ </span><span class="s2">import </span><span class="s1">annotations</span>
+
+<span class="s2">from </span><span class="s1">collections</span><span class="s3">.</span><span class="s1">abc </span><span class="s2">import </span><span class="s1">Iterable</span>
+<span class="s2">import </span><span class="s1">string</span>
+<span class="s2">from </span><span class="s1">types </span><span class="s2">import </span><span class="s1">MappingProxyType</span>
+<span class="s2">from </span><span class="s1">typing </span><span class="s2">import </span><span class="s1">Any</span><span class="s3">, </span><span class="s1">BinaryIO</span><span class="s3">, </span><span class="s1">NamedTuple</span>
+
+<span class="s2">from </span><span class="s3">.</span><span class="s1">_re </span><span class="s2">import </span><span class="s3">(</span>
+    <span class="s1">RE_DATETIME</span><span class="s3">,</span>
+    <span class="s1">RE_LOCALTIME</span><span class="s3">,</span>
+    <span class="s1">RE_NUMBER</span><span class="s3">,</span>
+    <span class="s1">match_to_datetime</span><span class="s3">,</span>
+    <span class="s1">match_to_localtime</span><span class="s3">,</span>
+    <span class="s1">match_to_number</span><span class="s3">,</span>
+<span class="s3">)</span>
+<span class="s2">from </span><span class="s3">.</span><span class="s1">_types </span><span class="s2">import </span><span class="s1">Key</span><span class="s3">, </span><span class="s1">ParseFloat</span><span class="s3">, </span><span class="s1">Pos</span>
+
+<span class="s1">ASCII_CTRL </span><span class="s3">= </span><span class="s1">frozenset</span><span class="s3">(</span><span class="s1">chr</span><span class="s3">(</span><span class="s1">i</span><span class="s3">) </span><span class="s2">for </span><span class="s1">i </span><span class="s2">in </span><span class="s1">range</span><span class="s3">(</span><span class="s4">32</span><span class="s3">)) | </span><span class="s1">frozenset</span><span class="s3">(</span><span class="s1">chr</span><span class="s3">(</span><span class="s4">127</span><span class="s3">))</span>
+
+<span class="s0"># Neither of these sets include quotation mark or backslash. They are</span>
+<span class="s0"># currently handled as separate cases in the parser functions.</span>
+<span class="s1">ILLEGAL_BASIC_STR_CHARS </span><span class="s3">= </span><span class="s1">ASCII_CTRL </span><span class="s3">- </span><span class="s1">frozenset</span><span class="s3">(</span><span class="s5">&quot;</span><span class="s2">\t</span><span class="s5">&quot;</span><span class="s3">)</span>
+<span class="s1">ILLEGAL_MULTILINE_BASIC_STR_CHARS </span><span class="s3">= </span><span class="s1">ASCII_CTRL </span><span class="s3">- </span><span class="s1">frozenset</span><span class="s3">(</span><span class="s5">&quot;</span><span class="s2">\t\n</span><span class="s5">&quot;</span><span class="s3">)</span>
+
+<span class="s1">ILLEGAL_LITERAL_STR_CHARS </span><span class="s3">= </span><span class="s1">ILLEGAL_BASIC_STR_CHARS</span>
+<span class="s1">ILLEGAL_MULTILINE_LITERAL_STR_CHARS </span><span class="s3">= </span><span class="s1">ILLEGAL_MULTILINE_BASIC_STR_CHARS</span>
+
+<span class="s1">ILLEGAL_COMMENT_CHARS </span><span class="s3">= </span><span class="s1">ILLEGAL_BASIC_STR_CHARS</span>
+
+<span class="s1">TOML_WS </span><span class="s3">= </span><span class="s1">frozenset</span><span class="s3">(</span><span class="s5">&quot; </span><span class="s2">\t</span><span class="s5">&quot;</span><span class="s3">)</span>
+<span class="s1">TOML_WS_AND_NEWLINE </span><span class="s3">= </span><span class="s1">TOML_WS </span><span class="s3">| </span><span class="s1">frozenset</span><span class="s3">(</span><span class="s5">&quot;</span><span class="s2">\n</span><span class="s5">&quot;</span><span class="s3">)</span>
+<span class="s1">BARE_KEY_CHARS </span><span class="s3">= </span><span class="s1">frozenset</span><span class="s3">(</span><span class="s1">string</span><span class="s3">.</span><span class="s1">ascii_letters </span><span class="s3">+ </span><span class="s1">string</span><span class="s3">.</span><span class="s1">digits </span><span class="s3">+ </span><span class="s5">&quot;-_&quot;</span><span class="s3">)</span>
+<span class="s1">KEY_INITIAL_CHARS </span><span class="s3">= </span><span class="s1">BARE_KEY_CHARS </span><span class="s3">| </span><span class="s1">frozenset</span><span class="s3">(</span><span class="s5">&quot;</span><span class="s2">\&quot;</span><span class="s5">'&quot;</span><span class="s3">)</span>
+<span class="s1">HEXDIGIT_CHARS </span><span class="s3">= </span><span class="s1">frozenset</span><span class="s3">(</span><span class="s1">string</span><span class="s3">.</span><span class="s1">hexdigits</span><span class="s3">)</span>
+
+<span class="s1">BASIC_STR_ESCAPE_REPLACEMENTS </span><span class="s3">= </span><span class="s1">MappingProxyType</span><span class="s3">(</span>
+    <span class="s3">{</span>
+        <span class="s5">&quot;</span><span class="s2">\\</span><span class="s5">b&quot;</span><span class="s3">: </span><span class="s5">&quot;</span><span class="s2">\u0008</span><span class="s5">&quot;</span><span class="s3">,  </span><span class="s0"># backspace</span>
+        <span class="s5">&quot;</span><span class="s2">\\</span><span class="s5">t&quot;</span><span class="s3">: </span><span class="s5">&quot;</span><span class="s2">\u0009</span><span class="s5">&quot;</span><span class="s3">,  </span><span class="s0"># tab</span>
+        <span class="s5">&quot;</span><span class="s2">\\</span><span class="s5">n&quot;</span><span class="s3">: </span><span class="s5">&quot;</span><span class="s2">\u000A</span><span class="s5">&quot;</span><span class="s3">,  </span><span class="s0"># linefeed</span>
+        <span class="s5">&quot;</span><span class="s2">\\</span><span class="s5">f&quot;</span><span class="s3">: </span><span class="s5">&quot;</span><span class="s2">\u000C</span><span class="s5">&quot;</span><span class="s3">,  </span><span class="s0"># form feed</span>
+        <span class="s5">&quot;</span><span class="s2">\\</span><span class="s5">r&quot;</span><span class="s3">: </span><span class="s5">&quot;</span><span class="s2">\u000D</span><span class="s5">&quot;</span><span class="s3">,  </span><span class="s0"># carriage return</span>
+        <span class="s5">'</span><span class="s2">\\</span><span class="s5">&quot;'</span><span class="s3">: </span><span class="s5">&quot;</span><span class="s2">\u0022</span><span class="s5">&quot;</span><span class="s3">,  </span><span class="s0"># quote</span>
+        <span class="s5">&quot;</span><span class="s2">\\\\</span><span class="s5">&quot;</span><span class="s3">: </span><span class="s5">&quot;</span><span class="s2">\u005C</span><span class="s5">&quot;</span><span class="s3">,  </span><span class="s0"># backslash</span>
+    <span class="s3">}</span>
+<span class="s3">)</span>
+
+
+<span class="s2">class </span><span class="s1">TOMLDecodeError</span><span class="s3">(</span><span class="s1">ValueError</span><span class="s3">):</span>
+    <span class="s6">&quot;&quot;&quot;An error raised if a document is not valid TOML.&quot;&quot;&quot;</span>
+
+
+<span class="s2">def </span><span class="s1">load</span><span class="s3">(</span><span class="s1">__fp</span><span class="s3">: </span><span class="s1">BinaryIO</span><span class="s3">, *, </span><span class="s1">parse_float</span><span class="s3">: </span><span class="s1">ParseFloat </span><span class="s3">= </span><span class="s1">float</span><span class="s3">) </span><span class="s1">-&gt; dict</span><span class="s3">[</span><span class="s1">str</span><span class="s3">, </span><span class="s1">Any</span><span class="s3">]:</span>
+    <span class="s6">&quot;&quot;&quot;Parse TOML from a binary file object.&quot;&quot;&quot;</span>
+    <span class="s1">b </span><span class="s3">= </span><span class="s1">__fp</span><span class="s3">.</span><span class="s1">read</span><span class="s3">()</span>
+    <span class="s2">try</span><span class="s3">:</span>
+        <span class="s1">s </span><span class="s3">= </span><span class="s1">b</span><span class="s3">.</span><span class="s1">decode</span><span class="s3">()</span>
+    <span class="s2">except </span><span class="s1">AttributeError</span><span class="s3">:</span>
+        <span class="s2">raise </span><span class="s1">TypeError</span><span class="s3">(</span>
+            <span class="s5">&quot;File must be opened in binary mode, e.g. use `open('foo.toml', 'rb')`&quot;</span>
+        <span class="s3">) </span><span class="s2">from None</span>
+    <span class="s2">return </span><span class="s1">loads</span><span class="s3">(</span><span class="s1">s</span><span class="s3">, </span><span class="s1">parse_float</span><span class="s3">=</span><span class="s1">parse_float</span><span class="s3">)</span>
+
+
+<span class="s2">def </span><span class="s1">loads</span><span class="s3">(</span><span class="s1">__s</span><span class="s3">: </span><span class="s1">str</span><span class="s3">, *, </span><span class="s1">parse_float</span><span class="s3">: </span><span class="s1">ParseFloat </span><span class="s3">= </span><span class="s1">float</span><span class="s3">) </span><span class="s1">-&gt; dict</span><span class="s3">[</span><span class="s1">str</span><span class="s3">, </span><span class="s1">Any</span><span class="s3">]:  </span><span class="s0"># noqa: C901</span>
+    <span class="s6">&quot;&quot;&quot;Parse TOML from a string.&quot;&quot;&quot;</span>
+
+    <span class="s0"># The spec allows converting &quot;\r\n&quot; to &quot;\n&quot;, even in string</span>
+    <span class="s0"># literals. Let's do so to simplify parsing.</span>
+    <span class="s1">src </span><span class="s3">= </span><span class="s1">__s</span><span class="s3">.</span><span class="s1">replace</span><span class="s3">(</span><span class="s5">&quot;</span><span class="s2">\r\n</span><span class="s5">&quot;</span><span class="s3">, </span><span class="s5">&quot;</span><span class="s2">\n</span><span class="s5">&quot;</span><span class="s3">)</span>
+    <span class="s1">pos </span><span class="s3">= </span><span class="s4">0</span>
+    <span class="s1">out </span><span class="s3">= </span><span class="s1">Output</span><span class="s3">(</span><span class="s1">NestedDict</span><span class="s3">(), </span><span class="s1">Flags</span><span class="s3">())</span>
+    <span class="s1">header</span><span class="s3">: </span><span class="s1">Key </span><span class="s3">= ()</span>
+    <span class="s1">parse_float </span><span class="s3">= </span><span class="s1">make_safe_parse_float</span><span class="s3">(</span><span class="s1">parse_float</span><span class="s3">)</span>
+
+    <span class="s0"># Parse one statement at a time</span>
+    <span class="s0"># (typically means one line in TOML source)</span>
+    <span class="s2">while True</span><span class="s3">:</span>
+        <span class="s0"># 1. Skip line leading whitespace</span>
+        <span class="s1">pos </span><span class="s3">= </span><span class="s1">skip_chars</span><span class="s3">(</span><span class="s1">src</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">, </span><span class="s1">TOML_WS</span><span class="s3">)</span>
+
+        <span class="s0"># 2. Parse rules. Expect one of the following:</span>
+        <span class="s0">#    - end of file</span>
+        <span class="s0">#    - end of line</span>
+        <span class="s0">#    - comment</span>
+        <span class="s0">#    - key/value pair</span>
+        <span class="s0">#    - append dict to list (and move to its namespace)</span>
+        <span class="s0">#    - create dict (and move to its namespace)</span>
+        <span class="s0"># Skip trailing whitespace when applicable.</span>
+        <span class="s2">try</span><span class="s3">:</span>
+            <span class="s1">char </span><span class="s3">= </span><span class="s1">src</span><span class="s3">[</span><span class="s1">pos</span><span class="s3">]</span>
+        <span class="s2">except </span><span class="s1">IndexError</span><span class="s3">:</span>
+            <span class="s2">break</span>
+        <span class="s2">if </span><span class="s1">char </span><span class="s3">== </span><span class="s5">&quot;</span><span class="s2">\n</span><span class="s5">&quot;</span><span class="s3">:</span>
+            <span class="s1">pos </span><span class="s3">+= </span><span class="s4">1</span>
+            <span class="s2">continue</span>
+        <span class="s2">if </span><span class="s1">char </span><span class="s2">in </span><span class="s1">KEY_INITIAL_CHARS</span><span class="s3">:</span>
+            <span class="s1">pos </span><span class="s3">= </span><span class="s1">key_value_rule</span><span class="s3">(</span><span class="s1">src</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">, </span><span class="s1">out</span><span class="s3">, </span><span class="s1">header</span><span class="s3">, </span><span class="s1">parse_float</span><span class="s3">)</span>
+            <span class="s1">pos </span><span class="s3">= </span><span class="s1">skip_chars</span><span class="s3">(</span><span class="s1">src</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">, </span><span class="s1">TOML_WS</span><span class="s3">)</span>
+        <span class="s2">elif </span><span class="s1">char </span><span class="s3">== </span><span class="s5">&quot;[&quot;</span><span class="s3">:</span>
+            <span class="s2">try</span><span class="s3">:</span>
+                <span class="s1">second_char</span><span class="s3">: </span><span class="s1">str </span><span class="s3">| </span><span class="s2">None </span><span class="s3">= </span><span class="s1">src</span><span class="s3">[</span><span class="s1">pos </span><span class="s3">+ </span><span class="s4">1</span><span class="s3">]</span>
+            <span class="s2">except </span><span class="s1">IndexError</span><span class="s3">:</span>
+                <span class="s1">second_char </span><span class="s3">= </span><span class="s2">None</span>
+            <span class="s1">out</span><span class="s3">.</span><span class="s1">flags</span><span class="s3">.</span><span class="s1">finalize_pending</span><span class="s3">()</span>
+            <span class="s2">if </span><span class="s1">second_char </span><span class="s3">== </span><span class="s5">&quot;[&quot;</span><span class="s3">:</span>
+                <span class="s1">pos</span><span class="s3">, </span><span class="s1">header </span><span class="s3">= </span><span class="s1">create_list_rule</span><span class="s3">(</span><span class="s1">src</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">, </span><span class="s1">out</span><span class="s3">)</span>
+            <span class="s2">else</span><span class="s3">:</span>
+                <span class="s1">pos</span><span class="s3">, </span><span class="s1">header </span><span class="s3">= </span><span class="s1">create_dict_rule</span><span class="s3">(</span><span class="s1">src</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">, </span><span class="s1">out</span><span class="s3">)</span>
+            <span class="s1">pos </span><span class="s3">= </span><span class="s1">skip_chars</span><span class="s3">(</span><span class="s1">src</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">, </span><span class="s1">TOML_WS</span><span class="s3">)</span>
+        <span class="s2">elif </span><span class="s1">char </span><span class="s3">!= </span><span class="s5">&quot;#&quot;</span><span class="s3">:</span>
+            <span class="s2">raise </span><span class="s1">suffixed_err</span><span class="s3">(</span><span class="s1">src</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">, </span><span class="s5">&quot;Invalid statement&quot;</span><span class="s3">)</span>
+
+        <span class="s0"># 3. Skip comment</span>
+        <span class="s1">pos </span><span class="s3">= </span><span class="s1">skip_comment</span><span class="s3">(</span><span class="s1">src</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">)</span>
+
+        <span class="s0"># 4. Expect end of line or end of file</span>
+        <span class="s2">try</span><span class="s3">:</span>
+            <span class="s1">char </span><span class="s3">= </span><span class="s1">src</span><span class="s3">[</span><span class="s1">pos</span><span class="s3">]</span>
+        <span class="s2">except </span><span class="s1">IndexError</span><span class="s3">:</span>
+            <span class="s2">break</span>
+        <span class="s2">if </span><span class="s1">char </span><span class="s3">!= </span><span class="s5">&quot;</span><span class="s2">\n</span><span class="s5">&quot;</span><span class="s3">:</span>
+            <span class="s2">raise </span><span class="s1">suffixed_err</span><span class="s3">(</span>
+                <span class="s1">src</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">, </span><span class="s5">&quot;Expected newline or end of document after a statement&quot;</span>
+            <span class="s3">)</span>
+        <span class="s1">pos </span><span class="s3">+= </span><span class="s4">1</span>
+
+    <span class="s2">return </span><span class="s1">out</span><span class="s3">.</span><span class="s1">data</span><span class="s3">.</span><span class="s1">dict</span>
+
+
+<span class="s2">class </span><span class="s1">Flags</span><span class="s3">:</span>
+    <span class="s6">&quot;&quot;&quot;Flags that map to parsed keys/namespaces.&quot;&quot;&quot;</span>
+
+    <span class="s0"># Marks an immutable namespace (inline array or inline table).</span>
+    <span class="s1">FROZEN </span><span class="s3">= </span><span class="s4">0</span>
+    <span class="s0"># Marks a nest that has been explicitly created and can no longer</span>
+    <span class="s0"># be opened using the &quot;[table]&quot; syntax.</span>
+    <span class="s1">EXPLICIT_NEST </span><span class="s3">= </span><span class="s4">1</span>
+
+    <span class="s2">def </span><span class="s1">__init__</span><span class="s3">(</span><span class="s1">self</span><span class="s3">) </span><span class="s1">-&gt; </span><span class="s2">None</span><span class="s3">:</span>
+        <span class="s1">self</span><span class="s3">.</span><span class="s1">_flags</span><span class="s3">: </span><span class="s1">dict</span><span class="s3">[</span><span class="s1">str</span><span class="s3">, </span><span class="s1">dict</span><span class="s3">] = {}</span>
+        <span class="s1">self</span><span class="s3">.</span><span class="s1">_pending_flags</span><span class="s3">: </span><span class="s1">set</span><span class="s3">[</span><span class="s1">tuple</span><span class="s3">[</span><span class="s1">Key</span><span class="s3">, </span><span class="s1">int</span><span class="s3">]] = </span><span class="s1">set</span><span class="s3">()</span>
+
+    <span class="s2">def </span><span class="s1">add_pending</span><span class="s3">(</span><span class="s1">self</span><span class="s3">, </span><span class="s1">key</span><span class="s3">: </span><span class="s1">Key</span><span class="s3">, </span><span class="s1">flag</span><span class="s3">: </span><span class="s1">int</span><span class="s3">) </span><span class="s1">-&gt; </span><span class="s2">None</span><span class="s3">:</span>
+        <span class="s1">self</span><span class="s3">.</span><span class="s1">_pending_flags</span><span class="s3">.</span><span class="s1">add</span><span class="s3">((</span><span class="s1">key</span><span class="s3">, </span><span class="s1">flag</span><span class="s3">))</span>
+
+    <span class="s2">def </span><span class="s1">finalize_pending</span><span class="s3">(</span><span class="s1">self</span><span class="s3">) </span><span class="s1">-&gt; </span><span class="s2">None</span><span class="s3">:</span>
+        <span class="s2">for </span><span class="s1">key</span><span class="s3">, </span><span class="s1">flag </span><span class="s2">in </span><span class="s1">self</span><span class="s3">.</span><span class="s1">_pending_flags</span><span class="s3">:</span>
+            <span class="s1">self</span><span class="s3">.</span><span class="s1">set</span><span class="s3">(</span><span class="s1">key</span><span class="s3">, </span><span class="s1">flag</span><span class="s3">, </span><span class="s1">recursive</span><span class="s3">=</span><span class="s2">False</span><span class="s3">)</span>
+        <span class="s1">self</span><span class="s3">.</span><span class="s1">_pending_flags</span><span class="s3">.</span><span class="s1">clear</span><span class="s3">()</span>
+
+    <span class="s2">def </span><span class="s1">unset_all</span><span class="s3">(</span><span class="s1">self</span><span class="s3">, </span><span class="s1">key</span><span class="s3">: </span><span class="s1">Key</span><span class="s3">) </span><span class="s1">-&gt; </span><span class="s2">None</span><span class="s3">:</span>
+        <span class="s1">cont </span><span class="s3">= </span><span class="s1">self</span><span class="s3">.</span><span class="s1">_flags</span>
+        <span class="s2">for </span><span class="s1">k </span><span class="s2">in </span><span class="s1">key</span><span class="s3">[:-</span><span class="s4">1</span><span class="s3">]:</span>
+            <span class="s2">if </span><span class="s1">k </span><span class="s2">not in </span><span class="s1">cont</span><span class="s3">:</span>
+                <span class="s2">return</span>
+            <span class="s1">cont </span><span class="s3">= </span><span class="s1">cont</span><span class="s3">[</span><span class="s1">k</span><span class="s3">][</span><span class="s5">&quot;nested&quot;</span><span class="s3">]</span>
+        <span class="s1">cont</span><span class="s3">.</span><span class="s1">pop</span><span class="s3">(</span><span class="s1">key</span><span class="s3">[-</span><span class="s4">1</span><span class="s3">], </span><span class="s2">None</span><span class="s3">)</span>
+
+    <span class="s2">def </span><span class="s1">set</span><span class="s3">(</span><span class="s1">self</span><span class="s3">, </span><span class="s1">key</span><span class="s3">: </span><span class="s1">Key</span><span class="s3">, </span><span class="s1">flag</span><span class="s3">: </span><span class="s1">int</span><span class="s3">, *, </span><span class="s1">recursive</span><span class="s3">: </span><span class="s1">bool</span><span class="s3">) </span><span class="s1">-&gt; </span><span class="s2">None</span><span class="s3">:  </span><span class="s0"># noqa: A003</span>
+        <span class="s1">cont </span><span class="s3">= </span><span class="s1">self</span><span class="s3">.</span><span class="s1">_flags</span>
+        <span class="s1">key_parent</span><span class="s3">, </span><span class="s1">key_stem </span><span class="s3">= </span><span class="s1">key</span><span class="s3">[:-</span><span class="s4">1</span><span class="s3">], </span><span class="s1">key</span><span class="s3">[-</span><span class="s4">1</span><span class="s3">]</span>
+        <span class="s2">for </span><span class="s1">k </span><span class="s2">in </span><span class="s1">key_parent</span><span class="s3">:</span>
+            <span class="s2">if </span><span class="s1">k </span><span class="s2">not in </span><span class="s1">cont</span><span class="s3">:</span>
+                <span class="s1">cont</span><span class="s3">[</span><span class="s1">k</span><span class="s3">] = {</span><span class="s5">&quot;flags&quot;</span><span class="s3">: </span><span class="s1">set</span><span class="s3">(), </span><span class="s5">&quot;recursive_flags&quot;</span><span class="s3">: </span><span class="s1">set</span><span class="s3">(), </span><span class="s5">&quot;nested&quot;</span><span class="s3">: {}}</span>
+            <span class="s1">cont </span><span class="s3">= </span><span class="s1">cont</span><span class="s3">[</span><span class="s1">k</span><span class="s3">][</span><span class="s5">&quot;nested&quot;</span><span class="s3">]</span>
+        <span class="s2">if </span><span class="s1">key_stem </span><span class="s2">not in </span><span class="s1">cont</span><span class="s3">:</span>
+            <span class="s1">cont</span><span class="s3">[</span><span class="s1">key_stem</span><span class="s3">] = {</span><span class="s5">&quot;flags&quot;</span><span class="s3">: </span><span class="s1">set</span><span class="s3">(), </span><span class="s5">&quot;recursive_flags&quot;</span><span class="s3">: </span><span class="s1">set</span><span class="s3">(), </span><span class="s5">&quot;nested&quot;</span><span class="s3">: {}}</span>
+        <span class="s1">cont</span><span class="s3">[</span><span class="s1">key_stem</span><span class="s3">][</span><span class="s5">&quot;recursive_flags&quot; </span><span class="s2">if </span><span class="s1">recursive </span><span class="s2">else </span><span class="s5">&quot;flags&quot;</span><span class="s3">].</span><span class="s1">add</span><span class="s3">(</span><span class="s1">flag</span><span class="s3">)</span>
+
+    <span class="s2">def </span><span class="s1">is_</span><span class="s3">(</span><span class="s1">self</span><span class="s3">, </span><span class="s1">key</span><span class="s3">: </span><span class="s1">Key</span><span class="s3">, </span><span class="s1">flag</span><span class="s3">: </span><span class="s1">int</span><span class="s3">) </span><span class="s1">-&gt; bool</span><span class="s3">:</span>
+        <span class="s2">if not </span><span class="s1">key</span><span class="s3">:</span>
+            <span class="s2">return False  </span><span class="s0"># document root has no flags</span>
+        <span class="s1">cont </span><span class="s3">= </span><span class="s1">self</span><span class="s3">.</span><span class="s1">_flags</span>
+        <span class="s2">for </span><span class="s1">k </span><span class="s2">in </span><span class="s1">key</span><span class="s3">[:-</span><span class="s4">1</span><span class="s3">]:</span>
+            <span class="s2">if </span><span class="s1">k </span><span class="s2">not in </span><span class="s1">cont</span><span class="s3">:</span>
+                <span class="s2">return False</span>
+            <span class="s1">inner_cont </span><span class="s3">= </span><span class="s1">cont</span><span class="s3">[</span><span class="s1">k</span><span class="s3">]</span>
+            <span class="s2">if </span><span class="s1">flag </span><span class="s2">in </span><span class="s1">inner_cont</span><span class="s3">[</span><span class="s5">&quot;recursive_flags&quot;</span><span class="s3">]:</span>
+                <span class="s2">return True</span>
+            <span class="s1">cont </span><span class="s3">= </span><span class="s1">inner_cont</span><span class="s3">[</span><span class="s5">&quot;nested&quot;</span><span class="s3">]</span>
+        <span class="s1">key_stem </span><span class="s3">= </span><span class="s1">key</span><span class="s3">[-</span><span class="s4">1</span><span class="s3">]</span>
+        <span class="s2">if </span><span class="s1">key_stem </span><span class="s2">in </span><span class="s1">cont</span><span class="s3">:</span>
+            <span class="s1">cont </span><span class="s3">= </span><span class="s1">cont</span><span class="s3">[</span><span class="s1">key_stem</span><span class="s3">]</span>
+            <span class="s2">return </span><span class="s1">flag </span><span class="s2">in </span><span class="s1">cont</span><span class="s3">[</span><span class="s5">&quot;flags&quot;</span><span class="s3">] </span><span class="s2">or </span><span class="s1">flag </span><span class="s2">in </span><span class="s1">cont</span><span class="s3">[</span><span class="s5">&quot;recursive_flags&quot;</span><span class="s3">]</span>
+        <span class="s2">return False</span>
+
+
+<span class="s2">class </span><span class="s1">NestedDict</span><span class="s3">:</span>
+    <span class="s2">def </span><span class="s1">__init__</span><span class="s3">(</span><span class="s1">self</span><span class="s3">) </span><span class="s1">-&gt; </span><span class="s2">None</span><span class="s3">:</span>
+        <span class="s0"># The parsed content of the TOML document</span>
+        <span class="s1">self</span><span class="s3">.</span><span class="s1">dict</span><span class="s3">: </span><span class="s1">dict</span><span class="s3">[</span><span class="s1">str</span><span class="s3">, </span><span class="s1">Any</span><span class="s3">] = {}</span>
+
+    <span class="s2">def </span><span class="s1">get_or_create_nest</span><span class="s3">(</span>
+        <span class="s1">self</span><span class="s3">,</span>
+        <span class="s1">key</span><span class="s3">: </span><span class="s1">Key</span><span class="s3">,</span>
+        <span class="s3">*,</span>
+        <span class="s1">access_lists</span><span class="s3">: </span><span class="s1">bool </span><span class="s3">= </span><span class="s2">True</span><span class="s3">,</span>
+    <span class="s3">) </span><span class="s1">-&gt; dict</span><span class="s3">:</span>
+        <span class="s1">cont</span><span class="s3">: </span><span class="s1">Any </span><span class="s3">= </span><span class="s1">self</span><span class="s3">.</span><span class="s1">dict</span>
+        <span class="s2">for </span><span class="s1">k </span><span class="s2">in </span><span class="s1">key</span><span class="s3">:</span>
+            <span class="s2">if </span><span class="s1">k </span><span class="s2">not in </span><span class="s1">cont</span><span class="s3">:</span>
+                <span class="s1">cont</span><span class="s3">[</span><span class="s1">k</span><span class="s3">] = {}</span>
+            <span class="s1">cont </span><span class="s3">= </span><span class="s1">cont</span><span class="s3">[</span><span class="s1">k</span><span class="s3">]</span>
+            <span class="s2">if </span><span class="s1">access_lists </span><span class="s2">and </span><span class="s1">isinstance</span><span class="s3">(</span><span class="s1">cont</span><span class="s3">, </span><span class="s1">list</span><span class="s3">):</span>
+                <span class="s1">cont </span><span class="s3">= </span><span class="s1">cont</span><span class="s3">[-</span><span class="s4">1</span><span class="s3">]</span>
+            <span class="s2">if not </span><span class="s1">isinstance</span><span class="s3">(</span><span class="s1">cont</span><span class="s3">, </span><span class="s1">dict</span><span class="s3">):</span>
+                <span class="s2">raise </span><span class="s1">KeyError</span><span class="s3">(</span><span class="s5">&quot;There is no nest behind this key&quot;</span><span class="s3">)</span>
+        <span class="s2">return </span><span class="s1">cont</span>
+
+    <span class="s2">def </span><span class="s1">append_nest_to_list</span><span class="s3">(</span><span class="s1">self</span><span class="s3">, </span><span class="s1">key</span><span class="s3">: </span><span class="s1">Key</span><span class="s3">) </span><span class="s1">-&gt; </span><span class="s2">None</span><span class="s3">:</span>
+        <span class="s1">cont </span><span class="s3">= </span><span class="s1">self</span><span class="s3">.</span><span class="s1">get_or_create_nest</span><span class="s3">(</span><span class="s1">key</span><span class="s3">[:-</span><span class="s4">1</span><span class="s3">])</span>
+        <span class="s1">last_key </span><span class="s3">= </span><span class="s1">key</span><span class="s3">[-</span><span class="s4">1</span><span class="s3">]</span>
+        <span class="s2">if </span><span class="s1">last_key </span><span class="s2">in </span><span class="s1">cont</span><span class="s3">:</span>
+            <span class="s1">list_ </span><span class="s3">= </span><span class="s1">cont</span><span class="s3">[</span><span class="s1">last_key</span><span class="s3">]</span>
+            <span class="s2">if not </span><span class="s1">isinstance</span><span class="s3">(</span><span class="s1">list_</span><span class="s3">, </span><span class="s1">list</span><span class="s3">):</span>
+                <span class="s2">raise </span><span class="s1">KeyError</span><span class="s3">(</span><span class="s5">&quot;An object other than list found behind this key&quot;</span><span class="s3">)</span>
+            <span class="s1">list_</span><span class="s3">.</span><span class="s1">append</span><span class="s3">({})</span>
+        <span class="s2">else</span><span class="s3">:</span>
+            <span class="s1">cont</span><span class="s3">[</span><span class="s1">last_key</span><span class="s3">] = [{}]</span>
+
+
+<span class="s2">class </span><span class="s1">Output</span><span class="s3">(</span><span class="s1">NamedTuple</span><span class="s3">):</span>
+    <span class="s1">data</span><span class="s3">: </span><span class="s1">NestedDict</span>
+    <span class="s1">flags</span><span class="s3">: </span><span class="s1">Flags</span>
+
+
+<span class="s2">def </span><span class="s1">skip_chars</span><span class="s3">(</span><span class="s1">src</span><span class="s3">: </span><span class="s1">str</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">: </span><span class="s1">Pos</span><span class="s3">, </span><span class="s1">chars</span><span class="s3">: </span><span class="s1">Iterable</span><span class="s3">[</span><span class="s1">str</span><span class="s3">]) </span><span class="s1">-&gt; Pos</span><span class="s3">:</span>
+    <span class="s2">try</span><span class="s3">:</span>
+        <span class="s2">while </span><span class="s1">src</span><span class="s3">[</span><span class="s1">pos</span><span class="s3">] </span><span class="s2">in </span><span class="s1">chars</span><span class="s3">:</span>
+            <span class="s1">pos </span><span class="s3">+= </span><span class="s4">1</span>
+    <span class="s2">except </span><span class="s1">IndexError</span><span class="s3">:</span>
+        <span class="s2">pass</span>
+    <span class="s2">return </span><span class="s1">pos</span>
+
+
+<span class="s2">def </span><span class="s1">skip_until</span><span class="s3">(</span>
+    <span class="s1">src</span><span class="s3">: </span><span class="s1">str</span><span class="s3">,</span>
+    <span class="s1">pos</span><span class="s3">: </span><span class="s1">Pos</span><span class="s3">,</span>
+    <span class="s1">expect</span><span class="s3">: </span><span class="s1">str</span><span class="s3">,</span>
+    <span class="s3">*,</span>
+    <span class="s1">error_on</span><span class="s3">: </span><span class="s1">frozenset</span><span class="s3">[</span><span class="s1">str</span><span class="s3">],</span>
+    <span class="s1">error_on_eof</span><span class="s3">: </span><span class="s1">bool</span><span class="s3">,</span>
+<span class="s3">) </span><span class="s1">-&gt; Pos</span><span class="s3">:</span>
+    <span class="s2">try</span><span class="s3">:</span>
+        <span class="s1">new_pos </span><span class="s3">= </span><span class="s1">src</span><span class="s3">.</span><span class="s1">index</span><span class="s3">(</span><span class="s1">expect</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">)</span>
+    <span class="s2">except </span><span class="s1">ValueError</span><span class="s3">:</span>
+        <span class="s1">new_pos </span><span class="s3">= </span><span class="s1">len</span><span class="s3">(</span><span class="s1">src</span><span class="s3">)</span>
+        <span class="s2">if </span><span class="s1">error_on_eof</span><span class="s3">:</span>
+            <span class="s2">raise </span><span class="s1">suffixed_err</span><span class="s3">(</span><span class="s1">src</span><span class="s3">, </span><span class="s1">new_pos</span><span class="s3">, </span><span class="s5">f&quot;Expected </span><span class="s2">{</span><span class="s1">expect</span><span class="s2">!r}</span><span class="s5">&quot;</span><span class="s3">) </span><span class="s2">from None</span>
+
+    <span class="s2">if not </span><span class="s1">error_on</span><span class="s3">.</span><span class="s1">isdisjoint</span><span class="s3">(</span><span class="s1">src</span><span class="s3">[</span><span class="s1">pos</span><span class="s3">:</span><span class="s1">new_pos</span><span class="s3">]):</span>
+        <span class="s2">while </span><span class="s1">src</span><span class="s3">[</span><span class="s1">pos</span><span class="s3">] </span><span class="s2">not in </span><span class="s1">error_on</span><span class="s3">:</span>
+            <span class="s1">pos </span><span class="s3">+= </span><span class="s4">1</span>
+        <span class="s2">raise </span><span class="s1">suffixed_err</span><span class="s3">(</span><span class="s1">src</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">, </span><span class="s5">f&quot;Found invalid character </span><span class="s2">{</span><span class="s1">src</span><span class="s3">[</span><span class="s1">pos</span><span class="s3">]</span><span class="s2">!r}</span><span class="s5">&quot;</span><span class="s3">)</span>
+    <span class="s2">return </span><span class="s1">new_pos</span>
+
+
+<span class="s2">def </span><span class="s1">skip_comment</span><span class="s3">(</span><span class="s1">src</span><span class="s3">: </span><span class="s1">str</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">: </span><span class="s1">Pos</span><span class="s3">) </span><span class="s1">-&gt; Pos</span><span class="s3">:</span>
+    <span class="s2">try</span><span class="s3">:</span>
+        <span class="s1">char</span><span class="s3">: </span><span class="s1">str </span><span class="s3">| </span><span class="s2">None </span><span class="s3">= </span><span class="s1">src</span><span class="s3">[</span><span class="s1">pos</span><span class="s3">]</span>
+    <span class="s2">except </span><span class="s1">IndexError</span><span class="s3">:</span>
+        <span class="s1">char </span><span class="s3">= </span><span class="s2">None</span>
+    <span class="s2">if </span><span class="s1">char </span><span class="s3">== </span><span class="s5">&quot;#&quot;</span><span class="s3">:</span>
+        <span class="s2">return </span><span class="s1">skip_until</span><span class="s3">(</span>
+            <span class="s1">src</span><span class="s3">, </span><span class="s1">pos </span><span class="s3">+ </span><span class="s4">1</span><span class="s3">, </span><span class="s5">&quot;</span><span class="s2">\n</span><span class="s5">&quot;</span><span class="s3">, </span><span class="s1">error_on</span><span class="s3">=</span><span class="s1">ILLEGAL_COMMENT_CHARS</span><span class="s3">, </span><span class="s1">error_on_eof</span><span class="s3">=</span><span class="s2">False</span>
+        <span class="s3">)</span>
+    <span class="s2">return </span><span class="s1">pos</span>
+
+
+<span class="s2">def </span><span class="s1">skip_comments_and_array_ws</span><span class="s3">(</span><span class="s1">src</span><span class="s3">: </span><span class="s1">str</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">: </span><span class="s1">Pos</span><span class="s3">) </span><span class="s1">-&gt; Pos</span><span class="s3">:</span>
+    <span class="s2">while True</span><span class="s3">:</span>
+        <span class="s1">pos_before_skip </span><span class="s3">= </span><span class="s1">pos</span>
+        <span class="s1">pos </span><span class="s3">= </span><span class="s1">skip_chars</span><span class="s3">(</span><span class="s1">src</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">, </span><span class="s1">TOML_WS_AND_NEWLINE</span><span class="s3">)</span>
+        <span class="s1">pos </span><span class="s3">= </span><span class="s1">skip_comment</span><span class="s3">(</span><span class="s1">src</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">)</span>
+        <span class="s2">if </span><span class="s1">pos </span><span class="s3">== </span><span class="s1">pos_before_skip</span><span class="s3">:</span>
+            <span class="s2">return </span><span class="s1">pos</span>
+
+
+<span class="s2">def </span><span class="s1">create_dict_rule</span><span class="s3">(</span><span class="s1">src</span><span class="s3">: </span><span class="s1">str</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">: </span><span class="s1">Pos</span><span class="s3">, </span><span class="s1">out</span><span class="s3">: </span><span class="s1">Output</span><span class="s3">) </span><span class="s1">-&gt; tuple</span><span class="s3">[</span><span class="s1">Pos</span><span class="s3">, </span><span class="s1">Key</span><span class="s3">]:</span>
+    <span class="s1">pos </span><span class="s3">+= </span><span class="s4">1  </span><span class="s0"># Skip &quot;[&quot;</span>
+    <span class="s1">pos </span><span class="s3">= </span><span class="s1">skip_chars</span><span class="s3">(</span><span class="s1">src</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">, </span><span class="s1">TOML_WS</span><span class="s3">)</span>
+    <span class="s1">pos</span><span class="s3">, </span><span class="s1">key </span><span class="s3">= </span><span class="s1">parse_key</span><span class="s3">(</span><span class="s1">src</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">)</span>
+
+    <span class="s2">if </span><span class="s1">out</span><span class="s3">.</span><span class="s1">flags</span><span class="s3">.</span><span class="s1">is_</span><span class="s3">(</span><span class="s1">key</span><span class="s3">, </span><span class="s1">Flags</span><span class="s3">.</span><span class="s1">EXPLICIT_NEST</span><span class="s3">) </span><span class="s2">or </span><span class="s1">out</span><span class="s3">.</span><span class="s1">flags</span><span class="s3">.</span><span class="s1">is_</span><span class="s3">(</span><span class="s1">key</span><span class="s3">, </span><span class="s1">Flags</span><span class="s3">.</span><span class="s1">FROZEN</span><span class="s3">):</span>
+        <span class="s2">raise </span><span class="s1">suffixed_err</span><span class="s3">(</span><span class="s1">src</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">, </span><span class="s5">f&quot;Cannot declare </span><span class="s2">{</span><span class="s1">key</span><span class="s2">} </span><span class="s5">twice&quot;</span><span class="s3">)</span>
+    <span class="s1">out</span><span class="s3">.</span><span class="s1">flags</span><span class="s3">.</span><span class="s1">set</span><span class="s3">(</span><span class="s1">key</span><span class="s3">, </span><span class="s1">Flags</span><span class="s3">.</span><span class="s1">EXPLICIT_NEST</span><span class="s3">, </span><span class="s1">recursive</span><span class="s3">=</span><span class="s2">False</span><span class="s3">)</span>
+    <span class="s2">try</span><span class="s3">:</span>
+        <span class="s1">out</span><span class="s3">.</span><span class="s1">data</span><span class="s3">.</span><span class="s1">get_or_create_nest</span><span class="s3">(</span><span class="s1">key</span><span class="s3">)</span>
+    <span class="s2">except </span><span class="s1">KeyError</span><span class="s3">:</span>
+        <span class="s2">raise </span><span class="s1">suffixed_err</span><span class="s3">(</span><span class="s1">src</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">, </span><span class="s5">&quot;Cannot overwrite a value&quot;</span><span class="s3">) </span><span class="s2">from None</span>
+
+    <span class="s2">if not </span><span class="s1">src</span><span class="s3">.</span><span class="s1">startswith</span><span class="s3">(</span><span class="s5">&quot;]&quot;</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">):</span>
+        <span class="s2">raise </span><span class="s1">suffixed_err</span><span class="s3">(</span><span class="s1">src</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">, </span><span class="s5">&quot;Expected ']' at the end of a table declaration&quot;</span><span class="s3">)</span>
+    <span class="s2">return </span><span class="s1">pos </span><span class="s3">+ </span><span class="s4">1</span><span class="s3">, </span><span class="s1">key</span>
+
+
+<span class="s2">def </span><span class="s1">create_list_rule</span><span class="s3">(</span><span class="s1">src</span><span class="s3">: </span><span class="s1">str</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">: </span><span class="s1">Pos</span><span class="s3">, </span><span class="s1">out</span><span class="s3">: </span><span class="s1">Output</span><span class="s3">) </span><span class="s1">-&gt; tuple</span><span class="s3">[</span><span class="s1">Pos</span><span class="s3">, </span><span class="s1">Key</span><span class="s3">]:</span>
+    <span class="s1">pos </span><span class="s3">+= </span><span class="s4">2  </span><span class="s0"># Skip &quot;[[&quot;</span>
+    <span class="s1">pos </span><span class="s3">= </span><span class="s1">skip_chars</span><span class="s3">(</span><span class="s1">src</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">, </span><span class="s1">TOML_WS</span><span class="s3">)</span>
+    <span class="s1">pos</span><span class="s3">, </span><span class="s1">key </span><span class="s3">= </span><span class="s1">parse_key</span><span class="s3">(</span><span class="s1">src</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">)</span>
+
+    <span class="s2">if </span><span class="s1">out</span><span class="s3">.</span><span class="s1">flags</span><span class="s3">.</span><span class="s1">is_</span><span class="s3">(</span><span class="s1">key</span><span class="s3">, </span><span class="s1">Flags</span><span class="s3">.</span><span class="s1">FROZEN</span><span class="s3">):</span>
+        <span class="s2">raise </span><span class="s1">suffixed_err</span><span class="s3">(</span><span class="s1">src</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">, </span><span class="s5">f&quot;Cannot mutate immutable namespace </span><span class="s2">{</span><span class="s1">key</span><span class="s2">}</span><span class="s5">&quot;</span><span class="s3">)</span>
+    <span class="s0"># Free the namespace now that it points to another empty list item...</span>
+    <span class="s1">out</span><span class="s3">.</span><span class="s1">flags</span><span class="s3">.</span><span class="s1">unset_all</span><span class="s3">(</span><span class="s1">key</span><span class="s3">)</span>
+    <span class="s0"># ...but this key precisely is still prohibited from table declaration</span>
+    <span class="s1">out</span><span class="s3">.</span><span class="s1">flags</span><span class="s3">.</span><span class="s1">set</span><span class="s3">(</span><span class="s1">key</span><span class="s3">, </span><span class="s1">Flags</span><span class="s3">.</span><span class="s1">EXPLICIT_NEST</span><span class="s3">, </span><span class="s1">recursive</span><span class="s3">=</span><span class="s2">False</span><span class="s3">)</span>
+    <span class="s2">try</span><span class="s3">:</span>
+        <span class="s1">out</span><span class="s3">.</span><span class="s1">data</span><span class="s3">.</span><span class="s1">append_nest_to_list</span><span class="s3">(</span><span class="s1">key</span><span class="s3">)</span>
+    <span class="s2">except </span><span class="s1">KeyError</span><span class="s3">:</span>
+        <span class="s2">raise </span><span class="s1">suffixed_err</span><span class="s3">(</span><span class="s1">src</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">, </span><span class="s5">&quot;Cannot overwrite a value&quot;</span><span class="s3">) </span><span class="s2">from None</span>
+
+    <span class="s2">if not </span><span class="s1">src</span><span class="s3">.</span><span class="s1">startswith</span><span class="s3">(</span><span class="s5">&quot;]]&quot;</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">):</span>
+        <span class="s2">raise </span><span class="s1">suffixed_err</span><span class="s3">(</span><span class="s1">src</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">, </span><span class="s5">&quot;Expected ']]' at the end of an array declaration&quot;</span><span class="s3">)</span>
+    <span class="s2">return </span><span class="s1">pos </span><span class="s3">+ </span><span class="s4">2</span><span class="s3">, </span><span class="s1">key</span>
+
+
+<span class="s2">def </span><span class="s1">key_value_rule</span><span class="s3">(</span>
+    <span class="s1">src</span><span class="s3">: </span><span class="s1">str</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">: </span><span class="s1">Pos</span><span class="s3">, </span><span class="s1">out</span><span class="s3">: </span><span class="s1">Output</span><span class="s3">, </span><span class="s1">header</span><span class="s3">: </span><span class="s1">Key</span><span class="s3">, </span><span class="s1">parse_float</span><span class="s3">: </span><span class="s1">ParseFloat</span>
+<span class="s3">) </span><span class="s1">-&gt; Pos</span><span class="s3">:</span>
+    <span class="s1">pos</span><span class="s3">, </span><span class="s1">key</span><span class="s3">, </span><span class="s1">value </span><span class="s3">= </span><span class="s1">parse_key_value_pair</span><span class="s3">(</span><span class="s1">src</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">, </span><span class="s1">parse_float</span><span class="s3">)</span>
+    <span class="s1">key_parent</span><span class="s3">, </span><span class="s1">key_stem </span><span class="s3">= </span><span class="s1">key</span><span class="s3">[:-</span><span class="s4">1</span><span class="s3">], </span><span class="s1">key</span><span class="s3">[-</span><span class="s4">1</span><span class="s3">]</span>
+    <span class="s1">abs_key_parent </span><span class="s3">= </span><span class="s1">header </span><span class="s3">+ </span><span class="s1">key_parent</span>
+
+    <span class="s1">relative_path_cont_keys </span><span class="s3">= (</span><span class="s1">header </span><span class="s3">+ </span><span class="s1">key</span><span class="s3">[:</span><span class="s1">i</span><span class="s3">] </span><span class="s2">for </span><span class="s1">i </span><span class="s2">in </span><span class="s1">range</span><span class="s3">(</span><span class="s4">1</span><span class="s3">, </span><span class="s1">len</span><span class="s3">(</span><span class="s1">key</span><span class="s3">)))</span>
+    <span class="s2">for </span><span class="s1">cont_key </span><span class="s2">in </span><span class="s1">relative_path_cont_keys</span><span class="s3">:</span>
+        <span class="s0"># Check that dotted key syntax does not redefine an existing table</span>
+        <span class="s2">if </span><span class="s1">out</span><span class="s3">.</span><span class="s1">flags</span><span class="s3">.</span><span class="s1">is_</span><span class="s3">(</span><span class="s1">cont_key</span><span class="s3">, </span><span class="s1">Flags</span><span class="s3">.</span><span class="s1">EXPLICIT_NEST</span><span class="s3">):</span>
+            <span class="s2">raise </span><span class="s1">suffixed_err</span><span class="s3">(</span><span class="s1">src</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">, </span><span class="s5">f&quot;Cannot redefine namespace </span><span class="s2">{</span><span class="s1">cont_key</span><span class="s2">}</span><span class="s5">&quot;</span><span class="s3">)</span>
+        <span class="s0"># Containers in the relative path can't be opened with the table syntax or</span>
+        <span class="s0"># dotted key/value syntax in following table sections.</span>
+        <span class="s1">out</span><span class="s3">.</span><span class="s1">flags</span><span class="s3">.</span><span class="s1">add_pending</span><span class="s3">(</span><span class="s1">cont_key</span><span class="s3">, </span><span class="s1">Flags</span><span class="s3">.</span><span class="s1">EXPLICIT_NEST</span><span class="s3">)</span>
+
+    <span class="s2">if </span><span class="s1">out</span><span class="s3">.</span><span class="s1">flags</span><span class="s3">.</span><span class="s1">is_</span><span class="s3">(</span><span class="s1">abs_key_parent</span><span class="s3">, </span><span class="s1">Flags</span><span class="s3">.</span><span class="s1">FROZEN</span><span class="s3">):</span>
+        <span class="s2">raise </span><span class="s1">suffixed_err</span><span class="s3">(</span>
+            <span class="s1">src</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">, </span><span class="s5">f&quot;Cannot mutate immutable namespace </span><span class="s2">{</span><span class="s1">abs_key_parent</span><span class="s2">}</span><span class="s5">&quot;</span>
+        <span class="s3">)</span>
+
+    <span class="s2">try</span><span class="s3">:</span>
+        <span class="s1">nest </span><span class="s3">= </span><span class="s1">out</span><span class="s3">.</span><span class="s1">data</span><span class="s3">.</span><span class="s1">get_or_create_nest</span><span class="s3">(</span><span class="s1">abs_key_parent</span><span class="s3">)</span>
+    <span class="s2">except </span><span class="s1">KeyError</span><span class="s3">:</span>
+        <span class="s2">raise </span><span class="s1">suffixed_err</span><span class="s3">(</span><span class="s1">src</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">, </span><span class="s5">&quot;Cannot overwrite a value&quot;</span><span class="s3">) </span><span class="s2">from None</span>
+    <span class="s2">if </span><span class="s1">key_stem </span><span class="s2">in </span><span class="s1">nest</span><span class="s3">:</span>
+        <span class="s2">raise </span><span class="s1">suffixed_err</span><span class="s3">(</span><span class="s1">src</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">, </span><span class="s5">&quot;Cannot overwrite a value&quot;</span><span class="s3">)</span>
+    <span class="s0"># Mark inline table and array namespaces recursively immutable</span>
+    <span class="s2">if </span><span class="s1">isinstance</span><span class="s3">(</span><span class="s1">value</span><span class="s3">, (</span><span class="s1">dict</span><span class="s3">, </span><span class="s1">list</span><span class="s3">)):</span>
+        <span class="s1">out</span><span class="s3">.</span><span class="s1">flags</span><span class="s3">.</span><span class="s1">set</span><span class="s3">(</span><span class="s1">header </span><span class="s3">+ </span><span class="s1">key</span><span class="s3">, </span><span class="s1">Flags</span><span class="s3">.</span><span class="s1">FROZEN</span><span class="s3">, </span><span class="s1">recursive</span><span class="s3">=</span><span class="s2">True</span><span class="s3">)</span>
+    <span class="s1">nest</span><span class="s3">[</span><span class="s1">key_stem</span><span class="s3">] = </span><span class="s1">value</span>
+    <span class="s2">return </span><span class="s1">pos</span>
+
+
+<span class="s2">def </span><span class="s1">parse_key_value_pair</span><span class="s3">(</span>
+    <span class="s1">src</span><span class="s3">: </span><span class="s1">str</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">: </span><span class="s1">Pos</span><span class="s3">, </span><span class="s1">parse_float</span><span class="s3">: </span><span class="s1">ParseFloat</span>
+<span class="s3">) </span><span class="s1">-&gt; tuple</span><span class="s3">[</span><span class="s1">Pos</span><span class="s3">, </span><span class="s1">Key</span><span class="s3">, </span><span class="s1">Any</span><span class="s3">]:</span>
+    <span class="s1">pos</span><span class="s3">, </span><span class="s1">key </span><span class="s3">= </span><span class="s1">parse_key</span><span class="s3">(</span><span class="s1">src</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">)</span>
+    <span class="s2">try</span><span class="s3">:</span>
+        <span class="s1">char</span><span class="s3">: </span><span class="s1">str </span><span class="s3">| </span><span class="s2">None </span><span class="s3">= </span><span class="s1">src</span><span class="s3">[</span><span class="s1">pos</span><span class="s3">]</span>
+    <span class="s2">except </span><span class="s1">IndexError</span><span class="s3">:</span>
+        <span class="s1">char </span><span class="s3">= </span><span class="s2">None</span>
+    <span class="s2">if </span><span class="s1">char </span><span class="s3">!= </span><span class="s5">&quot;=&quot;</span><span class="s3">:</span>
+        <span class="s2">raise </span><span class="s1">suffixed_err</span><span class="s3">(</span><span class="s1">src</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">, </span><span class="s5">&quot;Expected '=' after a key in a key/value pair&quot;</span><span class="s3">)</span>
+    <span class="s1">pos </span><span class="s3">+= </span><span class="s4">1</span>
+    <span class="s1">pos </span><span class="s3">= </span><span class="s1">skip_chars</span><span class="s3">(</span><span class="s1">src</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">, </span><span class="s1">TOML_WS</span><span class="s3">)</span>
+    <span class="s1">pos</span><span class="s3">, </span><span class="s1">value </span><span class="s3">= </span><span class="s1">parse_value</span><span class="s3">(</span><span class="s1">src</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">, </span><span class="s1">parse_float</span><span class="s3">)</span>
+    <span class="s2">return </span><span class="s1">pos</span><span class="s3">, </span><span class="s1">key</span><span class="s3">, </span><span class="s1">value</span>
+
+
+<span class="s2">def </span><span class="s1">parse_key</span><span class="s3">(</span><span class="s1">src</span><span class="s3">: </span><span class="s1">str</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">: </span><span class="s1">Pos</span><span class="s3">) </span><span class="s1">-&gt; tuple</span><span class="s3">[</span><span class="s1">Pos</span><span class="s3">, </span><span class="s1">Key</span><span class="s3">]:</span>
+    <span class="s1">pos</span><span class="s3">, </span><span class="s1">key_part </span><span class="s3">= </span><span class="s1">parse_key_part</span><span class="s3">(</span><span class="s1">src</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">)</span>
+    <span class="s1">key</span><span class="s3">: </span><span class="s1">Key </span><span class="s3">= (</span><span class="s1">key_part</span><span class="s3">,)</span>
+    <span class="s1">pos </span><span class="s3">= </span><span class="s1">skip_chars</span><span class="s3">(</span><span class="s1">src</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">, </span><span class="s1">TOML_WS</span><span class="s3">)</span>
+    <span class="s2">while True</span><span class="s3">:</span>
+        <span class="s2">try</span><span class="s3">:</span>
+            <span class="s1">char</span><span class="s3">: </span><span class="s1">str </span><span class="s3">| </span><span class="s2">None </span><span class="s3">= </span><span class="s1">src</span><span class="s3">[</span><span class="s1">pos</span><span class="s3">]</span>
+        <span class="s2">except </span><span class="s1">IndexError</span><span class="s3">:</span>
+            <span class="s1">char </span><span class="s3">= </span><span class="s2">None</span>
+        <span class="s2">if </span><span class="s1">char </span><span class="s3">!= </span><span class="s5">&quot;.&quot;</span><span class="s3">:</span>
+            <span class="s2">return </span><span class="s1">pos</span><span class="s3">, </span><span class="s1">key</span>
+        <span class="s1">pos </span><span class="s3">+= </span><span class="s4">1</span>
+        <span class="s1">pos </span><span class="s3">= </span><span class="s1">skip_chars</span><span class="s3">(</span><span class="s1">src</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">, </span><span class="s1">TOML_WS</span><span class="s3">)</span>
+        <span class="s1">pos</span><span class="s3">, </span><span class="s1">key_part </span><span class="s3">= </span><span class="s1">parse_key_part</span><span class="s3">(</span><span class="s1">src</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">)</span>
+        <span class="s1">key </span><span class="s3">+= (</span><span class="s1">key_part</span><span class="s3">,)</span>
+        <span class="s1">pos </span><span class="s3">= </span><span class="s1">skip_chars</span><span class="s3">(</span><span class="s1">src</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">, </span><span class="s1">TOML_WS</span><span class="s3">)</span>
+
+
+<span class="s2">def </span><span class="s1">parse_key_part</span><span class="s3">(</span><span class="s1">src</span><span class="s3">: </span><span class="s1">str</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">: </span><span class="s1">Pos</span><span class="s3">) </span><span class="s1">-&gt; tuple</span><span class="s3">[</span><span class="s1">Pos</span><span class="s3">, </span><span class="s1">str</span><span class="s3">]:</span>
+    <span class="s2">try</span><span class="s3">:</span>
+        <span class="s1">char</span><span class="s3">: </span><span class="s1">str </span><span class="s3">| </span><span class="s2">None </span><span class="s3">= </span><span class="s1">src</span><span class="s3">[</span><span class="s1">pos</span><span class="s3">]</span>
+    <span class="s2">except </span><span class="s1">IndexError</span><span class="s3">:</span>
+        <span class="s1">char </span><span class="s3">= </span><span class="s2">None</span>
+    <span class="s2">if </span><span class="s1">char </span><span class="s2">in </span><span class="s1">BARE_KEY_CHARS</span><span class="s3">:</span>
+        <span class="s1">start_pos </span><span class="s3">= </span><span class="s1">pos</span>
+        <span class="s1">pos </span><span class="s3">= </span><span class="s1">skip_chars</span><span class="s3">(</span><span class="s1">src</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">, </span><span class="s1">BARE_KEY_CHARS</span><span class="s3">)</span>
+        <span class="s2">return </span><span class="s1">pos</span><span class="s3">, </span><span class="s1">src</span><span class="s3">[</span><span class="s1">start_pos</span><span class="s3">:</span><span class="s1">pos</span><span class="s3">]</span>
+    <span class="s2">if </span><span class="s1">char </span><span class="s3">== </span><span class="s5">&quot;'&quot;</span><span class="s3">:</span>
+        <span class="s2">return </span><span class="s1">parse_literal_str</span><span class="s3">(</span><span class="s1">src</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">)</span>
+    <span class="s2">if </span><span class="s1">char </span><span class="s3">== </span><span class="s5">'&quot;'</span><span class="s3">:</span>
+        <span class="s2">return </span><span class="s1">parse_one_line_basic_str</span><span class="s3">(</span><span class="s1">src</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">)</span>
+    <span class="s2">raise </span><span class="s1">suffixed_err</span><span class="s3">(</span><span class="s1">src</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">, </span><span class="s5">&quot;Invalid initial character for a key part&quot;</span><span class="s3">)</span>
+
+
+<span class="s2">def </span><span class="s1">parse_one_line_basic_str</span><span class="s3">(</span><span class="s1">src</span><span class="s3">: </span><span class="s1">str</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">: </span><span class="s1">Pos</span><span class="s3">) </span><span class="s1">-&gt; tuple</span><span class="s3">[</span><span class="s1">Pos</span><span class="s3">, </span><span class="s1">str</span><span class="s3">]:</span>
+    <span class="s1">pos </span><span class="s3">+= </span><span class="s4">1</span>
+    <span class="s2">return </span><span class="s1">parse_basic_str</span><span class="s3">(</span><span class="s1">src</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">, </span><span class="s1">multiline</span><span class="s3">=</span><span class="s2">False</span><span class="s3">)</span>
+
+
+<span class="s2">def </span><span class="s1">parse_array</span><span class="s3">(</span><span class="s1">src</span><span class="s3">: </span><span class="s1">str</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">: </span><span class="s1">Pos</span><span class="s3">, </span><span class="s1">parse_float</span><span class="s3">: </span><span class="s1">ParseFloat</span><span class="s3">) </span><span class="s1">-&gt; tuple</span><span class="s3">[</span><span class="s1">Pos</span><span class="s3">, </span><span class="s1">list</span><span class="s3">]:</span>
+    <span class="s1">pos </span><span class="s3">+= </span><span class="s4">1</span>
+    <span class="s1">array</span><span class="s3">: </span><span class="s1">list </span><span class="s3">= []</span>
+
+    <span class="s1">pos </span><span class="s3">= </span><span class="s1">skip_comments_and_array_ws</span><span class="s3">(</span><span class="s1">src</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">)</span>
+    <span class="s2">if </span><span class="s1">src</span><span class="s3">.</span><span class="s1">startswith</span><span class="s3">(</span><span class="s5">&quot;]&quot;</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">):</span>
+        <span class="s2">return </span><span class="s1">pos </span><span class="s3">+ </span><span class="s4">1</span><span class="s3">, </span><span class="s1">array</span>
+    <span class="s2">while True</span><span class="s3">:</span>
+        <span class="s1">pos</span><span class="s3">, </span><span class="s1">val </span><span class="s3">= </span><span class="s1">parse_value</span><span class="s3">(</span><span class="s1">src</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">, </span><span class="s1">parse_float</span><span class="s3">)</span>
+        <span class="s1">array</span><span class="s3">.</span><span class="s1">append</span><span class="s3">(</span><span class="s1">val</span><span class="s3">)</span>
+        <span class="s1">pos </span><span class="s3">= </span><span class="s1">skip_comments_and_array_ws</span><span class="s3">(</span><span class="s1">src</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">)</span>
+
+        <span class="s1">c </span><span class="s3">= </span><span class="s1">src</span><span class="s3">[</span><span class="s1">pos </span><span class="s3">: </span><span class="s1">pos </span><span class="s3">+ </span><span class="s4">1</span><span class="s3">]</span>
+        <span class="s2">if </span><span class="s1">c </span><span class="s3">== </span><span class="s5">&quot;]&quot;</span><span class="s3">:</span>
+            <span class="s2">return </span><span class="s1">pos </span><span class="s3">+ </span><span class="s4">1</span><span class="s3">, </span><span class="s1">array</span>
+        <span class="s2">if </span><span class="s1">c </span><span class="s3">!= </span><span class="s5">&quot;,&quot;</span><span class="s3">:</span>
+            <span class="s2">raise </span><span class="s1">suffixed_err</span><span class="s3">(</span><span class="s1">src</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">, </span><span class="s5">&quot;Unclosed array&quot;</span><span class="s3">)</span>
+        <span class="s1">pos </span><span class="s3">+= </span><span class="s4">1</span>
+
+        <span class="s1">pos </span><span class="s3">= </span><span class="s1">skip_comments_and_array_ws</span><span class="s3">(</span><span class="s1">src</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">)</span>
+        <span class="s2">if </span><span class="s1">src</span><span class="s3">.</span><span class="s1">startswith</span><span class="s3">(</span><span class="s5">&quot;]&quot;</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">):</span>
+            <span class="s2">return </span><span class="s1">pos </span><span class="s3">+ </span><span class="s4">1</span><span class="s3">, </span><span class="s1">array</span>
+
+
+<span class="s2">def </span><span class="s1">parse_inline_table</span><span class="s3">(</span><span class="s1">src</span><span class="s3">: </span><span class="s1">str</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">: </span><span class="s1">Pos</span><span class="s3">, </span><span class="s1">parse_float</span><span class="s3">: </span><span class="s1">ParseFloat</span><span class="s3">) </span><span class="s1">-&gt; tuple</span><span class="s3">[</span><span class="s1">Pos</span><span class="s3">, </span><span class="s1">dict</span><span class="s3">]:</span>
+    <span class="s1">pos </span><span class="s3">+= </span><span class="s4">1</span>
+    <span class="s1">nested_dict </span><span class="s3">= </span><span class="s1">NestedDict</span><span class="s3">()</span>
+    <span class="s1">flags </span><span class="s3">= </span><span class="s1">Flags</span><span class="s3">()</span>
+
+    <span class="s1">pos </span><span class="s3">= </span><span class="s1">skip_chars</span><span class="s3">(</span><span class="s1">src</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">, </span><span class="s1">TOML_WS</span><span class="s3">)</span>
+    <span class="s2">if </span><span class="s1">src</span><span class="s3">.</span><span class="s1">startswith</span><span class="s3">(</span><span class="s5">&quot;}&quot;</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">):</span>
+        <span class="s2">return </span><span class="s1">pos </span><span class="s3">+ </span><span class="s4">1</span><span class="s3">, </span><span class="s1">nested_dict</span><span class="s3">.</span><span class="s1">dict</span>
+    <span class="s2">while True</span><span class="s3">:</span>
+        <span class="s1">pos</span><span class="s3">, </span><span class="s1">key</span><span class="s3">, </span><span class="s1">value </span><span class="s3">= </span><span class="s1">parse_key_value_pair</span><span class="s3">(</span><span class="s1">src</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">, </span><span class="s1">parse_float</span><span class="s3">)</span>
+        <span class="s1">key_parent</span><span class="s3">, </span><span class="s1">key_stem </span><span class="s3">= </span><span class="s1">key</span><span class="s3">[:-</span><span class="s4">1</span><span class="s3">], </span><span class="s1">key</span><span class="s3">[-</span><span class="s4">1</span><span class="s3">]</span>
+        <span class="s2">if </span><span class="s1">flags</span><span class="s3">.</span><span class="s1">is_</span><span class="s3">(</span><span class="s1">key</span><span class="s3">, </span><span class="s1">Flags</span><span class="s3">.</span><span class="s1">FROZEN</span><span class="s3">):</span>
+            <span class="s2">raise </span><span class="s1">suffixed_err</span><span class="s3">(</span><span class="s1">src</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">, </span><span class="s5">f&quot;Cannot mutate immutable namespace </span><span class="s2">{</span><span class="s1">key</span><span class="s2">}</span><span class="s5">&quot;</span><span class="s3">)</span>
+        <span class="s2">try</span><span class="s3">:</span>
+            <span class="s1">nest </span><span class="s3">= </span><span class="s1">nested_dict</span><span class="s3">.</span><span class="s1">get_or_create_nest</span><span class="s3">(</span><span class="s1">key_parent</span><span class="s3">, </span><span class="s1">access_lists</span><span class="s3">=</span><span class="s2">False</span><span class="s3">)</span>
+        <span class="s2">except </span><span class="s1">KeyError</span><span class="s3">:</span>
+            <span class="s2">raise </span><span class="s1">suffixed_err</span><span class="s3">(</span><span class="s1">src</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">, </span><span class="s5">&quot;Cannot overwrite a value&quot;</span><span class="s3">) </span><span class="s2">from None</span>
+        <span class="s2">if </span><span class="s1">key_stem </span><span class="s2">in </span><span class="s1">nest</span><span class="s3">:</span>
+            <span class="s2">raise </span><span class="s1">suffixed_err</span><span class="s3">(</span><span class="s1">src</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">, </span><span class="s5">f&quot;Duplicate inline table key </span><span class="s2">{</span><span class="s1">key_stem</span><span class="s2">!r}</span><span class="s5">&quot;</span><span class="s3">)</span>
+        <span class="s1">nest</span><span class="s3">[</span><span class="s1">key_stem</span><span class="s3">] = </span><span class="s1">value</span>
+        <span class="s1">pos </span><span class="s3">= </span><span class="s1">skip_chars</span><span class="s3">(</span><span class="s1">src</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">, </span><span class="s1">TOML_WS</span><span class="s3">)</span>
+        <span class="s1">c </span><span class="s3">= </span><span class="s1">src</span><span class="s3">[</span><span class="s1">pos </span><span class="s3">: </span><span class="s1">pos </span><span class="s3">+ </span><span class="s4">1</span><span class="s3">]</span>
+        <span class="s2">if </span><span class="s1">c </span><span class="s3">== </span><span class="s5">&quot;}&quot;</span><span class="s3">:</span>
+            <span class="s2">return </span><span class="s1">pos </span><span class="s3">+ </span><span class="s4">1</span><span class="s3">, </span><span class="s1">nested_dict</span><span class="s3">.</span><span class="s1">dict</span>
+        <span class="s2">if </span><span class="s1">c </span><span class="s3">!= </span><span class="s5">&quot;,&quot;</span><span class="s3">:</span>
+            <span class="s2">raise </span><span class="s1">suffixed_err</span><span class="s3">(</span><span class="s1">src</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">, </span><span class="s5">&quot;Unclosed inline table&quot;</span><span class="s3">)</span>
+        <span class="s2">if </span><span class="s1">isinstance</span><span class="s3">(</span><span class="s1">value</span><span class="s3">, (</span><span class="s1">dict</span><span class="s3">, </span><span class="s1">list</span><span class="s3">)):</span>
+            <span class="s1">flags</span><span class="s3">.</span><span class="s1">set</span><span class="s3">(</span><span class="s1">key</span><span class="s3">, </span><span class="s1">Flags</span><span class="s3">.</span><span class="s1">FROZEN</span><span class="s3">, </span><span class="s1">recursive</span><span class="s3">=</span><span class="s2">True</span><span class="s3">)</span>
+        <span class="s1">pos </span><span class="s3">+= </span><span class="s4">1</span>
+        <span class="s1">pos </span><span class="s3">= </span><span class="s1">skip_chars</span><span class="s3">(</span><span class="s1">src</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">, </span><span class="s1">TOML_WS</span><span class="s3">)</span>
+
+
+<span class="s2">def </span><span class="s1">parse_basic_str_escape</span><span class="s3">(</span>
+    <span class="s1">src</span><span class="s3">: </span><span class="s1">str</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">: </span><span class="s1">Pos</span><span class="s3">, *, </span><span class="s1">multiline</span><span class="s3">: </span><span class="s1">bool </span><span class="s3">= </span><span class="s2">False</span>
+<span class="s3">) </span><span class="s1">-&gt; tuple</span><span class="s3">[</span><span class="s1">Pos</span><span class="s3">, </span><span class="s1">str</span><span class="s3">]:</span>
+    <span class="s1">escape_id </span><span class="s3">= </span><span class="s1">src</span><span class="s3">[</span><span class="s1">pos </span><span class="s3">: </span><span class="s1">pos </span><span class="s3">+ </span><span class="s4">2</span><span class="s3">]</span>
+    <span class="s1">pos </span><span class="s3">+= </span><span class="s4">2</span>
+    <span class="s2">if </span><span class="s1">multiline </span><span class="s2">and </span><span class="s1">escape_id </span><span class="s2">in </span><span class="s3">{</span><span class="s5">&quot;</span><span class="s2">\\ </span><span class="s5">&quot;</span><span class="s3">, </span><span class="s5">&quot;</span><span class="s2">\\\t</span><span class="s5">&quot;</span><span class="s3">, </span><span class="s5">&quot;</span><span class="s2">\\\n</span><span class="s5">&quot;</span><span class="s3">}:</span>
+        <span class="s0"># Skip whitespace until next non-whitespace character or end of</span>
+        <span class="s0"># the doc. Error if non-whitespace is found before newline.</span>
+        <span class="s2">if </span><span class="s1">escape_id </span><span class="s3">!= </span><span class="s5">&quot;</span><span class="s2">\\\n</span><span class="s5">&quot;</span><span class="s3">:</span>
+            <span class="s1">pos </span><span class="s3">= </span><span class="s1">skip_chars</span><span class="s3">(</span><span class="s1">src</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">, </span><span class="s1">TOML_WS</span><span class="s3">)</span>
+            <span class="s2">try</span><span class="s3">:</span>
+                <span class="s1">char </span><span class="s3">= </span><span class="s1">src</span><span class="s3">[</span><span class="s1">pos</span><span class="s3">]</span>
+            <span class="s2">except </span><span class="s1">IndexError</span><span class="s3">:</span>
+                <span class="s2">return </span><span class="s1">pos</span><span class="s3">, </span><span class="s5">&quot;&quot;</span>
+            <span class="s2">if </span><span class="s1">char </span><span class="s3">!= </span><span class="s5">&quot;</span><span class="s2">\n</span><span class="s5">&quot;</span><span class="s3">:</span>
+                <span class="s2">raise </span><span class="s1">suffixed_err</span><span class="s3">(</span><span class="s1">src</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">, </span><span class="s5">&quot;Unescaped '</span><span class="s2">\\</span><span class="s5">' in a string&quot;</span><span class="s3">)</span>
+            <span class="s1">pos </span><span class="s3">+= </span><span class="s4">1</span>
+        <span class="s1">pos </span><span class="s3">= </span><span class="s1">skip_chars</span><span class="s3">(</span><span class="s1">src</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">, </span><span class="s1">TOML_WS_AND_NEWLINE</span><span class="s3">)</span>
+        <span class="s2">return </span><span class="s1">pos</span><span class="s3">, </span><span class="s5">&quot;&quot;</span>
+    <span class="s2">if </span><span class="s1">escape_id </span><span class="s3">== </span><span class="s5">&quot;</span><span class="s2">\\</span><span class="s5">u&quot;</span><span class="s3">:</span>
+        <span class="s2">return </span><span class="s1">parse_hex_char</span><span class="s3">(</span><span class="s1">src</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">, </span><span class="s4">4</span><span class="s3">)</span>
+    <span class="s2">if </span><span class="s1">escape_id </span><span class="s3">== </span><span class="s5">&quot;</span><span class="s2">\\</span><span class="s5">U&quot;</span><span class="s3">:</span>
+        <span class="s2">return </span><span class="s1">parse_hex_char</span><span class="s3">(</span><span class="s1">src</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">, </span><span class="s4">8</span><span class="s3">)</span>
+    <span class="s2">try</span><span class="s3">:</span>
+        <span class="s2">return </span><span class="s1">pos</span><span class="s3">, </span><span class="s1">BASIC_STR_ESCAPE_REPLACEMENTS</span><span class="s3">[</span><span class="s1">escape_id</span><span class="s3">]</span>
+    <span class="s2">except </span><span class="s1">KeyError</span><span class="s3">:</span>
+        <span class="s2">raise </span><span class="s1">suffixed_err</span><span class="s3">(</span><span class="s1">src</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">, </span><span class="s5">&quot;Unescaped '</span><span class="s2">\\</span><span class="s5">' in a string&quot;</span><span class="s3">) </span><span class="s2">from None</span>
+
+
+<span class="s2">def </span><span class="s1">parse_basic_str_escape_multiline</span><span class="s3">(</span><span class="s1">src</span><span class="s3">: </span><span class="s1">str</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">: </span><span class="s1">Pos</span><span class="s3">) </span><span class="s1">-&gt; tuple</span><span class="s3">[</span><span class="s1">Pos</span><span class="s3">, </span><span class="s1">str</span><span class="s3">]:</span>
+    <span class="s2">return </span><span class="s1">parse_basic_str_escape</span><span class="s3">(</span><span class="s1">src</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">, </span><span class="s1">multiline</span><span class="s3">=</span><span class="s2">True</span><span class="s3">)</span>
+
+
+<span class="s2">def </span><span class="s1">parse_hex_char</span><span class="s3">(</span><span class="s1">src</span><span class="s3">: </span><span class="s1">str</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">: </span><span class="s1">Pos</span><span class="s3">, </span><span class="s1">hex_len</span><span class="s3">: </span><span class="s1">int</span><span class="s3">) </span><span class="s1">-&gt; tuple</span><span class="s3">[</span><span class="s1">Pos</span><span class="s3">, </span><span class="s1">str</span><span class="s3">]:</span>
+    <span class="s1">hex_str </span><span class="s3">= </span><span class="s1">src</span><span class="s3">[</span><span class="s1">pos </span><span class="s3">: </span><span class="s1">pos </span><span class="s3">+ </span><span class="s1">hex_len</span><span class="s3">]</span>
+    <span class="s2">if </span><span class="s1">len</span><span class="s3">(</span><span class="s1">hex_str</span><span class="s3">) != </span><span class="s1">hex_len </span><span class="s2">or not </span><span class="s1">HEXDIGIT_CHARS</span><span class="s3">.</span><span class="s1">issuperset</span><span class="s3">(</span><span class="s1">hex_str</span><span class="s3">):</span>
+        <span class="s2">raise </span><span class="s1">suffixed_err</span><span class="s3">(</span><span class="s1">src</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">, </span><span class="s5">&quot;Invalid hex value&quot;</span><span class="s3">)</span>
+    <span class="s1">pos </span><span class="s3">+= </span><span class="s1">hex_len</span>
+    <span class="s1">hex_int </span><span class="s3">= </span><span class="s1">int</span><span class="s3">(</span><span class="s1">hex_str</span><span class="s3">, </span><span class="s4">16</span><span class="s3">)</span>
+    <span class="s2">if not </span><span class="s1">is_unicode_scalar_value</span><span class="s3">(</span><span class="s1">hex_int</span><span class="s3">):</span>
+        <span class="s2">raise </span><span class="s1">suffixed_err</span><span class="s3">(</span><span class="s1">src</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">, </span><span class="s5">&quot;Escaped character is not a Unicode scalar value&quot;</span><span class="s3">)</span>
+    <span class="s2">return </span><span class="s1">pos</span><span class="s3">, </span><span class="s1">chr</span><span class="s3">(</span><span class="s1">hex_int</span><span class="s3">)</span>
+
+
+<span class="s2">def </span><span class="s1">parse_literal_str</span><span class="s3">(</span><span class="s1">src</span><span class="s3">: </span><span class="s1">str</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">: </span><span class="s1">Pos</span><span class="s3">) </span><span class="s1">-&gt; tuple</span><span class="s3">[</span><span class="s1">Pos</span><span class="s3">, </span><span class="s1">str</span><span class="s3">]:</span>
+    <span class="s1">pos </span><span class="s3">+= </span><span class="s4">1  </span><span class="s0"># Skip starting apostrophe</span>
+    <span class="s1">start_pos </span><span class="s3">= </span><span class="s1">pos</span>
+    <span class="s1">pos </span><span class="s3">= </span><span class="s1">skip_until</span><span class="s3">(</span>
+        <span class="s1">src</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">, </span><span class="s5">&quot;'&quot;</span><span class="s3">, </span><span class="s1">error_on</span><span class="s3">=</span><span class="s1">ILLEGAL_LITERAL_STR_CHARS</span><span class="s3">, </span><span class="s1">error_on_eof</span><span class="s3">=</span><span class="s2">True</span>
+    <span class="s3">)</span>
+    <span class="s2">return </span><span class="s1">pos </span><span class="s3">+ </span><span class="s4">1</span><span class="s3">, </span><span class="s1">src</span><span class="s3">[</span><span class="s1">start_pos</span><span class="s3">:</span><span class="s1">pos</span><span class="s3">]  </span><span class="s0"># Skip ending apostrophe</span>
+
+
+<span class="s2">def </span><span class="s1">parse_multiline_str</span><span class="s3">(</span><span class="s1">src</span><span class="s3">: </span><span class="s1">str</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">: </span><span class="s1">Pos</span><span class="s3">, *, </span><span class="s1">literal</span><span class="s3">: </span><span class="s1">bool</span><span class="s3">) </span><span class="s1">-&gt; tuple</span><span class="s3">[</span><span class="s1">Pos</span><span class="s3">, </span><span class="s1">str</span><span class="s3">]:</span>
+    <span class="s1">pos </span><span class="s3">+= </span><span class="s4">3</span>
+    <span class="s2">if </span><span class="s1">src</span><span class="s3">.</span><span class="s1">startswith</span><span class="s3">(</span><span class="s5">&quot;</span><span class="s2">\n</span><span class="s5">&quot;</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">):</span>
+        <span class="s1">pos </span><span class="s3">+= </span><span class="s4">1</span>
+
+    <span class="s2">if </span><span class="s1">literal</span><span class="s3">:</span>
+        <span class="s1">delim </span><span class="s3">= </span><span class="s5">&quot;'&quot;</span>
+        <span class="s1">end_pos </span><span class="s3">= </span><span class="s1">skip_until</span><span class="s3">(</span>
+            <span class="s1">src</span><span class="s3">,</span>
+            <span class="s1">pos</span><span class="s3">,</span>
+            <span class="s5">&quot;'''&quot;</span><span class="s3">,</span>
+            <span class="s1">error_on</span><span class="s3">=</span><span class="s1">ILLEGAL_MULTILINE_LITERAL_STR_CHARS</span><span class="s3">,</span>
+            <span class="s1">error_on_eof</span><span class="s3">=</span><span class="s2">True</span><span class="s3">,</span>
+        <span class="s3">)</span>
+        <span class="s1">result </span><span class="s3">= </span><span class="s1">src</span><span class="s3">[</span><span class="s1">pos</span><span class="s3">:</span><span class="s1">end_pos</span><span class="s3">]</span>
+        <span class="s1">pos </span><span class="s3">= </span><span class="s1">end_pos </span><span class="s3">+ </span><span class="s4">3</span>
+    <span class="s2">else</span><span class="s3">:</span>
+        <span class="s1">delim </span><span class="s3">= </span><span class="s5">'&quot;'</span>
+        <span class="s1">pos</span><span class="s3">, </span><span class="s1">result </span><span class="s3">= </span><span class="s1">parse_basic_str</span><span class="s3">(</span><span class="s1">src</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">, </span><span class="s1">multiline</span><span class="s3">=</span><span class="s2">True</span><span class="s3">)</span>
+
+    <span class="s0"># Add at maximum two extra apostrophes/quotes if the end sequence</span>
+    <span class="s0"># is 4 or 5 chars long instead of just 3.</span>
+    <span class="s2">if not </span><span class="s1">src</span><span class="s3">.</span><span class="s1">startswith</span><span class="s3">(</span><span class="s1">delim</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">):</span>
+        <span class="s2">return </span><span class="s1">pos</span><span class="s3">, </span><span class="s1">result</span>
+    <span class="s1">pos </span><span class="s3">+= </span><span class="s4">1</span>
+    <span class="s2">if not </span><span class="s1">src</span><span class="s3">.</span><span class="s1">startswith</span><span class="s3">(</span><span class="s1">delim</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">):</span>
+        <span class="s2">return </span><span class="s1">pos</span><span class="s3">, </span><span class="s1">result </span><span class="s3">+ </span><span class="s1">delim</span>
+    <span class="s1">pos </span><span class="s3">+= </span><span class="s4">1</span>
+    <span class="s2">return </span><span class="s1">pos</span><span class="s3">, </span><span class="s1">result </span><span class="s3">+ (</span><span class="s1">delim </span><span class="s3">* </span><span class="s4">2</span><span class="s3">)</span>
+
+
+<span class="s2">def </span><span class="s1">parse_basic_str</span><span class="s3">(</span><span class="s1">src</span><span class="s3">: </span><span class="s1">str</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">: </span><span class="s1">Pos</span><span class="s3">, *, </span><span class="s1">multiline</span><span class="s3">: </span><span class="s1">bool</span><span class="s3">) </span><span class="s1">-&gt; tuple</span><span class="s3">[</span><span class="s1">Pos</span><span class="s3">, </span><span class="s1">str</span><span class="s3">]:</span>
+    <span class="s2">if </span><span class="s1">multiline</span><span class="s3">:</span>
+        <span class="s1">error_on </span><span class="s3">= </span><span class="s1">ILLEGAL_MULTILINE_BASIC_STR_CHARS</span>
+        <span class="s1">parse_escapes </span><span class="s3">= </span><span class="s1">parse_basic_str_escape_multiline</span>
+    <span class="s2">else</span><span class="s3">:</span>
+        <span class="s1">error_on </span><span class="s3">= </span><span class="s1">ILLEGAL_BASIC_STR_CHARS</span>
+        <span class="s1">parse_escapes </span><span class="s3">= </span><span class="s1">parse_basic_str_escape</span>
+    <span class="s1">result </span><span class="s3">= </span><span class="s5">&quot;&quot;</span>
+    <span class="s1">start_pos </span><span class="s3">= </span><span class="s1">pos</span>
+    <span class="s2">while True</span><span class="s3">:</span>
+        <span class="s2">try</span><span class="s3">:</span>
+            <span class="s1">char </span><span class="s3">= </span><span class="s1">src</span><span class="s3">[</span><span class="s1">pos</span><span class="s3">]</span>
+        <span class="s2">except </span><span class="s1">IndexError</span><span class="s3">:</span>
+            <span class="s2">raise </span><span class="s1">suffixed_err</span><span class="s3">(</span><span class="s1">src</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">, </span><span class="s5">&quot;Unterminated string&quot;</span><span class="s3">) </span><span class="s2">from None</span>
+        <span class="s2">if </span><span class="s1">char </span><span class="s3">== </span><span class="s5">'&quot;'</span><span class="s3">:</span>
+            <span class="s2">if not </span><span class="s1">multiline</span><span class="s3">:</span>
+                <span class="s2">return </span><span class="s1">pos </span><span class="s3">+ </span><span class="s4">1</span><span class="s3">, </span><span class="s1">result </span><span class="s3">+ </span><span class="s1">src</span><span class="s3">[</span><span class="s1">start_pos</span><span class="s3">:</span><span class="s1">pos</span><span class="s3">]</span>
+            <span class="s2">if </span><span class="s1">src</span><span class="s3">.</span><span class="s1">startswith</span><span class="s3">(</span><span class="s5">'&quot;&quot;&quot;'</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">):</span>
+                <span class="s2">return </span><span class="s1">pos </span><span class="s3">+ </span><span class="s4">3</span><span class="s3">, </span><span class="s1">result </span><span class="s3">+ </span><span class="s1">src</span><span class="s3">[</span><span class="s1">start_pos</span><span class="s3">:</span><span class="s1">pos</span><span class="s3">]</span>
+            <span class="s1">pos </span><span class="s3">+= </span><span class="s4">1</span>
+            <span class="s2">continue</span>
+        <span class="s2">if </span><span class="s1">char </span><span class="s3">== </span><span class="s5">&quot;</span><span class="s2">\\</span><span class="s5">&quot;</span><span class="s3">:</span>
+            <span class="s1">result </span><span class="s3">+= </span><span class="s1">src</span><span class="s3">[</span><span class="s1">start_pos</span><span class="s3">:</span><span class="s1">pos</span><span class="s3">]</span>
+            <span class="s1">pos</span><span class="s3">, </span><span class="s1">parsed_escape </span><span class="s3">= </span><span class="s1">parse_escapes</span><span class="s3">(</span><span class="s1">src</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">)</span>
+            <span class="s1">result </span><span class="s3">+= </span><span class="s1">parsed_escape</span>
+            <span class="s1">start_pos </span><span class="s3">= </span><span class="s1">pos</span>
+            <span class="s2">continue</span>
+        <span class="s2">if </span><span class="s1">char </span><span class="s2">in </span><span class="s1">error_on</span><span class="s3">:</span>
+            <span class="s2">raise </span><span class="s1">suffixed_err</span><span class="s3">(</span><span class="s1">src</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">, </span><span class="s5">f&quot;Illegal character </span><span class="s2">{</span><span class="s1">char</span><span class="s2">!r}</span><span class="s5">&quot;</span><span class="s3">)</span>
+        <span class="s1">pos </span><span class="s3">+= </span><span class="s4">1</span>
+
+
+<span class="s2">def </span><span class="s1">parse_value</span><span class="s3">(  </span><span class="s0"># noqa: C901</span>
+    <span class="s1">src</span><span class="s3">: </span><span class="s1">str</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">: </span><span class="s1">Pos</span><span class="s3">, </span><span class="s1">parse_float</span><span class="s3">: </span><span class="s1">ParseFloat</span>
+<span class="s3">) </span><span class="s1">-&gt; tuple</span><span class="s3">[</span><span class="s1">Pos</span><span class="s3">, </span><span class="s1">Any</span><span class="s3">]:</span>
+    <span class="s2">try</span><span class="s3">:</span>
+        <span class="s1">char</span><span class="s3">: </span><span class="s1">str </span><span class="s3">| </span><span class="s2">None </span><span class="s3">= </span><span class="s1">src</span><span class="s3">[</span><span class="s1">pos</span><span class="s3">]</span>
+    <span class="s2">except </span><span class="s1">IndexError</span><span class="s3">:</span>
+        <span class="s1">char </span><span class="s3">= </span><span class="s2">None</span>
+
+    <span class="s0"># IMPORTANT: order conditions based on speed of checking and likelihood</span>
+
+    <span class="s0"># Basic strings</span>
+    <span class="s2">if </span><span class="s1">char </span><span class="s3">== </span><span class="s5">'&quot;'</span><span class="s3">:</span>
+        <span class="s2">if </span><span class="s1">src</span><span class="s3">.</span><span class="s1">startswith</span><span class="s3">(</span><span class="s5">'&quot;&quot;&quot;'</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">):</span>
+            <span class="s2">return </span><span class="s1">parse_multiline_str</span><span class="s3">(</span><span class="s1">src</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">, </span><span class="s1">literal</span><span class="s3">=</span><span class="s2">False</span><span class="s3">)</span>
+        <span class="s2">return </span><span class="s1">parse_one_line_basic_str</span><span class="s3">(</span><span class="s1">src</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">)</span>
+
+    <span class="s0"># Literal strings</span>
+    <span class="s2">if </span><span class="s1">char </span><span class="s3">== </span><span class="s5">&quot;'&quot;</span><span class="s3">:</span>
+        <span class="s2">if </span><span class="s1">src</span><span class="s3">.</span><span class="s1">startswith</span><span class="s3">(</span><span class="s5">&quot;'''&quot;</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">):</span>
+            <span class="s2">return </span><span class="s1">parse_multiline_str</span><span class="s3">(</span><span class="s1">src</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">, </span><span class="s1">literal</span><span class="s3">=</span><span class="s2">True</span><span class="s3">)</span>
+        <span class="s2">return </span><span class="s1">parse_literal_str</span><span class="s3">(</span><span class="s1">src</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">)</span>
+
+    <span class="s0"># Booleans</span>
+    <span class="s2">if </span><span class="s1">char </span><span class="s3">== </span><span class="s5">&quot;t&quot;</span><span class="s3">:</span>
+        <span class="s2">if </span><span class="s1">src</span><span class="s3">.</span><span class="s1">startswith</span><span class="s3">(</span><span class="s5">&quot;true&quot;</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">):</span>
+            <span class="s2">return </span><span class="s1">pos </span><span class="s3">+ </span><span class="s4">4</span><span class="s3">, </span><span class="s2">True</span>
+    <span class="s2">if </span><span class="s1">char </span><span class="s3">== </span><span class="s5">&quot;f&quot;</span><span class="s3">:</span>
+        <span class="s2">if </span><span class="s1">src</span><span class="s3">.</span><span class="s1">startswith</span><span class="s3">(</span><span class="s5">&quot;false&quot;</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">):</span>
+            <span class="s2">return </span><span class="s1">pos </span><span class="s3">+ </span><span class="s4">5</span><span class="s3">, </span><span class="s2">False</span>
+
+    <span class="s0"># Arrays</span>
+    <span class="s2">if </span><span class="s1">char </span><span class="s3">== </span><span class="s5">&quot;[&quot;</span><span class="s3">:</span>
+        <span class="s2">return </span><span class="s1">parse_array</span><span class="s3">(</span><span class="s1">src</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">, </span><span class="s1">parse_float</span><span class="s3">)</span>
+
+    <span class="s0"># Inline tables</span>
+    <span class="s2">if </span><span class="s1">char </span><span class="s3">== </span><span class="s5">&quot;{&quot;</span><span class="s3">:</span>
+        <span class="s2">return </span><span class="s1">parse_inline_table</span><span class="s3">(</span><span class="s1">src</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">, </span><span class="s1">parse_float</span><span class="s3">)</span>
+
+    <span class="s0"># Dates and times</span>
+    <span class="s1">datetime_match </span><span class="s3">= </span><span class="s1">RE_DATETIME</span><span class="s3">.</span><span class="s1">match</span><span class="s3">(</span><span class="s1">src</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">)</span>
+    <span class="s2">if </span><span class="s1">datetime_match</span><span class="s3">:</span>
+        <span class="s2">try</span><span class="s3">:</span>
+            <span class="s1">datetime_obj </span><span class="s3">= </span><span class="s1">match_to_datetime</span><span class="s3">(</span><span class="s1">datetime_match</span><span class="s3">)</span>
+        <span class="s2">except </span><span class="s1">ValueError </span><span class="s2">as </span><span class="s1">e</span><span class="s3">:</span>
+            <span class="s2">raise </span><span class="s1">suffixed_err</span><span class="s3">(</span><span class="s1">src</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">, </span><span class="s5">&quot;Invalid date or datetime&quot;</span><span class="s3">) </span><span class="s2">from </span><span class="s1">e</span>
+        <span class="s2">return </span><span class="s1">datetime_match</span><span class="s3">.</span><span class="s1">end</span><span class="s3">(), </span><span class="s1">datetime_obj</span>
+    <span class="s1">localtime_match </span><span class="s3">= </span><span class="s1">RE_LOCALTIME</span><span class="s3">.</span><span class="s1">match</span><span class="s3">(</span><span class="s1">src</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">)</span>
+    <span class="s2">if </span><span class="s1">localtime_match</span><span class="s3">:</span>
+        <span class="s2">return </span><span class="s1">localtime_match</span><span class="s3">.</span><span class="s1">end</span><span class="s3">(), </span><span class="s1">match_to_localtime</span><span class="s3">(</span><span class="s1">localtime_match</span><span class="s3">)</span>
+
+    <span class="s0"># Integers and &quot;normal&quot; floats.</span>
+    <span class="s0"># The regex will greedily match any type starting with a decimal</span>
+    <span class="s0"># char, so needs to be located after handling of dates and times.</span>
+    <span class="s1">number_match </span><span class="s3">= </span><span class="s1">RE_NUMBER</span><span class="s3">.</span><span class="s1">match</span><span class="s3">(</span><span class="s1">src</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">)</span>
+    <span class="s2">if </span><span class="s1">number_match</span><span class="s3">:</span>
+        <span class="s2">return </span><span class="s1">number_match</span><span class="s3">.</span><span class="s1">end</span><span class="s3">(), </span><span class="s1">match_to_number</span><span class="s3">(</span><span class="s1">number_match</span><span class="s3">, </span><span class="s1">parse_float</span><span class="s3">)</span>
+
+    <span class="s0"># Special floats</span>
+    <span class="s1">first_three </span><span class="s3">= </span><span class="s1">src</span><span class="s3">[</span><span class="s1">pos </span><span class="s3">: </span><span class="s1">pos </span><span class="s3">+ </span><span class="s4">3</span><span class="s3">]</span>
+    <span class="s2">if </span><span class="s1">first_three </span><span class="s2">in </span><span class="s3">{</span><span class="s5">&quot;inf&quot;</span><span class="s3">, </span><span class="s5">&quot;nan&quot;</span><span class="s3">}:</span>
+        <span class="s2">return </span><span class="s1">pos </span><span class="s3">+ </span><span class="s4">3</span><span class="s3">, </span><span class="s1">parse_float</span><span class="s3">(</span><span class="s1">first_three</span><span class="s3">)</span>
+    <span class="s1">first_four </span><span class="s3">= </span><span class="s1">src</span><span class="s3">[</span><span class="s1">pos </span><span class="s3">: </span><span class="s1">pos </span><span class="s3">+ </span><span class="s4">4</span><span class="s3">]</span>
+    <span class="s2">if </span><span class="s1">first_four </span><span class="s2">in </span><span class="s3">{</span><span class="s5">&quot;-inf&quot;</span><span class="s3">, </span><span class="s5">&quot;+inf&quot;</span><span class="s3">, </span><span class="s5">&quot;-nan&quot;</span><span class="s3">, </span><span class="s5">&quot;+nan&quot;</span><span class="s3">}:</span>
+        <span class="s2">return </span><span class="s1">pos </span><span class="s3">+ </span><span class="s4">4</span><span class="s3">, </span><span class="s1">parse_float</span><span class="s3">(</span><span class="s1">first_four</span><span class="s3">)</span>
+
+    <span class="s2">raise </span><span class="s1">suffixed_err</span><span class="s3">(</span><span class="s1">src</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">, </span><span class="s5">&quot;Invalid value&quot;</span><span class="s3">)</span>
+
+
+<span class="s2">def </span><span class="s1">suffixed_err</span><span class="s3">(</span><span class="s1">src</span><span class="s3">: </span><span class="s1">str</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">: </span><span class="s1">Pos</span><span class="s3">, </span><span class="s1">msg</span><span class="s3">: </span><span class="s1">str</span><span class="s3">) </span><span class="s1">-&gt; TOMLDecodeError</span><span class="s3">:</span>
+    <span class="s6">&quot;&quot;&quot;Return a `TOMLDecodeError` where error message is suffixed with 
+    coordinates in source.&quot;&quot;&quot;</span>
+
+    <span class="s2">def </span><span class="s1">coord_repr</span><span class="s3">(</span><span class="s1">src</span><span class="s3">: </span><span class="s1">str</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">: </span><span class="s1">Pos</span><span class="s3">) </span><span class="s1">-&gt; str</span><span class="s3">:</span>
+        <span class="s2">if </span><span class="s1">pos </span><span class="s3">&gt;= </span><span class="s1">len</span><span class="s3">(</span><span class="s1">src</span><span class="s3">):</span>
+            <span class="s2">return </span><span class="s5">&quot;end of document&quot;</span>
+        <span class="s1">line </span><span class="s3">= </span><span class="s1">src</span><span class="s3">.</span><span class="s1">count</span><span class="s3">(</span><span class="s5">&quot;</span><span class="s2">\n</span><span class="s5">&quot;</span><span class="s3">, </span><span class="s4">0</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">) + </span><span class="s4">1</span>
+        <span class="s2">if </span><span class="s1">line </span><span class="s3">== </span><span class="s4">1</span><span class="s3">:</span>
+            <span class="s1">column </span><span class="s3">= </span><span class="s1">pos </span><span class="s3">+ </span><span class="s4">1</span>
+        <span class="s2">else</span><span class="s3">:</span>
+            <span class="s1">column </span><span class="s3">= </span><span class="s1">pos </span><span class="s3">- </span><span class="s1">src</span><span class="s3">.</span><span class="s1">rindex</span><span class="s3">(</span><span class="s5">&quot;</span><span class="s2">\n</span><span class="s5">&quot;</span><span class="s3">, </span><span class="s4">0</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">)</span>
+        <span class="s2">return </span><span class="s5">f&quot;line </span><span class="s2">{</span><span class="s1">line</span><span class="s2">}</span><span class="s5">, column </span><span class="s2">{</span><span class="s1">column</span><span class="s2">}</span><span class="s5">&quot;</span>
+
+    <span class="s2">return </span><span class="s1">TOMLDecodeError</span><span class="s3">(</span><span class="s5">f&quot;</span><span class="s2">{</span><span class="s1">msg</span><span class="s2">} </span><span class="s5">(at </span><span class="s2">{</span><span class="s1">coord_repr</span><span class="s3">(</span><span class="s1">src</span><span class="s3">, </span><span class="s1">pos</span><span class="s3">)</span><span class="s2">}</span><span class="s5">)&quot;</span><span class="s3">)</span>
+
+
+<span class="s2">def </span><span class="s1">is_unicode_scalar_value</span><span class="s3">(</span><span class="s1">codepoint</span><span class="s3">: </span><span class="s1">int</span><span class="s3">) </span><span class="s1">-&gt; bool</span><span class="s3">:</span>
+    <span class="s2">return </span><span class="s3">(</span><span class="s4">0 </span><span class="s3">&lt;= </span><span class="s1">codepoint </span><span class="s3">&lt;= </span><span class="s4">55295</span><span class="s3">) </span><span class="s2">or </span><span class="s3">(</span><span class="s4">57344 </span><span class="s3">&lt;= </span><span class="s1">codepoint </span><span class="s3">&lt;= </span><span class="s4">1114111</span><span class="s3">)</span>
+
+
+<span class="s2">def </span><span class="s1">make_safe_parse_float</span><span class="s3">(</span><span class="s1">parse_float</span><span class="s3">: </span><span class="s1">ParseFloat</span><span class="s3">) </span><span class="s1">-&gt; ParseFloat</span><span class="s3">:</span>
+    <span class="s6">&quot;&quot;&quot;A decorator to make `parse_float` safe. 
+ 
+    `parse_float` must not return dicts or lists, because these types 
+    would be mixed with parsed TOML tables and arrays, thus confusing 
+    the parser. The returned decorated callable raises `ValueError` 
+    instead of returning illegal types. 
+    &quot;&quot;&quot;</span>
+    <span class="s0"># The default `float` callable never returns illegal types. Optimize it.</span>
+    <span class="s2">if </span><span class="s1">parse_float </span><span class="s2">is </span><span class="s1">float</span><span class="s3">:  </span><span class="s0"># type: ignore[comparison-overlap]</span>
+        <span class="s2">return </span><span class="s1">float</span>
+
+    <span class="s2">def </span><span class="s1">safe_parse_float</span><span class="s3">(</span><span class="s1">float_str</span><span class="s3">: </span><span class="s1">str</span><span class="s3">) </span><span class="s1">-&gt; Any</span><span class="s3">:</span>
+        <span class="s1">float_value </span><span class="s3">= </span><span class="s1">parse_float</span><span class="s3">(</span><span class="s1">float_str</span><span class="s3">)</span>
+        <span class="s2">if </span><span class="s1">isinstance</span><span class="s3">(</span><span class="s1">float_value</span><span class="s3">, (</span><span class="s1">dict</span><span class="s3">, </span><span class="s1">list</span><span class="s3">)):</span>
+            <span class="s2">raise </span><span class="s1">ValueError</span><span class="s3">(</span><span class="s5">&quot;parse_float must not return dicts or lists&quot;</span><span class="s3">)</span>
+        <span class="s2">return </span><span class="s1">float_value</span>
+
+    <span class="s2">return </span><span class="s1">safe_parse_float</span>
+</pre>
+</body>
+</html>

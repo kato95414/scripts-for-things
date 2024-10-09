@@ -1,0 +1,123 @@
+<html>
+<head>
+<title>palette.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cf8e6d;}
+.s1 { color: #bcbec4;}
+.s2 { color: #bcbec4;}
+.s3 { color: #5f826b; font-style: italic;}
+.s4 { color: #6aab73;}
+.s5 { color: #2aacb8;}
+.s6 { color: #7a7e85;}
+</style>
+</head>
+<body bgcolor="#1e1f22">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+palette.py</font>
+</center></td></tr></table>
+<pre><span class="s0">from </span><span class="s1">math </span><span class="s0">import </span><span class="s1">sqrt</span>
+<span class="s0">from </span><span class="s1">functools </span><span class="s0">import </span><span class="s1">lru_cache</span>
+<span class="s0">from </span><span class="s1">typing </span><span class="s0">import </span><span class="s1">Sequence</span><span class="s2">, </span><span class="s1">Tuple</span><span class="s2">, </span><span class="s1">TYPE_CHECKING</span>
+
+<span class="s0">from </span><span class="s2">.</span><span class="s1">color_triplet </span><span class="s0">import </span><span class="s1">ColorTriplet</span>
+
+<span class="s0">if </span><span class="s1">TYPE_CHECKING</span><span class="s2">:</span>
+    <span class="s0">from </span><span class="s1">pip</span><span class="s2">.</span><span class="s1">_vendor</span><span class="s2">.</span><span class="s1">rich</span><span class="s2">.</span><span class="s1">table </span><span class="s0">import </span><span class="s1">Table</span>
+
+
+<span class="s0">class </span><span class="s1">Palette</span><span class="s2">:</span>
+    <span class="s3">&quot;&quot;&quot;A palette of available colors.&quot;&quot;&quot;</span>
+
+    <span class="s0">def </span><span class="s1">__init__</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">colors</span><span class="s2">: </span><span class="s1">Sequence</span><span class="s2">[</span><span class="s1">Tuple</span><span class="s2">[</span><span class="s1">int</span><span class="s2">, </span><span class="s1">int</span><span class="s2">, </span><span class="s1">int</span><span class="s2">]]):</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">_colors </span><span class="s2">= </span><span class="s1">colors</span>
+
+    <span class="s0">def </span><span class="s1">__getitem__</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">number</span><span class="s2">: </span><span class="s1">int</span><span class="s2">) </span><span class="s1">-&gt; ColorTriplet</span><span class="s2">:</span>
+        <span class="s0">return </span><span class="s1">ColorTriplet</span><span class="s2">(*</span><span class="s1">self</span><span class="s2">.</span><span class="s1">_colors</span><span class="s2">[</span><span class="s1">number</span><span class="s2">])</span>
+
+    <span class="s0">def </span><span class="s1">__rich__</span><span class="s2">(</span><span class="s1">self</span><span class="s2">) </span><span class="s1">-&gt; </span><span class="s4">&quot;Table&quot;</span><span class="s2">:</span>
+        <span class="s0">from </span><span class="s1">pip</span><span class="s2">.</span><span class="s1">_vendor</span><span class="s2">.</span><span class="s1">rich</span><span class="s2">.</span><span class="s1">color </span><span class="s0">import </span><span class="s1">Color</span>
+        <span class="s0">from </span><span class="s1">pip</span><span class="s2">.</span><span class="s1">_vendor</span><span class="s2">.</span><span class="s1">rich</span><span class="s2">.</span><span class="s1">style </span><span class="s0">import </span><span class="s1">Style</span>
+        <span class="s0">from </span><span class="s1">pip</span><span class="s2">.</span><span class="s1">_vendor</span><span class="s2">.</span><span class="s1">rich</span><span class="s2">.</span><span class="s1">text </span><span class="s0">import </span><span class="s1">Text</span>
+        <span class="s0">from </span><span class="s1">pip</span><span class="s2">.</span><span class="s1">_vendor</span><span class="s2">.</span><span class="s1">rich</span><span class="s2">.</span><span class="s1">table </span><span class="s0">import </span><span class="s1">Table</span>
+
+        <span class="s1">table </span><span class="s2">= </span><span class="s1">Table</span><span class="s2">(</span>
+            <span class="s4">&quot;index&quot;</span><span class="s2">,</span>
+            <span class="s4">&quot;RGB&quot;</span><span class="s2">,</span>
+            <span class="s4">&quot;Color&quot;</span><span class="s2">,</span>
+            <span class="s1">title</span><span class="s2">=</span><span class="s4">&quot;Palette&quot;</span><span class="s2">,</span>
+            <span class="s1">caption</span><span class="s2">=</span><span class="s4">f&quot;</span><span class="s0">{</span><span class="s1">len</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">_colors</span><span class="s2">)</span><span class="s0">} </span><span class="s4">colors&quot;</span><span class="s2">,</span>
+            <span class="s1">highlight</span><span class="s2">=</span><span class="s0">True</span><span class="s2">,</span>
+            <span class="s1">caption_justify</span><span class="s2">=</span><span class="s4">&quot;right&quot;</span><span class="s2">,</span>
+        <span class="s2">)</span>
+        <span class="s0">for </span><span class="s1">index</span><span class="s2">, </span><span class="s1">color </span><span class="s0">in </span><span class="s1">enumerate</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">_colors</span><span class="s2">):</span>
+            <span class="s1">table</span><span class="s2">.</span><span class="s1">add_row</span><span class="s2">(</span>
+                <span class="s1">str</span><span class="s2">(</span><span class="s1">index</span><span class="s2">),</span>
+                <span class="s1">repr</span><span class="s2">(</span><span class="s1">color</span><span class="s2">),</span>
+                <span class="s1">Text</span><span class="s2">(</span><span class="s4">&quot; &quot; </span><span class="s2">* </span><span class="s5">16</span><span class="s2">, </span><span class="s1">style</span><span class="s2">=</span><span class="s1">Style</span><span class="s2">(</span><span class="s1">bgcolor</span><span class="s2">=</span><span class="s1">Color</span><span class="s2">.</span><span class="s1">from_rgb</span><span class="s2">(*</span><span class="s1">color</span><span class="s2">))),</span>
+            <span class="s2">)</span>
+        <span class="s0">return </span><span class="s1">table</span>
+
+    <span class="s6"># This is somewhat inefficient and needs caching</span>
+    <span class="s2">@</span><span class="s1">lru_cache</span><span class="s2">(</span><span class="s1">maxsize</span><span class="s2">=</span><span class="s5">1024</span><span class="s2">)</span>
+    <span class="s0">def </span><span class="s1">match</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">color</span><span class="s2">: </span><span class="s1">Tuple</span><span class="s2">[</span><span class="s1">int</span><span class="s2">, </span><span class="s1">int</span><span class="s2">, </span><span class="s1">int</span><span class="s2">]) </span><span class="s1">-&gt; int</span><span class="s2">:</span>
+        <span class="s3">&quot;&quot;&quot;Find a color from a palette that most closely matches a given color. 
+ 
+        Args: 
+            color (Tuple[int, int, int]): RGB components in range 0 &gt; 255. 
+ 
+        Returns: 
+            int: Index of closes matching color. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">red1</span><span class="s2">, </span><span class="s1">green1</span><span class="s2">, </span><span class="s1">blue1 </span><span class="s2">= </span><span class="s1">color</span>
+        <span class="s1">_sqrt </span><span class="s2">= </span><span class="s1">sqrt</span>
+        <span class="s1">get_color </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">_colors</span><span class="s2">.</span><span class="s1">__getitem__</span>
+
+        <span class="s0">def </span><span class="s1">get_color_distance</span><span class="s2">(</span><span class="s1">index</span><span class="s2">: </span><span class="s1">int</span><span class="s2">) </span><span class="s1">-&gt; float</span><span class="s2">:</span>
+            <span class="s3">&quot;&quot;&quot;Get the distance to a color.&quot;&quot;&quot;</span>
+            <span class="s1">red2</span><span class="s2">, </span><span class="s1">green2</span><span class="s2">, </span><span class="s1">blue2 </span><span class="s2">= </span><span class="s1">get_color</span><span class="s2">(</span><span class="s1">index</span><span class="s2">)</span>
+            <span class="s1">red_mean </span><span class="s2">= (</span><span class="s1">red1 </span><span class="s2">+ </span><span class="s1">red2</span><span class="s2">) // </span><span class="s5">2</span>
+            <span class="s1">red </span><span class="s2">= </span><span class="s1">red1 </span><span class="s2">- </span><span class="s1">red2</span>
+            <span class="s1">green </span><span class="s2">= </span><span class="s1">green1 </span><span class="s2">- </span><span class="s1">green2</span>
+            <span class="s1">blue </span><span class="s2">= </span><span class="s1">blue1 </span><span class="s2">- </span><span class="s1">blue2</span>
+            <span class="s0">return </span><span class="s1">_sqrt</span><span class="s2">(</span>
+                <span class="s2">(((</span><span class="s5">512 </span><span class="s2">+ </span><span class="s1">red_mean</span><span class="s2">) * </span><span class="s1">red </span><span class="s2">* </span><span class="s1">red</span><span class="s2">) &gt;&gt; </span><span class="s5">8</span><span class="s2">)</span>
+                <span class="s2">+ </span><span class="s5">4 </span><span class="s2">* </span><span class="s1">green </span><span class="s2">* </span><span class="s1">green</span>
+                <span class="s2">+ (((</span><span class="s5">767 </span><span class="s2">- </span><span class="s1">red_mean</span><span class="s2">) * </span><span class="s1">blue </span><span class="s2">* </span><span class="s1">blue</span><span class="s2">) &gt;&gt; </span><span class="s5">8</span><span class="s2">)</span>
+            <span class="s2">)</span>
+
+        <span class="s1">min_index </span><span class="s2">= </span><span class="s1">min</span><span class="s2">(</span><span class="s1">range</span><span class="s2">(</span><span class="s1">len</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">_colors</span><span class="s2">)), </span><span class="s1">key</span><span class="s2">=</span><span class="s1">get_color_distance</span><span class="s2">)</span>
+        <span class="s0">return </span><span class="s1">min_index</span>
+
+
+<span class="s0">if </span><span class="s1">__name__ </span><span class="s2">== </span><span class="s4">&quot;__main__&quot;</span><span class="s2">:  </span><span class="s6"># pragma: no cover</span>
+    <span class="s0">import </span><span class="s1">colorsys</span>
+    <span class="s0">from </span><span class="s1">typing </span><span class="s0">import </span><span class="s1">Iterable</span>
+    <span class="s0">from </span><span class="s1">pip</span><span class="s2">.</span><span class="s1">_vendor</span><span class="s2">.</span><span class="s1">rich</span><span class="s2">.</span><span class="s1">color </span><span class="s0">import </span><span class="s1">Color</span>
+    <span class="s0">from </span><span class="s1">pip</span><span class="s2">.</span><span class="s1">_vendor</span><span class="s2">.</span><span class="s1">rich</span><span class="s2">.</span><span class="s1">console </span><span class="s0">import </span><span class="s1">Console</span><span class="s2">, </span><span class="s1">ConsoleOptions</span>
+    <span class="s0">from </span><span class="s1">pip</span><span class="s2">.</span><span class="s1">_vendor</span><span class="s2">.</span><span class="s1">rich</span><span class="s2">.</span><span class="s1">segment </span><span class="s0">import </span><span class="s1">Segment</span>
+    <span class="s0">from </span><span class="s1">pip</span><span class="s2">.</span><span class="s1">_vendor</span><span class="s2">.</span><span class="s1">rich</span><span class="s2">.</span><span class="s1">style </span><span class="s0">import </span><span class="s1">Style</span>
+
+    <span class="s0">class </span><span class="s1">ColorBox</span><span class="s2">:</span>
+        <span class="s0">def </span><span class="s1">__rich_console__</span><span class="s2">(</span>
+            <span class="s1">self</span><span class="s2">, </span><span class="s1">console</span><span class="s2">: </span><span class="s1">Console</span><span class="s2">, </span><span class="s1">options</span><span class="s2">: </span><span class="s1">ConsoleOptions</span>
+        <span class="s2">) </span><span class="s1">-&gt; Iterable</span><span class="s2">[</span><span class="s1">Segment</span><span class="s2">]:</span>
+            <span class="s1">height </span><span class="s2">= </span><span class="s1">console</span><span class="s2">.</span><span class="s1">size</span><span class="s2">.</span><span class="s1">height </span><span class="s2">- </span><span class="s5">3</span>
+            <span class="s0">for </span><span class="s1">y </span><span class="s0">in </span><span class="s1">range</span><span class="s2">(</span><span class="s5">0</span><span class="s2">, </span><span class="s1">height</span><span class="s2">):</span>
+                <span class="s0">for </span><span class="s1">x </span><span class="s0">in </span><span class="s1">range</span><span class="s2">(</span><span class="s1">options</span><span class="s2">.</span><span class="s1">max_width</span><span class="s2">):</span>
+                    <span class="s1">h </span><span class="s2">= </span><span class="s1">x </span><span class="s2">/ </span><span class="s1">options</span><span class="s2">.</span><span class="s1">max_width</span>
+                    <span class="s1">l </span><span class="s2">= </span><span class="s1">y </span><span class="s2">/ (</span><span class="s1">height </span><span class="s2">+ </span><span class="s5">1</span><span class="s2">)</span>
+                    <span class="s1">r1</span><span class="s2">, </span><span class="s1">g1</span><span class="s2">, </span><span class="s1">b1 </span><span class="s2">= </span><span class="s1">colorsys</span><span class="s2">.</span><span class="s1">hls_to_rgb</span><span class="s2">(</span><span class="s1">h</span><span class="s2">, </span><span class="s1">l</span><span class="s2">, </span><span class="s5">1.0</span><span class="s2">)</span>
+                    <span class="s1">r2</span><span class="s2">, </span><span class="s1">g2</span><span class="s2">, </span><span class="s1">b2 </span><span class="s2">= </span><span class="s1">colorsys</span><span class="s2">.</span><span class="s1">hls_to_rgb</span><span class="s2">(</span><span class="s1">h</span><span class="s2">, </span><span class="s1">l </span><span class="s2">+ (</span><span class="s5">1 </span><span class="s2">/ </span><span class="s1">height </span><span class="s2">/ </span><span class="s5">2</span><span class="s2">), </span><span class="s5">1.0</span><span class="s2">)</span>
+                    <span class="s1">bgcolor </span><span class="s2">= </span><span class="s1">Color</span><span class="s2">.</span><span class="s1">from_rgb</span><span class="s2">(</span><span class="s1">r1 </span><span class="s2">* </span><span class="s5">255</span><span class="s2">, </span><span class="s1">g1 </span><span class="s2">* </span><span class="s5">255</span><span class="s2">, </span><span class="s1">b1 </span><span class="s2">* </span><span class="s5">255</span><span class="s2">)</span>
+                    <span class="s1">color </span><span class="s2">= </span><span class="s1">Color</span><span class="s2">.</span><span class="s1">from_rgb</span><span class="s2">(</span><span class="s1">r2 </span><span class="s2">* </span><span class="s5">255</span><span class="s2">, </span><span class="s1">g2 </span><span class="s2">* </span><span class="s5">255</span><span class="s2">, </span><span class="s1">b2 </span><span class="s2">* </span><span class="s5">255</span><span class="s2">)</span>
+                    <span class="s0">yield </span><span class="s1">Segment</span><span class="s2">(</span><span class="s4">&quot;▄&quot;</span><span class="s2">, </span><span class="s1">Style</span><span class="s2">(</span><span class="s1">color</span><span class="s2">=</span><span class="s1">color</span><span class="s2">, </span><span class="s1">bgcolor</span><span class="s2">=</span><span class="s1">bgcolor</span><span class="s2">))</span>
+                <span class="s0">yield </span><span class="s1">Segment</span><span class="s2">.</span><span class="s1">line</span><span class="s2">()</span>
+
+    <span class="s1">console </span><span class="s2">= </span><span class="s1">Console</span><span class="s2">()</span>
+    <span class="s1">console</span><span class="s2">.</span><span class="s1">print</span><span class="s2">(</span><span class="s1">ColorBox</span><span class="s2">())</span>
+</pre>
+</body>
+</html>

@@ -1,0 +1,36 @@
+<html>
+<head>
+<title>resultdict.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cf8e6d;}
+.s1 { color: #bcbec4;}
+.s2 { color: #bcbec4;}
+.s3 { color: #7a7e85;}
+</style>
+</head>
+<body bgcolor="#1e1f22">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+resultdict.py</font>
+</center></td></tr></table>
+<pre><span class="s0">from </span><span class="s1">typing </span><span class="s0">import </span><span class="s1">TYPE_CHECKING</span><span class="s2">, </span><span class="s1">Optional</span>
+
+<span class="s0">if </span><span class="s1">TYPE_CHECKING</span><span class="s2">:</span>
+    <span class="s3"># TypedDict was introduced in Python 3.8.</span>
+    <span class="s3">#</span>
+    <span class="s3"># TODO: Remove the else block and TYPE_CHECKING check when dropping support</span>
+    <span class="s3"># for Python 3.7.</span>
+    <span class="s0">from </span><span class="s1">typing </span><span class="s0">import </span><span class="s1">TypedDict</span>
+
+    <span class="s0">class </span><span class="s1">ResultDict</span><span class="s2">(</span><span class="s1">TypedDict</span><span class="s2">):</span>
+        <span class="s1">encoding</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">str</span><span class="s2">]</span>
+        <span class="s1">confidence</span><span class="s2">: </span><span class="s1">float</span>
+        <span class="s1">language</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">str</span><span class="s2">]</span>
+
+<span class="s0">else</span><span class="s2">:</span>
+    <span class="s1">ResultDict </span><span class="s2">= </span><span class="s1">dict</span>
+</pre>
+</body>
+</html>

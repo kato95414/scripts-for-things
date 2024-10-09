@@ -1,0 +1,138 @@
+<html>
+<head>
+<title>__init__.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #7a7e85;}
+.s1 { color: #bcbec4;}
+.s2 { color: #cf8e6d;}
+.s3 { color: #bcbec4;}
+.s4 { color: #6aab73;}
+.s5 { color: #5f826b; font-style: italic;}
+.s6 { color: #2aacb8;}
+</style>
+</head>
+<body bgcolor="#1e1f22">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+__init__.py</font>
+</center></td></tr></table>
+<pre><span class="s0">######################## BEGIN LICENSE BLOCK ########################</span>
+<span class="s0"># This library is free software; you can redistribute it and/or</span>
+<span class="s0"># modify it under the terms of the GNU Lesser General Public</span>
+<span class="s0"># License as published by the Free Software Foundation; either</span>
+<span class="s0"># version 2.1 of the License, or (at your option) any later version.</span>
+<span class="s0">#</span>
+<span class="s0"># This library is distributed in the hope that it will be useful,</span>
+<span class="s0"># but WITHOUT ANY WARRANTY; without even the implied warranty of</span>
+<span class="s0"># MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU</span>
+<span class="s0"># Lesser General Public License for more details.</span>
+<span class="s0">#</span>
+<span class="s0"># You should have received a copy of the GNU Lesser General Public</span>
+<span class="s0"># License along with this library; if not, write to the Free Software</span>
+<span class="s0"># Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA</span>
+<span class="s0"># 02110-1301  USA</span>
+<span class="s0">######################### END LICENSE BLOCK #########################</span>
+
+<span class="s2">from </span><span class="s1">typing </span><span class="s2">import </span><span class="s1">List</span><span class="s3">, </span><span class="s1">Union</span>
+
+<span class="s2">from </span><span class="s3">.</span><span class="s1">charsetgroupprober </span><span class="s2">import </span><span class="s1">CharSetGroupProber</span>
+<span class="s2">from </span><span class="s3">.</span><span class="s1">charsetprober </span><span class="s2">import </span><span class="s1">CharSetProber</span>
+<span class="s2">from </span><span class="s3">.</span><span class="s1">enums </span><span class="s2">import </span><span class="s1">InputState</span>
+<span class="s2">from </span><span class="s3">.</span><span class="s1">resultdict </span><span class="s2">import </span><span class="s1">ResultDict</span>
+<span class="s2">from </span><span class="s3">.</span><span class="s1">universaldetector </span><span class="s2">import </span><span class="s1">UniversalDetector</span>
+<span class="s2">from </span><span class="s3">.</span><span class="s1">version </span><span class="s2">import </span><span class="s1">VERSION</span><span class="s3">, </span><span class="s1">__version__</span>
+
+<span class="s1">__all__ </span><span class="s3">= [</span><span class="s4">&quot;UniversalDetector&quot;</span><span class="s3">, </span><span class="s4">&quot;detect&quot;</span><span class="s3">, </span><span class="s4">&quot;detect_all&quot;</span><span class="s3">, </span><span class="s4">&quot;__version__&quot;</span><span class="s3">, </span><span class="s4">&quot;VERSION&quot;</span><span class="s3">]</span>
+
+
+<span class="s2">def </span><span class="s1">detect</span><span class="s3">(</span>
+    <span class="s1">byte_str</span><span class="s3">: </span><span class="s1">Union</span><span class="s3">[</span><span class="s1">bytes</span><span class="s3">, </span><span class="s1">bytearray</span><span class="s3">], </span><span class="s1">should_rename_legacy</span><span class="s3">: </span><span class="s1">bool </span><span class="s3">= </span><span class="s2">False</span>
+<span class="s3">) </span><span class="s1">-&gt; ResultDict</span><span class="s3">:</span>
+    <span class="s5">&quot;&quot;&quot; 
+    Detect the encoding of the given byte string. 
+ 
+    :param byte_str:     The byte sequence to examine. 
+    :type byte_str:      ``bytes`` or ``bytearray`` 
+    :param should_rename_legacy:  Should we rename legacy encodings 
+                                  to their more modern equivalents? 
+    :type should_rename_legacy:   ``bool`` 
+    &quot;&quot;&quot;</span>
+    <span class="s2">if not </span><span class="s1">isinstance</span><span class="s3">(</span><span class="s1">byte_str</span><span class="s3">, </span><span class="s1">bytearray</span><span class="s3">):</span>
+        <span class="s2">if not </span><span class="s1">isinstance</span><span class="s3">(</span><span class="s1">byte_str</span><span class="s3">, </span><span class="s1">bytes</span><span class="s3">):</span>
+            <span class="s2">raise </span><span class="s1">TypeError</span><span class="s3">(</span>
+                <span class="s4">f&quot;Expected object of type bytes or bytearray, got: </span><span class="s2">{</span><span class="s1">type</span><span class="s3">(</span><span class="s1">byte_str</span><span class="s3">)</span><span class="s2">}</span><span class="s4">&quot;</span>
+            <span class="s3">)</span>
+        <span class="s1">byte_str </span><span class="s3">= </span><span class="s1">bytearray</span><span class="s3">(</span><span class="s1">byte_str</span><span class="s3">)</span>
+    <span class="s1">detector </span><span class="s3">= </span><span class="s1">UniversalDetector</span><span class="s3">(</span><span class="s1">should_rename_legacy</span><span class="s3">=</span><span class="s1">should_rename_legacy</span><span class="s3">)</span>
+    <span class="s1">detector</span><span class="s3">.</span><span class="s1">feed</span><span class="s3">(</span><span class="s1">byte_str</span><span class="s3">)</span>
+    <span class="s2">return </span><span class="s1">detector</span><span class="s3">.</span><span class="s1">close</span><span class="s3">()</span>
+
+
+<span class="s2">def </span><span class="s1">detect_all</span><span class="s3">(</span>
+    <span class="s1">byte_str</span><span class="s3">: </span><span class="s1">Union</span><span class="s3">[</span><span class="s1">bytes</span><span class="s3">, </span><span class="s1">bytearray</span><span class="s3">],</span>
+    <span class="s1">ignore_threshold</span><span class="s3">: </span><span class="s1">bool </span><span class="s3">= </span><span class="s2">False</span><span class="s3">,</span>
+    <span class="s1">should_rename_legacy</span><span class="s3">: </span><span class="s1">bool </span><span class="s3">= </span><span class="s2">False</span><span class="s3">,</span>
+<span class="s3">) </span><span class="s1">-&gt; List</span><span class="s3">[</span><span class="s1">ResultDict</span><span class="s3">]:</span>
+    <span class="s5">&quot;&quot;&quot; 
+    Detect all the possible encodings of the given byte string. 
+ 
+    :param byte_str:          The byte sequence to examine. 
+    :type byte_str:           ``bytes`` or ``bytearray`` 
+    :param ignore_threshold:  Include encodings that are below 
+                              ``UniversalDetector.MINIMUM_THRESHOLD`` 
+                              in results. 
+    :type ignore_threshold:   ``bool`` 
+    :param should_rename_legacy:  Should we rename legacy encodings 
+                                  to their more modern equivalents? 
+    :type should_rename_legacy:   ``bool`` 
+    &quot;&quot;&quot;</span>
+    <span class="s2">if not </span><span class="s1">isinstance</span><span class="s3">(</span><span class="s1">byte_str</span><span class="s3">, </span><span class="s1">bytearray</span><span class="s3">):</span>
+        <span class="s2">if not </span><span class="s1">isinstance</span><span class="s3">(</span><span class="s1">byte_str</span><span class="s3">, </span><span class="s1">bytes</span><span class="s3">):</span>
+            <span class="s2">raise </span><span class="s1">TypeError</span><span class="s3">(</span>
+                <span class="s4">f&quot;Expected object of type bytes or bytearray, got: </span><span class="s2">{</span><span class="s1">type</span><span class="s3">(</span><span class="s1">byte_str</span><span class="s3">)</span><span class="s2">}</span><span class="s4">&quot;</span>
+            <span class="s3">)</span>
+        <span class="s1">byte_str </span><span class="s3">= </span><span class="s1">bytearray</span><span class="s3">(</span><span class="s1">byte_str</span><span class="s3">)</span>
+
+    <span class="s1">detector </span><span class="s3">= </span><span class="s1">UniversalDetector</span><span class="s3">(</span><span class="s1">should_rename_legacy</span><span class="s3">=</span><span class="s1">should_rename_legacy</span><span class="s3">)</span>
+    <span class="s1">detector</span><span class="s3">.</span><span class="s1">feed</span><span class="s3">(</span><span class="s1">byte_str</span><span class="s3">)</span>
+    <span class="s1">detector</span><span class="s3">.</span><span class="s1">close</span><span class="s3">()</span>
+
+    <span class="s2">if </span><span class="s1">detector</span><span class="s3">.</span><span class="s1">input_state </span><span class="s3">== </span><span class="s1">InputState</span><span class="s3">.</span><span class="s1">HIGH_BYTE</span><span class="s3">:</span>
+        <span class="s1">results</span><span class="s3">: </span><span class="s1">List</span><span class="s3">[</span><span class="s1">ResultDict</span><span class="s3">] = []</span>
+        <span class="s1">probers</span><span class="s3">: </span><span class="s1">List</span><span class="s3">[</span><span class="s1">CharSetProber</span><span class="s3">] = []</span>
+        <span class="s2">for </span><span class="s1">prober </span><span class="s2">in </span><span class="s1">detector</span><span class="s3">.</span><span class="s1">charset_probers</span><span class="s3">:</span>
+            <span class="s2">if </span><span class="s1">isinstance</span><span class="s3">(</span><span class="s1">prober</span><span class="s3">, </span><span class="s1">CharSetGroupProber</span><span class="s3">):</span>
+                <span class="s1">probers</span><span class="s3">.</span><span class="s1">extend</span><span class="s3">(</span><span class="s1">p </span><span class="s2">for </span><span class="s1">p </span><span class="s2">in </span><span class="s1">prober</span><span class="s3">.</span><span class="s1">probers</span><span class="s3">)</span>
+            <span class="s2">else</span><span class="s3">:</span>
+                <span class="s1">probers</span><span class="s3">.</span><span class="s1">append</span><span class="s3">(</span><span class="s1">prober</span><span class="s3">)</span>
+        <span class="s2">for </span><span class="s1">prober </span><span class="s2">in </span><span class="s1">probers</span><span class="s3">:</span>
+            <span class="s2">if </span><span class="s1">ignore_threshold </span><span class="s2">or </span><span class="s1">prober</span><span class="s3">.</span><span class="s1">get_confidence</span><span class="s3">() &gt; </span><span class="s1">detector</span><span class="s3">.</span><span class="s1">MINIMUM_THRESHOLD</span><span class="s3">:</span>
+                <span class="s1">charset_name </span><span class="s3">= </span><span class="s1">prober</span><span class="s3">.</span><span class="s1">charset_name </span><span class="s2">or </span><span class="s4">&quot;&quot;</span>
+                <span class="s1">lower_charset_name </span><span class="s3">= </span><span class="s1">charset_name</span><span class="s3">.</span><span class="s1">lower</span><span class="s3">()</span>
+                <span class="s0"># Use Windows encoding name instead of ISO-8859 if we saw any</span>
+                <span class="s0"># extra Windows-specific bytes</span>
+                <span class="s2">if </span><span class="s1">lower_charset_name</span><span class="s3">.</span><span class="s1">startswith</span><span class="s3">(</span><span class="s4">&quot;iso-8859&quot;</span><span class="s3">) </span><span class="s2">and </span><span class="s1">detector</span><span class="s3">.</span><span class="s1">has_win_bytes</span><span class="s3">:</span>
+                    <span class="s1">charset_name </span><span class="s3">= </span><span class="s1">detector</span><span class="s3">.</span><span class="s1">ISO_WIN_MAP</span><span class="s3">.</span><span class="s1">get</span><span class="s3">(</span>
+                        <span class="s1">lower_charset_name</span><span class="s3">, </span><span class="s1">charset_name</span>
+                    <span class="s3">)</span>
+                <span class="s0"># Rename legacy encodings with superset encodings if asked</span>
+                <span class="s2">if </span><span class="s1">should_rename_legacy</span><span class="s3">:</span>
+                    <span class="s1">charset_name </span><span class="s3">= </span><span class="s1">detector</span><span class="s3">.</span><span class="s1">LEGACY_MAP</span><span class="s3">.</span><span class="s1">get</span><span class="s3">(</span>
+                        <span class="s1">charset_name</span><span class="s3">.</span><span class="s1">lower</span><span class="s3">(), </span><span class="s1">charset_name</span>
+                    <span class="s3">)</span>
+                <span class="s1">results</span><span class="s3">.</span><span class="s1">append</span><span class="s3">(</span>
+                    <span class="s3">{</span>
+                        <span class="s4">&quot;encoding&quot;</span><span class="s3">: </span><span class="s1">charset_name</span><span class="s3">,</span>
+                        <span class="s4">&quot;confidence&quot;</span><span class="s3">: </span><span class="s1">prober</span><span class="s3">.</span><span class="s1">get_confidence</span><span class="s3">(),</span>
+                        <span class="s4">&quot;language&quot;</span><span class="s3">: </span><span class="s1">prober</span><span class="s3">.</span><span class="s1">language</span><span class="s3">,</span>
+                    <span class="s3">}</span>
+                <span class="s3">)</span>
+        <span class="s2">if </span><span class="s1">len</span><span class="s3">(</span><span class="s1">results</span><span class="s3">) &gt; </span><span class="s6">0</span><span class="s3">:</span>
+            <span class="s2">return </span><span class="s1">sorted</span><span class="s3">(</span><span class="s1">results</span><span class="s3">, </span><span class="s1">key</span><span class="s3">=</span><span class="s2">lambda </span><span class="s1">result</span><span class="s3">: -</span><span class="s1">result</span><span class="s3">[</span><span class="s4">&quot;confidence&quot;</span><span class="s3">])</span>
+
+    <span class="s2">return </span><span class="s3">[</span><span class="s1">detector</span><span class="s3">.</span><span class="s1">result</span><span class="s3">]</span>
+</pre>
+</body>
+</html>

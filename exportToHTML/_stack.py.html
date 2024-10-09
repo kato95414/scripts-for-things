@@ -1,0 +1,38 @@
+<html>
+<head>
+<title>_stack.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cf8e6d;}
+.s1 { color: #bcbec4;}
+.s2 { color: #bcbec4;}
+.s3 { color: #6aab73;}
+.s4 { color: #5f826b; font-style: italic;}
+.s5 { color: #2aacb8;}
+</style>
+</head>
+<body bgcolor="#1e1f22">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+_stack.py</font>
+</center></td></tr></table>
+<pre><span class="s0">from </span><span class="s1">typing </span><span class="s0">import </span><span class="s1">List</span><span class="s2">, </span><span class="s1">TypeVar</span>
+
+<span class="s1">T </span><span class="s2">= </span><span class="s1">TypeVar</span><span class="s2">(</span><span class="s3">&quot;T&quot;</span><span class="s2">)</span>
+
+
+<span class="s0">class </span><span class="s1">Stack</span><span class="s2">(</span><span class="s1">List</span><span class="s2">[</span><span class="s1">T</span><span class="s2">]):</span>
+    <span class="s4">&quot;&quot;&quot;A small shim over builtin list.&quot;&quot;&quot;</span>
+
+    <span class="s2">@</span><span class="s1">property</span>
+    <span class="s0">def </span><span class="s1">top</span><span class="s2">(</span><span class="s1">self</span><span class="s2">) </span><span class="s1">-&gt; T</span><span class="s2">:</span>
+        <span class="s4">&quot;&quot;&quot;Get top of stack.&quot;&quot;&quot;</span>
+        <span class="s0">return </span><span class="s1">self</span><span class="s2">[-</span><span class="s5">1</span><span class="s2">]</span>
+
+    <span class="s0">def </span><span class="s1">push</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">item</span><span class="s2">: </span><span class="s1">T</span><span class="s2">) </span><span class="s1">-&gt; </span><span class="s0">None</span><span class="s2">:</span>
+        <span class="s4">&quot;&quot;&quot;Push an item on to the stack (append in stack nomenclature).&quot;&quot;&quot;</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">append</span><span class="s2">(</span><span class="s1">item</span><span class="s2">)</span>
+</pre>
+</body>
+</html>

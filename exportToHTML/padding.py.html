@@ -1,0 +1,164 @@
+<html>
+<head>
+<title>padding.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cf8e6d;}
+.s1 { color: #bcbec4;}
+.s2 { color: #bcbec4;}
+.s3 { color: #5f826b; font-style: italic;}
+.s4 { color: #6aab73;}
+.s5 { color: #2aacb8;}
+.s6 { color: #7a7e85;}
+</style>
+</head>
+<body bgcolor="#1e1f22">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+padding.py</font>
+</center></td></tr></table>
+<pre><span class="s0">from </span><span class="s1">typing </span><span class="s0">import </span><span class="s1">cast</span><span class="s2">, </span><span class="s1">List</span><span class="s2">, </span><span class="s1">Optional</span><span class="s2">, </span><span class="s1">Tuple</span><span class="s2">, </span><span class="s1">TYPE_CHECKING</span><span class="s2">, </span><span class="s1">Union</span>
+
+<span class="s0">if </span><span class="s1">TYPE_CHECKING</span><span class="s2">:</span>
+    <span class="s0">from </span><span class="s2">.</span><span class="s1">console </span><span class="s0">import </span><span class="s2">(</span>
+        <span class="s1">Console</span><span class="s2">,</span>
+        <span class="s1">ConsoleOptions</span><span class="s2">,</span>
+        <span class="s1">RenderableType</span><span class="s2">,</span>
+        <span class="s1">RenderResult</span><span class="s2">,</span>
+    <span class="s2">)</span>
+<span class="s0">from </span><span class="s2">.</span><span class="s1">jupyter </span><span class="s0">import </span><span class="s1">JupyterMixin</span>
+<span class="s0">from </span><span class="s2">.</span><span class="s1">measure </span><span class="s0">import </span><span class="s1">Measurement</span>
+<span class="s0">from </span><span class="s2">.</span><span class="s1">style </span><span class="s0">import </span><span class="s1">Style</span>
+<span class="s0">from </span><span class="s2">.</span><span class="s1">segment </span><span class="s0">import </span><span class="s1">Segment</span>
+
+
+<span class="s1">PaddingDimensions </span><span class="s2">= </span><span class="s1">Union</span><span class="s2">[</span><span class="s1">int</span><span class="s2">, </span><span class="s1">Tuple</span><span class="s2">[</span><span class="s1">int</span><span class="s2">], </span><span class="s1">Tuple</span><span class="s2">[</span><span class="s1">int</span><span class="s2">, </span><span class="s1">int</span><span class="s2">], </span><span class="s1">Tuple</span><span class="s2">[</span><span class="s1">int</span><span class="s2">, </span><span class="s1">int</span><span class="s2">, </span><span class="s1">int</span><span class="s2">, </span><span class="s1">int</span><span class="s2">]]</span>
+
+
+<span class="s0">class </span><span class="s1">Padding</span><span class="s2">(</span><span class="s1">JupyterMixin</span><span class="s2">):</span>
+    <span class="s3">&quot;&quot;&quot;Draw space around content. 
+ 
+    Example: 
+        &gt;&gt;&gt; print(Padding(&quot;Hello&quot;, (2, 4), style=&quot;on blue&quot;)) 
+ 
+    Args: 
+        renderable (RenderableType): String or other renderable. 
+        pad (Union[int, Tuple[int]]): Padding for top, right, bottom, and left borders. 
+            May be specified with 1, 2, or 4 integers (CSS style). 
+        style (Union[str, Style], optional): Style for padding characters. Defaults to &quot;none&quot;. 
+        expand (bool, optional): Expand padding to fit available width. Defaults to True. 
+    &quot;&quot;&quot;</span>
+
+    <span class="s0">def </span><span class="s1">__init__</span><span class="s2">(</span>
+        <span class="s1">self</span><span class="s2">,</span>
+        <span class="s1">renderable</span><span class="s2">: </span><span class="s4">&quot;RenderableType&quot;</span><span class="s2">,</span>
+        <span class="s1">pad</span><span class="s2">: </span><span class="s4">&quot;PaddingDimensions&quot; </span><span class="s2">= (</span><span class="s5">0</span><span class="s2">, </span><span class="s5">0</span><span class="s2">, </span><span class="s5">0</span><span class="s2">, </span><span class="s5">0</span><span class="s2">),</span>
+        <span class="s2">*,</span>
+        <span class="s1">style</span><span class="s2">: </span><span class="s1">Union</span><span class="s2">[</span><span class="s1">str</span><span class="s2">, </span><span class="s1">Style</span><span class="s2">] = </span><span class="s4">&quot;none&quot;</span><span class="s2">,</span>
+        <span class="s1">expand</span><span class="s2">: </span><span class="s1">bool </span><span class="s2">= </span><span class="s0">True</span><span class="s2">,</span>
+    <span class="s2">):</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">renderable </span><span class="s2">= </span><span class="s1">renderable</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">top</span><span class="s2">, </span><span class="s1">self</span><span class="s2">.</span><span class="s1">right</span><span class="s2">, </span><span class="s1">self</span><span class="s2">.</span><span class="s1">bottom</span><span class="s2">, </span><span class="s1">self</span><span class="s2">.</span><span class="s1">left </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">unpack</span><span class="s2">(</span><span class="s1">pad</span><span class="s2">)</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">style </span><span class="s2">= </span><span class="s1">style</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">expand </span><span class="s2">= </span><span class="s1">expand</span>
+
+    <span class="s2">@</span><span class="s1">classmethod</span>
+    <span class="s0">def </span><span class="s1">indent</span><span class="s2">(</span><span class="s1">cls</span><span class="s2">, </span><span class="s1">renderable</span><span class="s2">: </span><span class="s4">&quot;RenderableType&quot;</span><span class="s2">, </span><span class="s1">level</span><span class="s2">: </span><span class="s1">int</span><span class="s2">) </span><span class="s1">-&gt; </span><span class="s4">&quot;Padding&quot;</span><span class="s2">:</span>
+        <span class="s3">&quot;&quot;&quot;Make padding instance to render an indent. 
+ 
+        Args: 
+            renderable (RenderableType): String or other renderable. 
+            level (int): Number of characters to indent. 
+ 
+        Returns: 
+            Padding: A Padding instance. 
+        &quot;&quot;&quot;</span>
+
+        <span class="s0">return </span><span class="s1">Padding</span><span class="s2">(</span><span class="s1">renderable</span><span class="s2">, </span><span class="s1">pad</span><span class="s2">=(</span><span class="s5">0</span><span class="s2">, </span><span class="s5">0</span><span class="s2">, </span><span class="s5">0</span><span class="s2">, </span><span class="s1">level</span><span class="s2">), </span><span class="s1">expand</span><span class="s2">=</span><span class="s0">False</span><span class="s2">)</span>
+
+    <span class="s2">@</span><span class="s1">staticmethod</span>
+    <span class="s0">def </span><span class="s1">unpack</span><span class="s2">(</span><span class="s1">pad</span><span class="s2">: </span><span class="s4">&quot;PaddingDimensions&quot;</span><span class="s2">) </span><span class="s1">-&gt; Tuple</span><span class="s2">[</span><span class="s1">int</span><span class="s2">, </span><span class="s1">int</span><span class="s2">, </span><span class="s1">int</span><span class="s2">, </span><span class="s1">int</span><span class="s2">]:</span>
+        <span class="s3">&quot;&quot;&quot;Unpack padding specified in CSS style.&quot;&quot;&quot;</span>
+        <span class="s0">if </span><span class="s1">isinstance</span><span class="s2">(</span><span class="s1">pad</span><span class="s2">, </span><span class="s1">int</span><span class="s2">):</span>
+            <span class="s0">return </span><span class="s2">(</span><span class="s1">pad</span><span class="s2">, </span><span class="s1">pad</span><span class="s2">, </span><span class="s1">pad</span><span class="s2">, </span><span class="s1">pad</span><span class="s2">)</span>
+        <span class="s0">if </span><span class="s1">len</span><span class="s2">(</span><span class="s1">pad</span><span class="s2">) == </span><span class="s5">1</span><span class="s2">:</span>
+            <span class="s1">_pad </span><span class="s2">= </span><span class="s1">pad</span><span class="s2">[</span><span class="s5">0</span><span class="s2">]</span>
+            <span class="s0">return </span><span class="s2">(</span><span class="s1">_pad</span><span class="s2">, </span><span class="s1">_pad</span><span class="s2">, </span><span class="s1">_pad</span><span class="s2">, </span><span class="s1">_pad</span><span class="s2">)</span>
+        <span class="s0">if </span><span class="s1">len</span><span class="s2">(</span><span class="s1">pad</span><span class="s2">) == </span><span class="s5">2</span><span class="s2">:</span>
+            <span class="s1">pad_top</span><span class="s2">, </span><span class="s1">pad_right </span><span class="s2">= </span><span class="s1">cast</span><span class="s2">(</span><span class="s1">Tuple</span><span class="s2">[</span><span class="s1">int</span><span class="s2">, </span><span class="s1">int</span><span class="s2">], </span><span class="s1">pad</span><span class="s2">)</span>
+            <span class="s0">return </span><span class="s2">(</span><span class="s1">pad_top</span><span class="s2">, </span><span class="s1">pad_right</span><span class="s2">, </span><span class="s1">pad_top</span><span class="s2">, </span><span class="s1">pad_right</span><span class="s2">)</span>
+        <span class="s0">if </span><span class="s1">len</span><span class="s2">(</span><span class="s1">pad</span><span class="s2">) == </span><span class="s5">4</span><span class="s2">:</span>
+            <span class="s1">top</span><span class="s2">, </span><span class="s1">right</span><span class="s2">, </span><span class="s1">bottom</span><span class="s2">, </span><span class="s1">left </span><span class="s2">= </span><span class="s1">cast</span><span class="s2">(</span><span class="s1">Tuple</span><span class="s2">[</span><span class="s1">int</span><span class="s2">, </span><span class="s1">int</span><span class="s2">, </span><span class="s1">int</span><span class="s2">, </span><span class="s1">int</span><span class="s2">], </span><span class="s1">pad</span><span class="s2">)</span>
+            <span class="s0">return </span><span class="s2">(</span><span class="s1">top</span><span class="s2">, </span><span class="s1">right</span><span class="s2">, </span><span class="s1">bottom</span><span class="s2">, </span><span class="s1">left</span><span class="s2">)</span>
+        <span class="s0">raise </span><span class="s1">ValueError</span><span class="s2">(</span><span class="s4">f&quot;1, 2 or 4 integers required for padding; </span><span class="s0">{</span><span class="s1">len</span><span class="s2">(</span><span class="s1">pad</span><span class="s2">)</span><span class="s0">} </span><span class="s4">given&quot;</span><span class="s2">)</span>
+
+    <span class="s0">def </span><span class="s1">__repr__</span><span class="s2">(</span><span class="s1">self</span><span class="s2">) </span><span class="s1">-&gt; str</span><span class="s2">:</span>
+        <span class="s0">return </span><span class="s4">f&quot;Padding(</span><span class="s0">{</span><span class="s1">self</span><span class="s2">.</span><span class="s1">renderable</span><span class="s0">!r}</span><span class="s4">, (</span><span class="s0">{</span><span class="s1">self</span><span class="s2">.</span><span class="s1">top</span><span class="s0">}</span><span class="s4">,</span><span class="s0">{</span><span class="s1">self</span><span class="s2">.</span><span class="s1">right</span><span class="s0">}</span><span class="s4">,</span><span class="s0">{</span><span class="s1">self</span><span class="s2">.</span><span class="s1">bottom</span><span class="s0">}</span><span class="s4">,</span><span class="s0">{</span><span class="s1">self</span><span class="s2">.</span><span class="s1">left</span><span class="s0">}</span><span class="s4">))&quot;</span>
+
+    <span class="s0">def </span><span class="s1">__rich_console__</span><span class="s2">(</span>
+        <span class="s1">self</span><span class="s2">, </span><span class="s1">console</span><span class="s2">: </span><span class="s4">&quot;Console&quot;</span><span class="s2">, </span><span class="s1">options</span><span class="s2">: </span><span class="s4">&quot;ConsoleOptions&quot;</span>
+    <span class="s2">) </span><span class="s1">-&gt; </span><span class="s4">&quot;RenderResult&quot;</span><span class="s2">:</span>
+        <span class="s1">style </span><span class="s2">= </span><span class="s1">console</span><span class="s2">.</span><span class="s1">get_style</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">style</span><span class="s2">)</span>
+        <span class="s0">if </span><span class="s1">self</span><span class="s2">.</span><span class="s1">expand</span><span class="s2">:</span>
+            <span class="s1">width </span><span class="s2">= </span><span class="s1">options</span><span class="s2">.</span><span class="s1">max_width</span>
+        <span class="s0">else</span><span class="s2">:</span>
+            <span class="s1">width </span><span class="s2">= </span><span class="s1">min</span><span class="s2">(</span>
+                <span class="s1">Measurement</span><span class="s2">.</span><span class="s1">get</span><span class="s2">(</span><span class="s1">console</span><span class="s2">, </span><span class="s1">options</span><span class="s2">, </span><span class="s1">self</span><span class="s2">.</span><span class="s1">renderable</span><span class="s2">).</span><span class="s1">maximum</span>
+                <span class="s2">+ </span><span class="s1">self</span><span class="s2">.</span><span class="s1">left</span>
+                <span class="s2">+ </span><span class="s1">self</span><span class="s2">.</span><span class="s1">right</span><span class="s2">,</span>
+                <span class="s1">options</span><span class="s2">.</span><span class="s1">max_width</span><span class="s2">,</span>
+            <span class="s2">)</span>
+        <span class="s1">render_options </span><span class="s2">= </span><span class="s1">options</span><span class="s2">.</span><span class="s1">update_width</span><span class="s2">(</span><span class="s1">width </span><span class="s2">- </span><span class="s1">self</span><span class="s2">.</span><span class="s1">left </span><span class="s2">- </span><span class="s1">self</span><span class="s2">.</span><span class="s1">right</span><span class="s2">)</span>
+        <span class="s0">if </span><span class="s1">render_options</span><span class="s2">.</span><span class="s1">height </span><span class="s0">is not None</span><span class="s2">:</span>
+            <span class="s1">render_options </span><span class="s2">= </span><span class="s1">render_options</span><span class="s2">.</span><span class="s1">update_height</span><span class="s2">(</span>
+                <span class="s1">height</span><span class="s2">=</span><span class="s1">render_options</span><span class="s2">.</span><span class="s1">height </span><span class="s2">- </span><span class="s1">self</span><span class="s2">.</span><span class="s1">top </span><span class="s2">- </span><span class="s1">self</span><span class="s2">.</span><span class="s1">bottom</span>
+            <span class="s2">)</span>
+        <span class="s1">lines </span><span class="s2">= </span><span class="s1">console</span><span class="s2">.</span><span class="s1">render_lines</span><span class="s2">(</span>
+            <span class="s1">self</span><span class="s2">.</span><span class="s1">renderable</span><span class="s2">, </span><span class="s1">render_options</span><span class="s2">, </span><span class="s1">style</span><span class="s2">=</span><span class="s1">style</span><span class="s2">, </span><span class="s1">pad</span><span class="s2">=</span><span class="s0">True</span>
+        <span class="s2">)</span>
+        <span class="s1">_Segment </span><span class="s2">= </span><span class="s1">Segment</span>
+
+        <span class="s1">left </span><span class="s2">= </span><span class="s1">_Segment</span><span class="s2">(</span><span class="s4">&quot; &quot; </span><span class="s2">* </span><span class="s1">self</span><span class="s2">.</span><span class="s1">left</span><span class="s2">, </span><span class="s1">style</span><span class="s2">) </span><span class="s0">if </span><span class="s1">self</span><span class="s2">.</span><span class="s1">left </span><span class="s0">else None</span>
+        <span class="s1">right </span><span class="s2">= (</span>
+            <span class="s2">[</span><span class="s1">_Segment</span><span class="s2">(</span><span class="s4">f'</span><span class="s0">{</span><span class="s4">&quot; &quot; </span><span class="s2">* </span><span class="s1">self</span><span class="s2">.</span><span class="s1">right</span><span class="s0">}</span><span class="s4">'</span><span class="s2">, </span><span class="s1">style</span><span class="s2">), </span><span class="s1">_Segment</span><span class="s2">.</span><span class="s1">line</span><span class="s2">()]</span>
+            <span class="s0">if </span><span class="s1">self</span><span class="s2">.</span><span class="s1">right</span>
+            <span class="s0">else </span><span class="s2">[</span><span class="s1">_Segment</span><span class="s2">.</span><span class="s1">line</span><span class="s2">()]</span>
+        <span class="s2">)</span>
+        <span class="s1">blank_line</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">List</span><span class="s2">[</span><span class="s1">Segment</span><span class="s2">]] = </span><span class="s0">None</span>
+        <span class="s0">if </span><span class="s1">self</span><span class="s2">.</span><span class="s1">top</span><span class="s2">:</span>
+            <span class="s1">blank_line </span><span class="s2">= [</span><span class="s1">_Segment</span><span class="s2">(</span><span class="s4">f'</span><span class="s0">{</span><span class="s4">&quot; &quot; </span><span class="s2">* </span><span class="s1">width</span><span class="s0">}\n</span><span class="s4">'</span><span class="s2">, </span><span class="s1">style</span><span class="s2">)]</span>
+            <span class="s0">yield from </span><span class="s1">blank_line </span><span class="s2">* </span><span class="s1">self</span><span class="s2">.</span><span class="s1">top</span>
+        <span class="s0">if </span><span class="s1">left</span><span class="s2">:</span>
+            <span class="s0">for </span><span class="s1">line </span><span class="s0">in </span><span class="s1">lines</span><span class="s2">:</span>
+                <span class="s0">yield </span><span class="s1">left</span>
+                <span class="s0">yield from </span><span class="s1">line</span>
+                <span class="s0">yield from </span><span class="s1">right</span>
+        <span class="s0">else</span><span class="s2">:</span>
+            <span class="s0">for </span><span class="s1">line </span><span class="s0">in </span><span class="s1">lines</span><span class="s2">:</span>
+                <span class="s0">yield from </span><span class="s1">line</span>
+                <span class="s0">yield from </span><span class="s1">right</span>
+        <span class="s0">if </span><span class="s1">self</span><span class="s2">.</span><span class="s1">bottom</span><span class="s2">:</span>
+            <span class="s1">blank_line </span><span class="s2">= </span><span class="s1">blank_line </span><span class="s0">or </span><span class="s2">[</span><span class="s1">_Segment</span><span class="s2">(</span><span class="s4">f'</span><span class="s0">{</span><span class="s4">&quot; &quot; </span><span class="s2">* </span><span class="s1">width</span><span class="s0">}\n</span><span class="s4">'</span><span class="s2">, </span><span class="s1">style</span><span class="s2">)]</span>
+            <span class="s0">yield from </span><span class="s1">blank_line </span><span class="s2">* </span><span class="s1">self</span><span class="s2">.</span><span class="s1">bottom</span>
+
+    <span class="s0">def </span><span class="s1">__rich_measure__</span><span class="s2">(</span>
+        <span class="s1">self</span><span class="s2">, </span><span class="s1">console</span><span class="s2">: </span><span class="s4">&quot;Console&quot;</span><span class="s2">, </span><span class="s1">options</span><span class="s2">: </span><span class="s4">&quot;ConsoleOptions&quot;</span>
+    <span class="s2">) </span><span class="s1">-&gt; </span><span class="s4">&quot;Measurement&quot;</span><span class="s2">:</span>
+        <span class="s1">max_width </span><span class="s2">= </span><span class="s1">options</span><span class="s2">.</span><span class="s1">max_width</span>
+        <span class="s1">extra_width </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">left </span><span class="s2">+ </span><span class="s1">self</span><span class="s2">.</span><span class="s1">right</span>
+        <span class="s0">if </span><span class="s1">max_width </span><span class="s2">- </span><span class="s1">extra_width </span><span class="s2">&lt; </span><span class="s5">1</span><span class="s2">:</span>
+            <span class="s0">return </span><span class="s1">Measurement</span><span class="s2">(</span><span class="s1">max_width</span><span class="s2">, </span><span class="s1">max_width</span><span class="s2">)</span>
+        <span class="s1">measure_min</span><span class="s2">, </span><span class="s1">measure_max </span><span class="s2">= </span><span class="s1">Measurement</span><span class="s2">.</span><span class="s1">get</span><span class="s2">(</span><span class="s1">console</span><span class="s2">, </span><span class="s1">options</span><span class="s2">, </span><span class="s1">self</span><span class="s2">.</span><span class="s1">renderable</span><span class="s2">)</span>
+        <span class="s1">measurement </span><span class="s2">= </span><span class="s1">Measurement</span><span class="s2">(</span><span class="s1">measure_min </span><span class="s2">+ </span><span class="s1">extra_width</span><span class="s2">, </span><span class="s1">measure_max </span><span class="s2">+ </span><span class="s1">extra_width</span><span class="s2">)</span>
+        <span class="s1">measurement </span><span class="s2">= </span><span class="s1">measurement</span><span class="s2">.</span><span class="s1">with_maximum</span><span class="s2">(</span><span class="s1">max_width</span><span class="s2">)</span>
+        <span class="s0">return </span><span class="s1">measurement</span>
+
+
+<span class="s0">if </span><span class="s1">__name__ </span><span class="s2">== </span><span class="s4">&quot;__main__&quot;</span><span class="s2">:  </span><span class="s6">#  pragma: no cover</span>
+    <span class="s0">from </span><span class="s1">pip</span><span class="s2">.</span><span class="s1">_vendor</span><span class="s2">.</span><span class="s1">rich </span><span class="s0">import </span><span class="s1">print</span>
+
+    <span class="s1">print</span><span class="s2">(</span><span class="s1">Padding</span><span class="s2">(</span><span class="s4">&quot;Hello, World&quot;</span><span class="s2">, (</span><span class="s5">2</span><span class="s2">, </span><span class="s5">4</span><span class="s2">), </span><span class="s1">style</span><span class="s2">=</span><span class="s4">&quot;on blue&quot;</span><span class="s2">))</span>
+</pre>
+</body>
+</html>

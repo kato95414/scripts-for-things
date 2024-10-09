@@ -1,0 +1,41 @@
+<html>
+<head>
+<title>_timer.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #5f826b; font-style: italic;}
+.s1 { color: #bcbec4;}
+.s2 { color: #cf8e6d;}
+.s3 { color: #bcbec4;}
+.s4 { color: #6aab73;}
+.s5 { color: #2aacb8;}
+</style>
+</head>
+<body bgcolor="#1e1f22">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+_timer.py</font>
+</center></td></tr></table>
+<pre><span class="s0">&quot;&quot;&quot; 
+Timer context manager, only used in debug. 
+ 
+&quot;&quot;&quot;</span>
+
+<span class="s2">from </span><span class="s1">time </span><span class="s2">import </span><span class="s1">time</span>
+
+<span class="s2">import </span><span class="s1">contextlib</span>
+<span class="s2">from </span><span class="s1">typing </span><span class="s2">import </span><span class="s1">Generator</span>
+
+
+<span class="s3">@</span><span class="s1">contextlib</span><span class="s3">.</span><span class="s1">contextmanager</span>
+<span class="s2">def </span><span class="s1">timer</span><span class="s3">(</span><span class="s1">subject</span><span class="s3">: </span><span class="s1">str </span><span class="s3">= </span><span class="s4">&quot;time&quot;</span><span class="s3">) </span><span class="s1">-&gt; Generator</span><span class="s3">[</span><span class="s2">None</span><span class="s3">, </span><span class="s2">None</span><span class="s3">, </span><span class="s2">None</span><span class="s3">]:</span>
+    <span class="s0">&quot;&quot;&quot;print the elapsed time. (only used in debugging)&quot;&quot;&quot;</span>
+    <span class="s1">start </span><span class="s3">= </span><span class="s1">time</span><span class="s3">()</span>
+    <span class="s2">yield</span>
+    <span class="s1">elapsed </span><span class="s3">= </span><span class="s1">time</span><span class="s3">() - </span><span class="s1">start</span>
+    <span class="s1">elapsed_ms </span><span class="s3">= </span><span class="s1">elapsed </span><span class="s3">* </span><span class="s5">1000</span>
+    <span class="s1">print</span><span class="s3">(</span><span class="s4">f&quot;</span><span class="s2">{</span><span class="s1">subject</span><span class="s2">} </span><span class="s4">elapsed </span><span class="s2">{</span><span class="s1">elapsed_ms</span><span class="s2">:</span><span class="s4">.1f</span><span class="s2">}</span><span class="s4">ms&quot;</span><span class="s3">)</span>
+</pre>
+</body>
+</html>

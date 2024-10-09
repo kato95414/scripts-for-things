@@ -1,0 +1,312 @@
+<html>
+<head>
+<title>logging.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cf8e6d;}
+.s1 { color: #bcbec4;}
+.s2 { color: #bcbec4;}
+.s3 { color: #5f826b; font-style: italic;}
+.s4 { color: #6aab73;}
+.s5 { color: #2aacb8;}
+.s6 { color: #7a7e85;}
+</style>
+</head>
+<body bgcolor="#1e1f22">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+logging.py</font>
+</center></td></tr></table>
+<pre><span class="s0">import </span><span class="s1">logging</span>
+<span class="s0">from </span><span class="s1">datetime </span><span class="s0">import </span><span class="s1">datetime</span>
+<span class="s0">from </span><span class="s1">logging </span><span class="s0">import </span><span class="s1">Handler</span><span class="s2">, </span><span class="s1">LogRecord</span>
+<span class="s0">from </span><span class="s1">pathlib </span><span class="s0">import </span><span class="s1">Path</span>
+<span class="s0">from </span><span class="s1">types </span><span class="s0">import </span><span class="s1">ModuleType</span>
+<span class="s0">from </span><span class="s1">typing </span><span class="s0">import </span><span class="s1">ClassVar</span><span class="s2">, </span><span class="s1">Iterable</span><span class="s2">, </span><span class="s1">List</span><span class="s2">, </span><span class="s1">Optional</span><span class="s2">, </span><span class="s1">Type</span><span class="s2">, </span><span class="s1">Union</span>
+
+<span class="s0">from </span><span class="s1">pip</span><span class="s2">.</span><span class="s1">_vendor</span><span class="s2">.</span><span class="s1">rich</span><span class="s2">.</span><span class="s1">_null_file </span><span class="s0">import </span><span class="s1">NullFile</span>
+
+<span class="s0">from </span><span class="s2">. </span><span class="s0">import </span><span class="s1">get_console</span>
+<span class="s0">from </span><span class="s2">.</span><span class="s1">_log_render </span><span class="s0">import </span><span class="s1">FormatTimeCallable</span><span class="s2">, </span><span class="s1">LogRender</span>
+<span class="s0">from </span><span class="s2">.</span><span class="s1">console </span><span class="s0">import </span><span class="s1">Console</span><span class="s2">, </span><span class="s1">ConsoleRenderable</span>
+<span class="s0">from </span><span class="s2">.</span><span class="s1">highlighter </span><span class="s0">import </span><span class="s1">Highlighter</span><span class="s2">, </span><span class="s1">ReprHighlighter</span>
+<span class="s0">from </span><span class="s2">.</span><span class="s1">text </span><span class="s0">import </span><span class="s1">Text</span>
+<span class="s0">from </span><span class="s2">.</span><span class="s1">traceback </span><span class="s0">import </span><span class="s1">Traceback</span>
+
+
+<span class="s0">class </span><span class="s1">RichHandler</span><span class="s2">(</span><span class="s1">Handler</span><span class="s2">):</span>
+    <span class="s3">&quot;&quot;&quot;A logging handler that renders output with Rich. The time / level / message and file are displayed in columns. 
+    The level is color coded, and the message is syntax highlighted. 
+ 
+    Note: 
+        Be careful when enabling console markup in log messages if you have configured logging for libraries not 
+        under your control. If a dependency writes messages containing square brackets, it may not produce the intended output. 
+ 
+    Args: 
+        level (Union[int, str], optional): Log level. Defaults to logging.NOTSET. 
+        console (:class:`~rich.console.Console`, optional): Optional console instance to write logs. 
+            Default will use a global console instance writing to stdout. 
+        show_time (bool, optional): Show a column for the time. Defaults to True. 
+        omit_repeated_times (bool, optional): Omit repetition of the same time. Defaults to True. 
+        show_level (bool, optional): Show a column for the level. Defaults to True. 
+        show_path (bool, optional): Show the path to the original log call. Defaults to True. 
+        enable_link_path (bool, optional): Enable terminal link of path column to file. Defaults to True. 
+        highlighter (Highlighter, optional): Highlighter to style log messages, or None to use ReprHighlighter. Defaults to None. 
+        markup (bool, optional): Enable console markup in log messages. Defaults to False. 
+        rich_tracebacks (bool, optional): Enable rich tracebacks with syntax highlighting and formatting. Defaults to False. 
+        tracebacks_width (Optional[int], optional): Number of characters used to render tracebacks, or None for full width. Defaults to None. 
+        tracebacks_extra_lines (int, optional): Additional lines of code to render tracebacks, or None for full width. Defaults to None. 
+        tracebacks_theme (str, optional): Override pygments theme used in traceback. 
+        tracebacks_word_wrap (bool, optional): Enable word wrapping of long tracebacks lines. Defaults to True. 
+        tracebacks_show_locals (bool, optional): Enable display of locals in tracebacks. Defaults to False. 
+        tracebacks_suppress (Sequence[Union[str, ModuleType]]): Optional sequence of modules or paths to exclude from traceback. 
+        locals_max_length (int, optional): Maximum length of containers before abbreviating, or None for no abbreviation. 
+            Defaults to 10. 
+        locals_max_string (int, optional): Maximum length of string before truncating, or None to disable. Defaults to 80. 
+        log_time_format (Union[str, TimeFormatterCallable], optional): If ``log_time`` is enabled, either string for strftime or callable that formats the time. Defaults to &quot;[%x %X] &quot;. 
+        keywords (List[str], optional): List of words to highlight instead of ``RichHandler.KEYWORDS``. 
+    &quot;&quot;&quot;</span>
+
+    <span class="s1">KEYWORDS</span><span class="s2">: </span><span class="s1">ClassVar</span><span class="s2">[</span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">List</span><span class="s2">[</span><span class="s1">str</span><span class="s2">]]] = [</span>
+        <span class="s4">&quot;GET&quot;</span><span class="s2">,</span>
+        <span class="s4">&quot;POST&quot;</span><span class="s2">,</span>
+        <span class="s4">&quot;HEAD&quot;</span><span class="s2">,</span>
+        <span class="s4">&quot;PUT&quot;</span><span class="s2">,</span>
+        <span class="s4">&quot;DELETE&quot;</span><span class="s2">,</span>
+        <span class="s4">&quot;OPTIONS&quot;</span><span class="s2">,</span>
+        <span class="s4">&quot;TRACE&quot;</span><span class="s2">,</span>
+        <span class="s4">&quot;PATCH&quot;</span><span class="s2">,</span>
+    <span class="s2">]</span>
+    <span class="s1">HIGHLIGHTER_CLASS</span><span class="s2">: </span><span class="s1">ClassVar</span><span class="s2">[</span><span class="s1">Type</span><span class="s2">[</span><span class="s1">Highlighter</span><span class="s2">]] = </span><span class="s1">ReprHighlighter</span>
+
+    <span class="s0">def </span><span class="s1">__init__</span><span class="s2">(</span>
+        <span class="s1">self</span><span class="s2">,</span>
+        <span class="s1">level</span><span class="s2">: </span><span class="s1">Union</span><span class="s2">[</span><span class="s1">int</span><span class="s2">, </span><span class="s1">str</span><span class="s2">] = </span><span class="s1">logging</span><span class="s2">.</span><span class="s1">NOTSET</span><span class="s2">,</span>
+        <span class="s1">console</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">Console</span><span class="s2">] = </span><span class="s0">None</span><span class="s2">,</span>
+        <span class="s2">*,</span>
+        <span class="s1">show_time</span><span class="s2">: </span><span class="s1">bool </span><span class="s2">= </span><span class="s0">True</span><span class="s2">,</span>
+        <span class="s1">omit_repeated_times</span><span class="s2">: </span><span class="s1">bool </span><span class="s2">= </span><span class="s0">True</span><span class="s2">,</span>
+        <span class="s1">show_level</span><span class="s2">: </span><span class="s1">bool </span><span class="s2">= </span><span class="s0">True</span><span class="s2">,</span>
+        <span class="s1">show_path</span><span class="s2">: </span><span class="s1">bool </span><span class="s2">= </span><span class="s0">True</span><span class="s2">,</span>
+        <span class="s1">enable_link_path</span><span class="s2">: </span><span class="s1">bool </span><span class="s2">= </span><span class="s0">True</span><span class="s2">,</span>
+        <span class="s1">highlighter</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">Highlighter</span><span class="s2">] = </span><span class="s0">None</span><span class="s2">,</span>
+        <span class="s1">markup</span><span class="s2">: </span><span class="s1">bool </span><span class="s2">= </span><span class="s0">False</span><span class="s2">,</span>
+        <span class="s1">rich_tracebacks</span><span class="s2">: </span><span class="s1">bool </span><span class="s2">= </span><span class="s0">False</span><span class="s2">,</span>
+        <span class="s1">tracebacks_width</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">int</span><span class="s2">] = </span><span class="s0">None</span><span class="s2">,</span>
+        <span class="s1">tracebacks_extra_lines</span><span class="s2">: </span><span class="s1">int </span><span class="s2">= </span><span class="s5">3</span><span class="s2">,</span>
+        <span class="s1">tracebacks_theme</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">str</span><span class="s2">] = </span><span class="s0">None</span><span class="s2">,</span>
+        <span class="s1">tracebacks_word_wrap</span><span class="s2">: </span><span class="s1">bool </span><span class="s2">= </span><span class="s0">True</span><span class="s2">,</span>
+        <span class="s1">tracebacks_show_locals</span><span class="s2">: </span><span class="s1">bool </span><span class="s2">= </span><span class="s0">False</span><span class="s2">,</span>
+        <span class="s1">tracebacks_suppress</span><span class="s2">: </span><span class="s1">Iterable</span><span class="s2">[</span><span class="s1">Union</span><span class="s2">[</span><span class="s1">str</span><span class="s2">, </span><span class="s1">ModuleType</span><span class="s2">]] = (),</span>
+        <span class="s1">locals_max_length</span><span class="s2">: </span><span class="s1">int </span><span class="s2">= </span><span class="s5">10</span><span class="s2">,</span>
+        <span class="s1">locals_max_string</span><span class="s2">: </span><span class="s1">int </span><span class="s2">= </span><span class="s5">80</span><span class="s2">,</span>
+        <span class="s1">log_time_format</span><span class="s2">: </span><span class="s1">Union</span><span class="s2">[</span><span class="s1">str</span><span class="s2">, </span><span class="s1">FormatTimeCallable</span><span class="s2">] = </span><span class="s4">&quot;[%x %X]&quot;</span><span class="s2">,</span>
+        <span class="s1">keywords</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">List</span><span class="s2">[</span><span class="s1">str</span><span class="s2">]] = </span><span class="s0">None</span><span class="s2">,</span>
+    <span class="s2">) </span><span class="s1">-&gt; </span><span class="s0">None</span><span class="s2">:</span>
+        <span class="s1">super</span><span class="s2">().</span><span class="s1">__init__</span><span class="s2">(</span><span class="s1">level</span><span class="s2">=</span><span class="s1">level</span><span class="s2">)</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">console </span><span class="s2">= </span><span class="s1">console </span><span class="s0">or </span><span class="s1">get_console</span><span class="s2">()</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">highlighter </span><span class="s2">= </span><span class="s1">highlighter </span><span class="s0">or </span><span class="s1">self</span><span class="s2">.</span><span class="s1">HIGHLIGHTER_CLASS</span><span class="s2">()</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">_log_render </span><span class="s2">= </span><span class="s1">LogRender</span><span class="s2">(</span>
+            <span class="s1">show_time</span><span class="s2">=</span><span class="s1">show_time</span><span class="s2">,</span>
+            <span class="s1">show_level</span><span class="s2">=</span><span class="s1">show_level</span><span class="s2">,</span>
+            <span class="s1">show_path</span><span class="s2">=</span><span class="s1">show_path</span><span class="s2">,</span>
+            <span class="s1">time_format</span><span class="s2">=</span><span class="s1">log_time_format</span><span class="s2">,</span>
+            <span class="s1">omit_repeated_times</span><span class="s2">=</span><span class="s1">omit_repeated_times</span><span class="s2">,</span>
+            <span class="s1">level_width</span><span class="s2">=</span><span class="s0">None</span><span class="s2">,</span>
+        <span class="s2">)</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">enable_link_path </span><span class="s2">= </span><span class="s1">enable_link_path</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">markup </span><span class="s2">= </span><span class="s1">markup</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">rich_tracebacks </span><span class="s2">= </span><span class="s1">rich_tracebacks</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">tracebacks_width </span><span class="s2">= </span><span class="s1">tracebacks_width</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">tracebacks_extra_lines </span><span class="s2">= </span><span class="s1">tracebacks_extra_lines</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">tracebacks_theme </span><span class="s2">= </span><span class="s1">tracebacks_theme</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">tracebacks_word_wrap </span><span class="s2">= </span><span class="s1">tracebacks_word_wrap</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">tracebacks_show_locals </span><span class="s2">= </span><span class="s1">tracebacks_show_locals</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">tracebacks_suppress </span><span class="s2">= </span><span class="s1">tracebacks_suppress</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">locals_max_length </span><span class="s2">= </span><span class="s1">locals_max_length</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">locals_max_string </span><span class="s2">= </span><span class="s1">locals_max_string</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">keywords </span><span class="s2">= </span><span class="s1">keywords</span>
+
+    <span class="s0">def </span><span class="s1">get_level_text</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">record</span><span class="s2">: </span><span class="s1">LogRecord</span><span class="s2">) </span><span class="s1">-&gt; Text</span><span class="s2">:</span>
+        <span class="s3">&quot;&quot;&quot;Get the level name from the record. 
+ 
+        Args: 
+            record (LogRecord): LogRecord instance. 
+ 
+        Returns: 
+            Text: A tuple of the style and level name. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">level_name </span><span class="s2">= </span><span class="s1">record</span><span class="s2">.</span><span class="s1">levelname</span>
+        <span class="s1">level_text </span><span class="s2">= </span><span class="s1">Text</span><span class="s2">.</span><span class="s1">styled</span><span class="s2">(</span>
+            <span class="s1">level_name</span><span class="s2">.</span><span class="s1">ljust</span><span class="s2">(</span><span class="s5">8</span><span class="s2">), </span><span class="s4">f&quot;logging.level.</span><span class="s0">{</span><span class="s1">level_name</span><span class="s2">.</span><span class="s1">lower</span><span class="s2">()</span><span class="s0">}</span><span class="s4">&quot;</span>
+        <span class="s2">)</span>
+        <span class="s0">return </span><span class="s1">level_text</span>
+
+    <span class="s0">def </span><span class="s1">emit</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">record</span><span class="s2">: </span><span class="s1">LogRecord</span><span class="s2">) </span><span class="s1">-&gt; </span><span class="s0">None</span><span class="s2">:</span>
+        <span class="s3">&quot;&quot;&quot;Invoked by logging.&quot;&quot;&quot;</span>
+        <span class="s1">message </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">format</span><span class="s2">(</span><span class="s1">record</span><span class="s2">)</span>
+        <span class="s1">traceback </span><span class="s2">= </span><span class="s0">None</span>
+        <span class="s0">if </span><span class="s2">(</span>
+            <span class="s1">self</span><span class="s2">.</span><span class="s1">rich_tracebacks</span>
+            <span class="s0">and </span><span class="s1">record</span><span class="s2">.</span><span class="s1">exc_info</span>
+            <span class="s0">and </span><span class="s1">record</span><span class="s2">.</span><span class="s1">exc_info </span><span class="s2">!= (</span><span class="s0">None</span><span class="s2">, </span><span class="s0">None</span><span class="s2">, </span><span class="s0">None</span><span class="s2">)</span>
+        <span class="s2">):</span>
+            <span class="s1">exc_type</span><span class="s2">, </span><span class="s1">exc_value</span><span class="s2">, </span><span class="s1">exc_traceback </span><span class="s2">= </span><span class="s1">record</span><span class="s2">.</span><span class="s1">exc_info</span>
+            <span class="s0">assert </span><span class="s1">exc_type </span><span class="s0">is not None</span>
+            <span class="s0">assert </span><span class="s1">exc_value </span><span class="s0">is not None</span>
+            <span class="s1">traceback </span><span class="s2">= </span><span class="s1">Traceback</span><span class="s2">.</span><span class="s1">from_exception</span><span class="s2">(</span>
+                <span class="s1">exc_type</span><span class="s2">,</span>
+                <span class="s1">exc_value</span><span class="s2">,</span>
+                <span class="s1">exc_traceback</span><span class="s2">,</span>
+                <span class="s1">width</span><span class="s2">=</span><span class="s1">self</span><span class="s2">.</span><span class="s1">tracebacks_width</span><span class="s2">,</span>
+                <span class="s1">extra_lines</span><span class="s2">=</span><span class="s1">self</span><span class="s2">.</span><span class="s1">tracebacks_extra_lines</span><span class="s2">,</span>
+                <span class="s1">theme</span><span class="s2">=</span><span class="s1">self</span><span class="s2">.</span><span class="s1">tracebacks_theme</span><span class="s2">,</span>
+                <span class="s1">word_wrap</span><span class="s2">=</span><span class="s1">self</span><span class="s2">.</span><span class="s1">tracebacks_word_wrap</span><span class="s2">,</span>
+                <span class="s1">show_locals</span><span class="s2">=</span><span class="s1">self</span><span class="s2">.</span><span class="s1">tracebacks_show_locals</span><span class="s2">,</span>
+                <span class="s1">locals_max_length</span><span class="s2">=</span><span class="s1">self</span><span class="s2">.</span><span class="s1">locals_max_length</span><span class="s2">,</span>
+                <span class="s1">locals_max_string</span><span class="s2">=</span><span class="s1">self</span><span class="s2">.</span><span class="s1">locals_max_string</span><span class="s2">,</span>
+                <span class="s1">suppress</span><span class="s2">=</span><span class="s1">self</span><span class="s2">.</span><span class="s1">tracebacks_suppress</span><span class="s2">,</span>
+            <span class="s2">)</span>
+            <span class="s1">message </span><span class="s2">= </span><span class="s1">record</span><span class="s2">.</span><span class="s1">getMessage</span><span class="s2">()</span>
+            <span class="s0">if </span><span class="s1">self</span><span class="s2">.</span><span class="s1">formatter</span><span class="s2">:</span>
+                <span class="s1">record</span><span class="s2">.</span><span class="s1">message </span><span class="s2">= </span><span class="s1">record</span><span class="s2">.</span><span class="s1">getMessage</span><span class="s2">()</span>
+                <span class="s1">formatter </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">formatter</span>
+                <span class="s0">if </span><span class="s1">hasattr</span><span class="s2">(</span><span class="s1">formatter</span><span class="s2">, </span><span class="s4">&quot;usesTime&quot;</span><span class="s2">) </span><span class="s0">and </span><span class="s1">formatter</span><span class="s2">.</span><span class="s1">usesTime</span><span class="s2">():</span>
+                    <span class="s1">record</span><span class="s2">.</span><span class="s1">asctime </span><span class="s2">= </span><span class="s1">formatter</span><span class="s2">.</span><span class="s1">formatTime</span><span class="s2">(</span><span class="s1">record</span><span class="s2">, </span><span class="s1">formatter</span><span class="s2">.</span><span class="s1">datefmt</span><span class="s2">)</span>
+                <span class="s1">message </span><span class="s2">= </span><span class="s1">formatter</span><span class="s2">.</span><span class="s1">formatMessage</span><span class="s2">(</span><span class="s1">record</span><span class="s2">)</span>
+
+        <span class="s1">message_renderable </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">render_message</span><span class="s2">(</span><span class="s1">record</span><span class="s2">, </span><span class="s1">message</span><span class="s2">)</span>
+        <span class="s1">log_renderable </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">render</span><span class="s2">(</span>
+            <span class="s1">record</span><span class="s2">=</span><span class="s1">record</span><span class="s2">, </span><span class="s1">traceback</span><span class="s2">=</span><span class="s1">traceback</span><span class="s2">, </span><span class="s1">message_renderable</span><span class="s2">=</span><span class="s1">message_renderable</span>
+        <span class="s2">)</span>
+        <span class="s0">if </span><span class="s1">isinstance</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">console</span><span class="s2">.</span><span class="s1">file</span><span class="s2">, </span><span class="s1">NullFile</span><span class="s2">):</span>
+            <span class="s6"># Handles pythonw, where stdout/stderr are null, and we return NullFile</span>
+            <span class="s6"># instance from Console.file. In this case, we still want to make a log record</span>
+            <span class="s6"># even though we won't be writing anything to a file.</span>
+            <span class="s1">self</span><span class="s2">.</span><span class="s1">handleError</span><span class="s2">(</span><span class="s1">record</span><span class="s2">)</span>
+        <span class="s0">else</span><span class="s2">:</span>
+            <span class="s0">try</span><span class="s2">:</span>
+                <span class="s1">self</span><span class="s2">.</span><span class="s1">console</span><span class="s2">.</span><span class="s1">print</span><span class="s2">(</span><span class="s1">log_renderable</span><span class="s2">)</span>
+            <span class="s0">except </span><span class="s1">Exception</span><span class="s2">:</span>
+                <span class="s1">self</span><span class="s2">.</span><span class="s1">handleError</span><span class="s2">(</span><span class="s1">record</span><span class="s2">)</span>
+
+    <span class="s0">def </span><span class="s1">render_message</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">record</span><span class="s2">: </span><span class="s1">LogRecord</span><span class="s2">, </span><span class="s1">message</span><span class="s2">: </span><span class="s1">str</span><span class="s2">) </span><span class="s1">-&gt; </span><span class="s4">&quot;ConsoleRenderable&quot;</span><span class="s2">:</span>
+        <span class="s3">&quot;&quot;&quot;Render message text in to Text. 
+ 
+        Args: 
+            record (LogRecord): logging Record. 
+            message (str): String containing log message. 
+ 
+        Returns: 
+            ConsoleRenderable: Renderable to display log message. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">use_markup </span><span class="s2">= </span><span class="s1">getattr</span><span class="s2">(</span><span class="s1">record</span><span class="s2">, </span><span class="s4">&quot;markup&quot;</span><span class="s2">, </span><span class="s1">self</span><span class="s2">.</span><span class="s1">markup</span><span class="s2">)</span>
+        <span class="s1">message_text </span><span class="s2">= </span><span class="s1">Text</span><span class="s2">.</span><span class="s1">from_markup</span><span class="s2">(</span><span class="s1">message</span><span class="s2">) </span><span class="s0">if </span><span class="s1">use_markup </span><span class="s0">else </span><span class="s1">Text</span><span class="s2">(</span><span class="s1">message</span><span class="s2">)</span>
+
+        <span class="s1">highlighter </span><span class="s2">= </span><span class="s1">getattr</span><span class="s2">(</span><span class="s1">record</span><span class="s2">, </span><span class="s4">&quot;highlighter&quot;</span><span class="s2">, </span><span class="s1">self</span><span class="s2">.</span><span class="s1">highlighter</span><span class="s2">)</span>
+        <span class="s0">if </span><span class="s1">highlighter</span><span class="s2">:</span>
+            <span class="s1">message_text </span><span class="s2">= </span><span class="s1">highlighter</span><span class="s2">(</span><span class="s1">message_text</span><span class="s2">)</span>
+
+        <span class="s0">if </span><span class="s1">self</span><span class="s2">.</span><span class="s1">keywords </span><span class="s0">is None</span><span class="s2">:</span>
+            <span class="s1">self</span><span class="s2">.</span><span class="s1">keywords </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">KEYWORDS</span>
+
+        <span class="s0">if </span><span class="s1">self</span><span class="s2">.</span><span class="s1">keywords</span><span class="s2">:</span>
+            <span class="s1">message_text</span><span class="s2">.</span><span class="s1">highlight_words</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">keywords</span><span class="s2">, </span><span class="s4">&quot;logging.keyword&quot;</span><span class="s2">)</span>
+
+        <span class="s0">return </span><span class="s1">message_text</span>
+
+    <span class="s0">def </span><span class="s1">render</span><span class="s2">(</span>
+        <span class="s1">self</span><span class="s2">,</span>
+        <span class="s2">*,</span>
+        <span class="s1">record</span><span class="s2">: </span><span class="s1">LogRecord</span><span class="s2">,</span>
+        <span class="s1">traceback</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">Traceback</span><span class="s2">],</span>
+        <span class="s1">message_renderable</span><span class="s2">: </span><span class="s4">&quot;ConsoleRenderable&quot;</span><span class="s2">,</span>
+    <span class="s2">) </span><span class="s1">-&gt; </span><span class="s4">&quot;ConsoleRenderable&quot;</span><span class="s2">:</span>
+        <span class="s3">&quot;&quot;&quot;Render log for display. 
+ 
+        Args: 
+            record (LogRecord): logging Record. 
+            traceback (Optional[Traceback]): Traceback instance or None for no Traceback. 
+            message_renderable (ConsoleRenderable): Renderable (typically Text) containing log message contents. 
+ 
+        Returns: 
+            ConsoleRenderable: Renderable to display log. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">path </span><span class="s2">= </span><span class="s1">Path</span><span class="s2">(</span><span class="s1">record</span><span class="s2">.</span><span class="s1">pathname</span><span class="s2">).</span><span class="s1">name</span>
+        <span class="s1">level </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">get_level_text</span><span class="s2">(</span><span class="s1">record</span><span class="s2">)</span>
+        <span class="s1">time_format </span><span class="s2">= </span><span class="s0">None if </span><span class="s1">self</span><span class="s2">.</span><span class="s1">formatter </span><span class="s0">is None else </span><span class="s1">self</span><span class="s2">.</span><span class="s1">formatter</span><span class="s2">.</span><span class="s1">datefmt</span>
+        <span class="s1">log_time </span><span class="s2">= </span><span class="s1">datetime</span><span class="s2">.</span><span class="s1">fromtimestamp</span><span class="s2">(</span><span class="s1">record</span><span class="s2">.</span><span class="s1">created</span><span class="s2">)</span>
+
+        <span class="s1">log_renderable </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">_log_render</span><span class="s2">(</span>
+            <span class="s1">self</span><span class="s2">.</span><span class="s1">console</span><span class="s2">,</span>
+            <span class="s2">[</span><span class="s1">message_renderable</span><span class="s2">] </span><span class="s0">if not </span><span class="s1">traceback </span><span class="s0">else </span><span class="s2">[</span><span class="s1">message_renderable</span><span class="s2">, </span><span class="s1">traceback</span><span class="s2">],</span>
+            <span class="s1">log_time</span><span class="s2">=</span><span class="s1">log_time</span><span class="s2">,</span>
+            <span class="s1">time_format</span><span class="s2">=</span><span class="s1">time_format</span><span class="s2">,</span>
+            <span class="s1">level</span><span class="s2">=</span><span class="s1">level</span><span class="s2">,</span>
+            <span class="s1">path</span><span class="s2">=</span><span class="s1">path</span><span class="s2">,</span>
+            <span class="s1">line_no</span><span class="s2">=</span><span class="s1">record</span><span class="s2">.</span><span class="s1">lineno</span><span class="s2">,</span>
+            <span class="s1">link_path</span><span class="s2">=</span><span class="s1">record</span><span class="s2">.</span><span class="s1">pathname </span><span class="s0">if </span><span class="s1">self</span><span class="s2">.</span><span class="s1">enable_link_path </span><span class="s0">else None</span><span class="s2">,</span>
+        <span class="s2">)</span>
+        <span class="s0">return </span><span class="s1">log_renderable</span>
+
+
+<span class="s0">if </span><span class="s1">__name__ </span><span class="s2">== </span><span class="s4">&quot;__main__&quot;</span><span class="s2">:  </span><span class="s6"># pragma: no cover</span>
+    <span class="s0">from </span><span class="s1">time </span><span class="s0">import </span><span class="s1">sleep</span>
+
+    <span class="s1">FORMAT </span><span class="s2">= </span><span class="s4">&quot;%(message)s&quot;</span>
+    <span class="s6"># FORMAT = &quot;%(asctime)-15s - %(levelname)s - %(message)s&quot;</span>
+    <span class="s1">logging</span><span class="s2">.</span><span class="s1">basicConfig</span><span class="s2">(</span>
+        <span class="s1">level</span><span class="s2">=</span><span class="s4">&quot;NOTSET&quot;</span><span class="s2">,</span>
+        <span class="s1">format</span><span class="s2">=</span><span class="s1">FORMAT</span><span class="s2">,</span>
+        <span class="s1">datefmt</span><span class="s2">=</span><span class="s4">&quot;[%X]&quot;</span><span class="s2">,</span>
+        <span class="s1">handlers</span><span class="s2">=[</span><span class="s1">RichHandler</span><span class="s2">(</span><span class="s1">rich_tracebacks</span><span class="s2">=</span><span class="s0">True</span><span class="s2">, </span><span class="s1">tracebacks_show_locals</span><span class="s2">=</span><span class="s0">True</span><span class="s2">)],</span>
+    <span class="s2">)</span>
+    <span class="s1">log </span><span class="s2">= </span><span class="s1">logging</span><span class="s2">.</span><span class="s1">getLogger</span><span class="s2">(</span><span class="s4">&quot;rich&quot;</span><span class="s2">)</span>
+
+    <span class="s1">log</span><span class="s2">.</span><span class="s1">info</span><span class="s2">(</span><span class="s4">&quot;Server starting...&quot;</span><span class="s2">)</span>
+    <span class="s1">log</span><span class="s2">.</span><span class="s1">info</span><span class="s2">(</span><span class="s4">&quot;Listening on http://127.0.0.1:8080&quot;</span><span class="s2">)</span>
+    <span class="s1">sleep</span><span class="s2">(</span><span class="s5">1</span><span class="s2">)</span>
+
+    <span class="s1">log</span><span class="s2">.</span><span class="s1">info</span><span class="s2">(</span><span class="s4">&quot;GET /index.html 200 1298&quot;</span><span class="s2">)</span>
+    <span class="s1">log</span><span class="s2">.</span><span class="s1">info</span><span class="s2">(</span><span class="s4">&quot;GET /imgs/backgrounds/back1.jpg 200 54386&quot;</span><span class="s2">)</span>
+    <span class="s1">log</span><span class="s2">.</span><span class="s1">info</span><span class="s2">(</span><span class="s4">&quot;GET /css/styles.css 200 54386&quot;</span><span class="s2">)</span>
+    <span class="s1">log</span><span class="s2">.</span><span class="s1">warning</span><span class="s2">(</span><span class="s4">&quot;GET /favicon.ico 404 242&quot;</span><span class="s2">)</span>
+    <span class="s1">sleep</span><span class="s2">(</span><span class="s5">1</span><span class="s2">)</span>
+
+    <span class="s1">log</span><span class="s2">.</span><span class="s1">debug</span><span class="s2">(</span>
+        <span class="s4">&quot;JSONRPC request</span><span class="s0">\n</span><span class="s4">--&gt; %r</span><span class="s0">\n</span><span class="s4">&lt;-- %r&quot;</span><span class="s2">,</span>
+        <span class="s2">{</span>
+            <span class="s4">&quot;version&quot;</span><span class="s2">: </span><span class="s4">&quot;1.1&quot;</span><span class="s2">,</span>
+            <span class="s4">&quot;method&quot;</span><span class="s2">: </span><span class="s4">&quot;confirmFruitPurchase&quot;</span><span class="s2">,</span>
+            <span class="s4">&quot;params&quot;</span><span class="s2">: [[</span><span class="s4">&quot;apple&quot;</span><span class="s2">, </span><span class="s4">&quot;orange&quot;</span><span class="s2">, </span><span class="s4">&quot;mangoes&quot;</span><span class="s2">, </span><span class="s4">&quot;pomelo&quot;</span><span class="s2">], </span><span class="s5">1.123</span><span class="s2">],</span>
+            <span class="s4">&quot;id&quot;</span><span class="s2">: </span><span class="s4">&quot;194521489&quot;</span><span class="s2">,</span>
+        <span class="s2">},</span>
+        <span class="s2">{</span><span class="s4">&quot;version&quot;</span><span class="s2">: </span><span class="s4">&quot;1.1&quot;</span><span class="s2">, </span><span class="s4">&quot;result&quot;</span><span class="s2">: </span><span class="s0">True</span><span class="s2">, </span><span class="s4">&quot;error&quot;</span><span class="s2">: </span><span class="s0">None</span><span class="s2">, </span><span class="s4">&quot;id&quot;</span><span class="s2">: </span><span class="s4">&quot;194521489&quot;</span><span class="s2">},</span>
+    <span class="s2">)</span>
+    <span class="s1">log</span><span class="s2">.</span><span class="s1">debug</span><span class="s2">(</span>
+        <span class="s4">&quot;Loading configuration file /adasd/asdasd/qeqwe/qwrqwrqwr/sdgsdgsdg/werwerwer/dfgerert/ertertert/ertetert/werwerwer&quot;</span>
+    <span class="s2">)</span>
+    <span class="s1">log</span><span class="s2">.</span><span class="s1">error</span><span class="s2">(</span><span class="s4">&quot;Unable to find 'pomelo' in database!&quot;</span><span class="s2">)</span>
+    <span class="s1">log</span><span class="s2">.</span><span class="s1">info</span><span class="s2">(</span><span class="s4">&quot;POST /jsonrpc/ 200 65532&quot;</span><span class="s2">)</span>
+    <span class="s1">log</span><span class="s2">.</span><span class="s1">info</span><span class="s2">(</span><span class="s4">&quot;POST /admin/ 401 42234&quot;</span><span class="s2">)</span>
+    <span class="s1">log</span><span class="s2">.</span><span class="s1">warning</span><span class="s2">(</span><span class="s4">&quot;password was rejected for admin site.&quot;</span><span class="s2">)</span>
+
+    <span class="s0">def </span><span class="s1">divide</span><span class="s2">() </span><span class="s1">-&gt; </span><span class="s0">None</span><span class="s2">:</span>
+        <span class="s1">number </span><span class="s2">= </span><span class="s5">1</span>
+        <span class="s1">divisor </span><span class="s2">= </span><span class="s5">0</span>
+        <span class="s1">foos </span><span class="s2">= [</span><span class="s4">&quot;foo&quot;</span><span class="s2">] * </span><span class="s5">100</span>
+        <span class="s1">log</span><span class="s2">.</span><span class="s1">debug</span><span class="s2">(</span><span class="s4">&quot;in divide&quot;</span><span class="s2">)</span>
+        <span class="s0">try</span><span class="s2">:</span>
+            <span class="s1">number </span><span class="s2">/ </span><span class="s1">divisor</span>
+        <span class="s0">except</span><span class="s2">:</span>
+            <span class="s1">log</span><span class="s2">.</span><span class="s1">exception</span><span class="s2">(</span><span class="s4">&quot;An error of some kind occurred!&quot;</span><span class="s2">)</span>
+
+    <span class="s1">divide</span><span class="s2">()</span>
+    <span class="s1">sleep</span><span class="s2">(</span><span class="s5">1</span><span class="s2">)</span>
+    <span class="s1">log</span><span class="s2">.</span><span class="s1">critical</span><span class="s2">(</span><span class="s4">&quot;Out of memory!&quot;</span><span class="s2">)</span>
+    <span class="s1">log</span><span class="s2">.</span><span class="s1">info</span><span class="s2">(</span><span class="s4">&quot;Server exited with code=-1&quot;</span><span class="s2">)</span>
+    <span class="s1">log</span><span class="s2">.</span><span class="s1">info</span><span class="s2">(</span><span class="s4">&quot;[bold]EXITING...[/bold]&quot;</span><span class="s2">, </span><span class="s1">extra</span><span class="s2">=</span><span class="s1">dict</span><span class="s2">(</span><span class="s1">markup</span><span class="s2">=</span><span class="s0">True</span><span class="s2">))</span>
+</pre>
+</body>
+</html>

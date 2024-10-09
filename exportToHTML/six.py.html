@@ -1,0 +1,1021 @@
+<html>
+<head>
+<title>six.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #7a7e85;}
+.s1 { color: #bcbec4;}
+.s2 { color: #5f826b; font-style: italic;}
+.s3 { color: #cf8e6d;}
+.s4 { color: #bcbec4;}
+.s5 { color: #6aab73;}
+.s6 { color: #2aacb8;}
+</style>
+</head>
+<body bgcolor="#1e1f22">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+six.py</font>
+</center></td></tr></table>
+<pre><span class="s0"># Copyright (c) 2010-2020 Benjamin Peterson</span>
+<span class="s0">#</span>
+<span class="s0"># Permission is hereby granted, free of charge, to any person obtaining a copy</span>
+<span class="s0"># of this software and associated documentation files (the &quot;Software&quot;), to deal</span>
+<span class="s0"># in the Software without restriction, including without limitation the rights</span>
+<span class="s0"># to use, copy, modify, merge, publish, distribute, sublicense, and/or sell</span>
+<span class="s0"># copies of the Software, and to permit persons to whom the Software is</span>
+<span class="s0"># furnished to do so, subject to the following conditions:</span>
+<span class="s0">#</span>
+<span class="s0"># The above copyright notice and this permission notice shall be included in all</span>
+<span class="s0"># copies or substantial portions of the Software.</span>
+<span class="s0">#</span>
+<span class="s0"># THE SOFTWARE IS PROVIDED &quot;AS IS&quot;, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR</span>
+<span class="s0"># IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,</span>
+<span class="s0"># FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE</span>
+<span class="s0"># AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER</span>
+<span class="s0"># LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,</span>
+<span class="s0"># OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE</span>
+<span class="s0"># SOFTWARE.</span>
+
+<span class="s2">&quot;&quot;&quot;Utilities for writing code that runs on Python 2 and 3&quot;&quot;&quot;</span>
+
+<span class="s3">from </span><span class="s1">__future__ </span><span class="s3">import </span><span class="s1">absolute_import</span>
+
+<span class="s3">import </span><span class="s1">functools</span>
+<span class="s3">import </span><span class="s1">itertools</span>
+<span class="s3">import </span><span class="s1">operator</span>
+<span class="s3">import </span><span class="s1">sys</span>
+<span class="s3">import </span><span class="s1">types</span>
+
+<span class="s1">__author__ </span><span class="s4">= </span><span class="s5">&quot;Benjamin Peterson &lt;benjamin@python.org&gt;&quot;</span>
+<span class="s1">__version__ </span><span class="s4">= </span><span class="s5">&quot;1.16.0&quot;</span>
+
+
+<span class="s0"># Useful for very coarse version differentiation.</span>
+<span class="s1">PY2 </span><span class="s4">= </span><span class="s1">sys</span><span class="s4">.</span><span class="s1">version_info</span><span class="s4">[</span><span class="s6">0</span><span class="s4">] == </span><span class="s6">2</span>
+<span class="s1">PY3 </span><span class="s4">= </span><span class="s1">sys</span><span class="s4">.</span><span class="s1">version_info</span><span class="s4">[</span><span class="s6">0</span><span class="s4">] == </span><span class="s6">3</span>
+<span class="s1">PY34 </span><span class="s4">= </span><span class="s1">sys</span><span class="s4">.</span><span class="s1">version_info</span><span class="s4">[</span><span class="s6">0</span><span class="s4">:</span><span class="s6">2</span><span class="s4">] &gt;= (</span><span class="s6">3</span><span class="s4">, </span><span class="s6">4</span><span class="s4">)</span>
+
+<span class="s3">if </span><span class="s1">PY3</span><span class="s4">:</span>
+    <span class="s1">string_types </span><span class="s4">= </span><span class="s1">str</span><span class="s4">,</span>
+    <span class="s1">integer_types </span><span class="s4">= </span><span class="s1">int</span><span class="s4">,</span>
+    <span class="s1">class_types </span><span class="s4">= </span><span class="s1">type</span><span class="s4">,</span>
+    <span class="s1">text_type </span><span class="s4">= </span><span class="s1">str</span>
+    <span class="s1">binary_type </span><span class="s4">= </span><span class="s1">bytes</span>
+
+    <span class="s1">MAXSIZE </span><span class="s4">= </span><span class="s1">sys</span><span class="s4">.</span><span class="s1">maxsize</span>
+<span class="s3">else</span><span class="s4">:</span>
+    <span class="s1">string_types </span><span class="s4">= </span><span class="s1">basestring</span><span class="s4">,</span>
+    <span class="s1">integer_types </span><span class="s4">= (</span><span class="s1">int</span><span class="s4">, </span><span class="s1">long</span><span class="s4">)</span>
+    <span class="s1">class_types </span><span class="s4">= (</span><span class="s1">type</span><span class="s4">, </span><span class="s1">types</span><span class="s4">.</span><span class="s1">ClassType</span><span class="s4">)</span>
+    <span class="s1">text_type </span><span class="s4">= </span><span class="s1">unicode</span>
+    <span class="s1">binary_type </span><span class="s4">= </span><span class="s1">str</span>
+
+    <span class="s3">if </span><span class="s1">sys</span><span class="s4">.</span><span class="s1">platform</span><span class="s4">.</span><span class="s1">startswith</span><span class="s4">(</span><span class="s5">&quot;java&quot;</span><span class="s4">):</span>
+        <span class="s0"># Jython always uses 32 bits.</span>
+        <span class="s1">MAXSIZE </span><span class="s4">= </span><span class="s1">int</span><span class="s4">((</span><span class="s6">1 </span><span class="s4">&lt;&lt; </span><span class="s6">31</span><span class="s4">) - </span><span class="s6">1</span><span class="s4">)</span>
+    <span class="s3">else</span><span class="s4">:</span>
+        <span class="s0"># It's possible to have sizeof(long) != sizeof(Py_ssize_t).</span>
+        <span class="s3">class </span><span class="s1">X</span><span class="s4">(</span><span class="s1">object</span><span class="s4">):</span>
+
+            <span class="s3">def </span><span class="s1">__len__</span><span class="s4">(</span><span class="s1">self</span><span class="s4">):</span>
+                <span class="s3">return </span><span class="s6">1 </span><span class="s4">&lt;&lt; </span><span class="s6">31</span>
+        <span class="s3">try</span><span class="s4">:</span>
+            <span class="s1">len</span><span class="s4">(</span><span class="s1">X</span><span class="s4">())</span>
+        <span class="s3">except </span><span class="s1">OverflowError</span><span class="s4">:</span>
+            <span class="s0"># 32-bit</span>
+            <span class="s1">MAXSIZE </span><span class="s4">= </span><span class="s1">int</span><span class="s4">((</span><span class="s6">1 </span><span class="s4">&lt;&lt; </span><span class="s6">31</span><span class="s4">) - </span><span class="s6">1</span><span class="s4">)</span>
+        <span class="s3">else</span><span class="s4">:</span>
+            <span class="s0"># 64-bit</span>
+            <span class="s1">MAXSIZE </span><span class="s4">= </span><span class="s1">int</span><span class="s4">((</span><span class="s6">1 </span><span class="s4">&lt;&lt; </span><span class="s6">63</span><span class="s4">) - </span><span class="s6">1</span><span class="s4">)</span>
+        <span class="s3">del </span><span class="s1">X</span>
+
+<span class="s3">if </span><span class="s1">PY34</span><span class="s4">:</span>
+    <span class="s3">from </span><span class="s1">importlib</span><span class="s4">.</span><span class="s1">util </span><span class="s3">import </span><span class="s1">spec_from_loader</span>
+<span class="s3">else</span><span class="s4">:</span>
+    <span class="s1">spec_from_loader </span><span class="s4">= </span><span class="s3">None</span>
+
+
+<span class="s3">def </span><span class="s1">_add_doc</span><span class="s4">(</span><span class="s1">func</span><span class="s4">, </span><span class="s1">doc</span><span class="s4">):</span>
+    <span class="s2">&quot;&quot;&quot;Add documentation to a function.&quot;&quot;&quot;</span>
+    <span class="s1">func</span><span class="s4">.</span><span class="s1">__doc__ </span><span class="s4">= </span><span class="s1">doc</span>
+
+
+<span class="s3">def </span><span class="s1">_import_module</span><span class="s4">(</span><span class="s1">name</span><span class="s4">):</span>
+    <span class="s2">&quot;&quot;&quot;Import module, returning the module after the last dot.&quot;&quot;&quot;</span>
+    <span class="s1">__import__</span><span class="s4">(</span><span class="s1">name</span><span class="s4">)</span>
+    <span class="s3">return </span><span class="s1">sys</span><span class="s4">.</span><span class="s1">modules</span><span class="s4">[</span><span class="s1">name</span><span class="s4">]</span>
+
+
+<span class="s3">class </span><span class="s1">_LazyDescr</span><span class="s4">(</span><span class="s1">object</span><span class="s4">):</span>
+
+    <span class="s3">def </span><span class="s1">__init__</span><span class="s4">(</span><span class="s1">self</span><span class="s4">, </span><span class="s1">name</span><span class="s4">):</span>
+        <span class="s1">self</span><span class="s4">.</span><span class="s1">name </span><span class="s4">= </span><span class="s1">name</span>
+
+    <span class="s3">def </span><span class="s1">__get__</span><span class="s4">(</span><span class="s1">self</span><span class="s4">, </span><span class="s1">obj</span><span class="s4">, </span><span class="s1">tp</span><span class="s4">):</span>
+        <span class="s1">result </span><span class="s4">= </span><span class="s1">self</span><span class="s4">.</span><span class="s1">_resolve</span><span class="s4">()</span>
+        <span class="s1">setattr</span><span class="s4">(</span><span class="s1">obj</span><span class="s4">, </span><span class="s1">self</span><span class="s4">.</span><span class="s1">name</span><span class="s4">, </span><span class="s1">result</span><span class="s4">)  </span><span class="s0"># Invokes __set__.</span>
+        <span class="s3">try</span><span class="s4">:</span>
+            <span class="s0"># This is a bit ugly, but it avoids running this again by</span>
+            <span class="s0"># removing this descriptor.</span>
+            <span class="s1">delattr</span><span class="s4">(</span><span class="s1">obj</span><span class="s4">.</span><span class="s1">__class__</span><span class="s4">, </span><span class="s1">self</span><span class="s4">.</span><span class="s1">name</span><span class="s4">)</span>
+        <span class="s3">except </span><span class="s1">AttributeError</span><span class="s4">:</span>
+            <span class="s3">pass</span>
+        <span class="s3">return </span><span class="s1">result</span>
+
+
+<span class="s3">class </span><span class="s1">MovedModule</span><span class="s4">(</span><span class="s1">_LazyDescr</span><span class="s4">):</span>
+
+    <span class="s3">def </span><span class="s1">__init__</span><span class="s4">(</span><span class="s1">self</span><span class="s4">, </span><span class="s1">name</span><span class="s4">, </span><span class="s1">old</span><span class="s4">, </span><span class="s1">new</span><span class="s4">=</span><span class="s3">None</span><span class="s4">):</span>
+        <span class="s1">super</span><span class="s4">(</span><span class="s1">MovedModule</span><span class="s4">, </span><span class="s1">self</span><span class="s4">).</span><span class="s1">__init__</span><span class="s4">(</span><span class="s1">name</span><span class="s4">)</span>
+        <span class="s3">if </span><span class="s1">PY3</span><span class="s4">:</span>
+            <span class="s3">if </span><span class="s1">new </span><span class="s3">is None</span><span class="s4">:</span>
+                <span class="s1">new </span><span class="s4">= </span><span class="s1">name</span>
+            <span class="s1">self</span><span class="s4">.</span><span class="s1">mod </span><span class="s4">= </span><span class="s1">new</span>
+        <span class="s3">else</span><span class="s4">:</span>
+            <span class="s1">self</span><span class="s4">.</span><span class="s1">mod </span><span class="s4">= </span><span class="s1">old</span>
+
+    <span class="s3">def </span><span class="s1">_resolve</span><span class="s4">(</span><span class="s1">self</span><span class="s4">):</span>
+        <span class="s3">return </span><span class="s1">_import_module</span><span class="s4">(</span><span class="s1">self</span><span class="s4">.</span><span class="s1">mod</span><span class="s4">)</span>
+
+    <span class="s3">def </span><span class="s1">__getattr__</span><span class="s4">(</span><span class="s1">self</span><span class="s4">, </span><span class="s1">attr</span><span class="s4">):</span>
+        <span class="s1">_module </span><span class="s4">= </span><span class="s1">self</span><span class="s4">.</span><span class="s1">_resolve</span><span class="s4">()</span>
+        <span class="s1">value </span><span class="s4">= </span><span class="s1">getattr</span><span class="s4">(</span><span class="s1">_module</span><span class="s4">, </span><span class="s1">attr</span><span class="s4">)</span>
+        <span class="s1">setattr</span><span class="s4">(</span><span class="s1">self</span><span class="s4">, </span><span class="s1">attr</span><span class="s4">, </span><span class="s1">value</span><span class="s4">)</span>
+        <span class="s3">return </span><span class="s1">value</span>
+
+
+<span class="s3">class </span><span class="s1">_LazyModule</span><span class="s4">(</span><span class="s1">types</span><span class="s4">.</span><span class="s1">ModuleType</span><span class="s4">):</span>
+
+    <span class="s3">def </span><span class="s1">__init__</span><span class="s4">(</span><span class="s1">self</span><span class="s4">, </span><span class="s1">name</span><span class="s4">):</span>
+        <span class="s1">super</span><span class="s4">(</span><span class="s1">_LazyModule</span><span class="s4">, </span><span class="s1">self</span><span class="s4">).</span><span class="s1">__init__</span><span class="s4">(</span><span class="s1">name</span><span class="s4">)</span>
+        <span class="s1">self</span><span class="s4">.</span><span class="s1">__doc__ </span><span class="s4">= </span><span class="s1">self</span><span class="s4">.</span><span class="s1">__class__</span><span class="s4">.</span><span class="s1">__doc__</span>
+
+    <span class="s3">def </span><span class="s1">__dir__</span><span class="s4">(</span><span class="s1">self</span><span class="s4">):</span>
+        <span class="s1">attrs </span><span class="s4">= [</span><span class="s5">&quot;__doc__&quot;</span><span class="s4">, </span><span class="s5">&quot;__name__&quot;</span><span class="s4">]</span>
+        <span class="s1">attrs </span><span class="s4">+= [</span><span class="s1">attr</span><span class="s4">.</span><span class="s1">name </span><span class="s3">for </span><span class="s1">attr </span><span class="s3">in </span><span class="s1">self</span><span class="s4">.</span><span class="s1">_moved_attributes</span><span class="s4">]</span>
+        <span class="s3">return </span><span class="s1">attrs</span>
+
+    <span class="s0"># Subclasses should override this</span>
+    <span class="s1">_moved_attributes </span><span class="s4">= []</span>
+
+
+<span class="s3">class </span><span class="s1">MovedAttribute</span><span class="s4">(</span><span class="s1">_LazyDescr</span><span class="s4">):</span>
+
+    <span class="s3">def </span><span class="s1">__init__</span><span class="s4">(</span><span class="s1">self</span><span class="s4">, </span><span class="s1">name</span><span class="s4">, </span><span class="s1">old_mod</span><span class="s4">, </span><span class="s1">new_mod</span><span class="s4">, </span><span class="s1">old_attr</span><span class="s4">=</span><span class="s3">None</span><span class="s4">, </span><span class="s1">new_attr</span><span class="s4">=</span><span class="s3">None</span><span class="s4">):</span>
+        <span class="s1">super</span><span class="s4">(</span><span class="s1">MovedAttribute</span><span class="s4">, </span><span class="s1">self</span><span class="s4">).</span><span class="s1">__init__</span><span class="s4">(</span><span class="s1">name</span><span class="s4">)</span>
+        <span class="s3">if </span><span class="s1">PY3</span><span class="s4">:</span>
+            <span class="s3">if </span><span class="s1">new_mod </span><span class="s3">is None</span><span class="s4">:</span>
+                <span class="s1">new_mod </span><span class="s4">= </span><span class="s1">name</span>
+            <span class="s1">self</span><span class="s4">.</span><span class="s1">mod </span><span class="s4">= </span><span class="s1">new_mod</span>
+            <span class="s3">if </span><span class="s1">new_attr </span><span class="s3">is None</span><span class="s4">:</span>
+                <span class="s3">if </span><span class="s1">old_attr </span><span class="s3">is None</span><span class="s4">:</span>
+                    <span class="s1">new_attr </span><span class="s4">= </span><span class="s1">name</span>
+                <span class="s3">else</span><span class="s4">:</span>
+                    <span class="s1">new_attr </span><span class="s4">= </span><span class="s1">old_attr</span>
+            <span class="s1">self</span><span class="s4">.</span><span class="s1">attr </span><span class="s4">= </span><span class="s1">new_attr</span>
+        <span class="s3">else</span><span class="s4">:</span>
+            <span class="s1">self</span><span class="s4">.</span><span class="s1">mod </span><span class="s4">= </span><span class="s1">old_mod</span>
+            <span class="s3">if </span><span class="s1">old_attr </span><span class="s3">is None</span><span class="s4">:</span>
+                <span class="s1">old_attr </span><span class="s4">= </span><span class="s1">name</span>
+            <span class="s1">self</span><span class="s4">.</span><span class="s1">attr </span><span class="s4">= </span><span class="s1">old_attr</span>
+
+    <span class="s3">def </span><span class="s1">_resolve</span><span class="s4">(</span><span class="s1">self</span><span class="s4">):</span>
+        <span class="s1">module </span><span class="s4">= </span><span class="s1">_import_module</span><span class="s4">(</span><span class="s1">self</span><span class="s4">.</span><span class="s1">mod</span><span class="s4">)</span>
+        <span class="s3">return </span><span class="s1">getattr</span><span class="s4">(</span><span class="s1">module</span><span class="s4">, </span><span class="s1">self</span><span class="s4">.</span><span class="s1">attr</span><span class="s4">)</span>
+
+
+<span class="s3">class </span><span class="s1">_SixMetaPathImporter</span><span class="s4">(</span><span class="s1">object</span><span class="s4">):</span>
+
+    <span class="s2">&quot;&quot;&quot; 
+    A meta path importer to import six.moves and its submodules. 
+ 
+    This class implements a PEP302 finder and loader. It should be compatible 
+    with Python 2.5 and all existing versions of Python3 
+    &quot;&quot;&quot;</span>
+
+    <span class="s3">def </span><span class="s1">__init__</span><span class="s4">(</span><span class="s1">self</span><span class="s4">, </span><span class="s1">six_module_name</span><span class="s4">):</span>
+        <span class="s1">self</span><span class="s4">.</span><span class="s1">name </span><span class="s4">= </span><span class="s1">six_module_name</span>
+        <span class="s1">self</span><span class="s4">.</span><span class="s1">known_modules </span><span class="s4">= {}</span>
+
+    <span class="s3">def </span><span class="s1">_add_module</span><span class="s4">(</span><span class="s1">self</span><span class="s4">, </span><span class="s1">mod</span><span class="s4">, *</span><span class="s1">fullnames</span><span class="s4">):</span>
+        <span class="s3">for </span><span class="s1">fullname </span><span class="s3">in </span><span class="s1">fullnames</span><span class="s4">:</span>
+            <span class="s1">self</span><span class="s4">.</span><span class="s1">known_modules</span><span class="s4">[</span><span class="s1">self</span><span class="s4">.</span><span class="s1">name </span><span class="s4">+ </span><span class="s5">&quot;.&quot; </span><span class="s4">+ </span><span class="s1">fullname</span><span class="s4">] = </span><span class="s1">mod</span>
+
+    <span class="s3">def </span><span class="s1">_get_module</span><span class="s4">(</span><span class="s1">self</span><span class="s4">, </span><span class="s1">fullname</span><span class="s4">):</span>
+        <span class="s3">return </span><span class="s1">self</span><span class="s4">.</span><span class="s1">known_modules</span><span class="s4">[</span><span class="s1">self</span><span class="s4">.</span><span class="s1">name </span><span class="s4">+ </span><span class="s5">&quot;.&quot; </span><span class="s4">+ </span><span class="s1">fullname</span><span class="s4">]</span>
+
+    <span class="s3">def </span><span class="s1">find_module</span><span class="s4">(</span><span class="s1">self</span><span class="s4">, </span><span class="s1">fullname</span><span class="s4">, </span><span class="s1">path</span><span class="s4">=</span><span class="s3">None</span><span class="s4">):</span>
+        <span class="s3">if </span><span class="s1">fullname </span><span class="s3">in </span><span class="s1">self</span><span class="s4">.</span><span class="s1">known_modules</span><span class="s4">:</span>
+            <span class="s3">return </span><span class="s1">self</span>
+        <span class="s3">return None</span>
+
+    <span class="s3">def </span><span class="s1">find_spec</span><span class="s4">(</span><span class="s1">self</span><span class="s4">, </span><span class="s1">fullname</span><span class="s4">, </span><span class="s1">path</span><span class="s4">, </span><span class="s1">target</span><span class="s4">=</span><span class="s3">None</span><span class="s4">):</span>
+        <span class="s3">if </span><span class="s1">fullname </span><span class="s3">in </span><span class="s1">self</span><span class="s4">.</span><span class="s1">known_modules</span><span class="s4">:</span>
+            <span class="s3">return </span><span class="s1">spec_from_loader</span><span class="s4">(</span><span class="s1">fullname</span><span class="s4">, </span><span class="s1">self</span><span class="s4">)</span>
+        <span class="s3">return None</span>
+
+    <span class="s3">def </span><span class="s1">__get_module</span><span class="s4">(</span><span class="s1">self</span><span class="s4">, </span><span class="s1">fullname</span><span class="s4">):</span>
+        <span class="s3">try</span><span class="s4">:</span>
+            <span class="s3">return </span><span class="s1">self</span><span class="s4">.</span><span class="s1">known_modules</span><span class="s4">[</span><span class="s1">fullname</span><span class="s4">]</span>
+        <span class="s3">except </span><span class="s1">KeyError</span><span class="s4">:</span>
+            <span class="s3">raise </span><span class="s1">ImportError</span><span class="s4">(</span><span class="s5">&quot;This loader does not know module &quot; </span><span class="s4">+ </span><span class="s1">fullname</span><span class="s4">)</span>
+
+    <span class="s3">def </span><span class="s1">load_module</span><span class="s4">(</span><span class="s1">self</span><span class="s4">, </span><span class="s1">fullname</span><span class="s4">):</span>
+        <span class="s3">try</span><span class="s4">:</span>
+            <span class="s0"># in case of a reload</span>
+            <span class="s3">return </span><span class="s1">sys</span><span class="s4">.</span><span class="s1">modules</span><span class="s4">[</span><span class="s1">fullname</span><span class="s4">]</span>
+        <span class="s3">except </span><span class="s1">KeyError</span><span class="s4">:</span>
+            <span class="s3">pass</span>
+        <span class="s1">mod </span><span class="s4">= </span><span class="s1">self</span><span class="s4">.</span><span class="s1">__get_module</span><span class="s4">(</span><span class="s1">fullname</span><span class="s4">)</span>
+        <span class="s3">if </span><span class="s1">isinstance</span><span class="s4">(</span><span class="s1">mod</span><span class="s4">, </span><span class="s1">MovedModule</span><span class="s4">):</span>
+            <span class="s1">mod </span><span class="s4">= </span><span class="s1">mod</span><span class="s4">.</span><span class="s1">_resolve</span><span class="s4">()</span>
+        <span class="s3">else</span><span class="s4">:</span>
+            <span class="s1">mod</span><span class="s4">.</span><span class="s1">__loader__ </span><span class="s4">= </span><span class="s1">self</span>
+        <span class="s1">sys</span><span class="s4">.</span><span class="s1">modules</span><span class="s4">[</span><span class="s1">fullname</span><span class="s4">] = </span><span class="s1">mod</span>
+        <span class="s3">return </span><span class="s1">mod</span>
+
+    <span class="s3">def </span><span class="s1">is_package</span><span class="s4">(</span><span class="s1">self</span><span class="s4">, </span><span class="s1">fullname</span><span class="s4">):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Return true, if the named module is a package. 
+ 
+        We need this method to get correct spec objects with 
+        Python 3.4 (see PEP451) 
+        &quot;&quot;&quot;</span>
+        <span class="s3">return </span><span class="s1">hasattr</span><span class="s4">(</span><span class="s1">self</span><span class="s4">.</span><span class="s1">__get_module</span><span class="s4">(</span><span class="s1">fullname</span><span class="s4">), </span><span class="s5">&quot;__path__&quot;</span><span class="s4">)</span>
+
+    <span class="s3">def </span><span class="s1">get_code</span><span class="s4">(</span><span class="s1">self</span><span class="s4">, </span><span class="s1">fullname</span><span class="s4">):</span>
+        <span class="s2">&quot;&quot;&quot;Return None 
+ 
+        Required, if is_package is implemented&quot;&quot;&quot;</span>
+        <span class="s1">self</span><span class="s4">.</span><span class="s1">__get_module</span><span class="s4">(</span><span class="s1">fullname</span><span class="s4">)  </span><span class="s0"># eventually raises ImportError</span>
+        <span class="s3">return None</span>
+    <span class="s1">get_source </span><span class="s4">= </span><span class="s1">get_code  </span><span class="s0"># same as get_code</span>
+
+    <span class="s3">def </span><span class="s1">create_module</span><span class="s4">(</span><span class="s1">self</span><span class="s4">, </span><span class="s1">spec</span><span class="s4">):</span>
+        <span class="s3">return </span><span class="s1">self</span><span class="s4">.</span><span class="s1">load_module</span><span class="s4">(</span><span class="s1">spec</span><span class="s4">.</span><span class="s1">name</span><span class="s4">)</span>
+
+    <span class="s3">def </span><span class="s1">exec_module</span><span class="s4">(</span><span class="s1">self</span><span class="s4">, </span><span class="s1">module</span><span class="s4">):</span>
+        <span class="s3">pass</span>
+
+<span class="s1">_importer </span><span class="s4">= </span><span class="s1">_SixMetaPathImporter</span><span class="s4">(</span><span class="s1">__name__</span><span class="s4">)</span>
+
+
+<span class="s3">class </span><span class="s1">_MovedItems</span><span class="s4">(</span><span class="s1">_LazyModule</span><span class="s4">):</span>
+
+    <span class="s2">&quot;&quot;&quot;Lazy loading of moved objects&quot;&quot;&quot;</span>
+    <span class="s1">__path__ </span><span class="s4">= []  </span><span class="s0"># mark as package</span>
+
+
+<span class="s1">_moved_attributes </span><span class="s4">= [</span>
+    <span class="s1">MovedAttribute</span><span class="s4">(</span><span class="s5">&quot;cStringIO&quot;</span><span class="s4">, </span><span class="s5">&quot;cStringIO&quot;</span><span class="s4">, </span><span class="s5">&quot;io&quot;</span><span class="s4">, </span><span class="s5">&quot;StringIO&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedAttribute</span><span class="s4">(</span><span class="s5">&quot;filter&quot;</span><span class="s4">, </span><span class="s5">&quot;itertools&quot;</span><span class="s4">, </span><span class="s5">&quot;builtins&quot;</span><span class="s4">, </span><span class="s5">&quot;ifilter&quot;</span><span class="s4">, </span><span class="s5">&quot;filter&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedAttribute</span><span class="s4">(</span><span class="s5">&quot;filterfalse&quot;</span><span class="s4">, </span><span class="s5">&quot;itertools&quot;</span><span class="s4">, </span><span class="s5">&quot;itertools&quot;</span><span class="s4">, </span><span class="s5">&quot;ifilterfalse&quot;</span><span class="s4">, </span><span class="s5">&quot;filterfalse&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedAttribute</span><span class="s4">(</span><span class="s5">&quot;input&quot;</span><span class="s4">, </span><span class="s5">&quot;__builtin__&quot;</span><span class="s4">, </span><span class="s5">&quot;builtins&quot;</span><span class="s4">, </span><span class="s5">&quot;raw_input&quot;</span><span class="s4">, </span><span class="s5">&quot;input&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedAttribute</span><span class="s4">(</span><span class="s5">&quot;intern&quot;</span><span class="s4">, </span><span class="s5">&quot;__builtin__&quot;</span><span class="s4">, </span><span class="s5">&quot;sys&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedAttribute</span><span class="s4">(</span><span class="s5">&quot;map&quot;</span><span class="s4">, </span><span class="s5">&quot;itertools&quot;</span><span class="s4">, </span><span class="s5">&quot;builtins&quot;</span><span class="s4">, </span><span class="s5">&quot;imap&quot;</span><span class="s4">, </span><span class="s5">&quot;map&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedAttribute</span><span class="s4">(</span><span class="s5">&quot;getcwd&quot;</span><span class="s4">, </span><span class="s5">&quot;os&quot;</span><span class="s4">, </span><span class="s5">&quot;os&quot;</span><span class="s4">, </span><span class="s5">&quot;getcwdu&quot;</span><span class="s4">, </span><span class="s5">&quot;getcwd&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedAttribute</span><span class="s4">(</span><span class="s5">&quot;getcwdb&quot;</span><span class="s4">, </span><span class="s5">&quot;os&quot;</span><span class="s4">, </span><span class="s5">&quot;os&quot;</span><span class="s4">, </span><span class="s5">&quot;getcwd&quot;</span><span class="s4">, </span><span class="s5">&quot;getcwdb&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedAttribute</span><span class="s4">(</span><span class="s5">&quot;getoutput&quot;</span><span class="s4">, </span><span class="s5">&quot;commands&quot;</span><span class="s4">, </span><span class="s5">&quot;subprocess&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedAttribute</span><span class="s4">(</span><span class="s5">&quot;range&quot;</span><span class="s4">, </span><span class="s5">&quot;__builtin__&quot;</span><span class="s4">, </span><span class="s5">&quot;builtins&quot;</span><span class="s4">, </span><span class="s5">&quot;xrange&quot;</span><span class="s4">, </span><span class="s5">&quot;range&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedAttribute</span><span class="s4">(</span><span class="s5">&quot;reload_module&quot;</span><span class="s4">, </span><span class="s5">&quot;__builtin__&quot;</span><span class="s4">, </span><span class="s5">&quot;importlib&quot; </span><span class="s3">if </span><span class="s1">PY34 </span><span class="s3">else </span><span class="s5">&quot;imp&quot;</span><span class="s4">, </span><span class="s5">&quot;reload&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedAttribute</span><span class="s4">(</span><span class="s5">&quot;reduce&quot;</span><span class="s4">, </span><span class="s5">&quot;__builtin__&quot;</span><span class="s4">, </span><span class="s5">&quot;functools&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedAttribute</span><span class="s4">(</span><span class="s5">&quot;shlex_quote&quot;</span><span class="s4">, </span><span class="s5">&quot;pipes&quot;</span><span class="s4">, </span><span class="s5">&quot;shlex&quot;</span><span class="s4">, </span><span class="s5">&quot;quote&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedAttribute</span><span class="s4">(</span><span class="s5">&quot;StringIO&quot;</span><span class="s4">, </span><span class="s5">&quot;StringIO&quot;</span><span class="s4">, </span><span class="s5">&quot;io&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedAttribute</span><span class="s4">(</span><span class="s5">&quot;UserDict&quot;</span><span class="s4">, </span><span class="s5">&quot;UserDict&quot;</span><span class="s4">, </span><span class="s5">&quot;collections&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedAttribute</span><span class="s4">(</span><span class="s5">&quot;UserList&quot;</span><span class="s4">, </span><span class="s5">&quot;UserList&quot;</span><span class="s4">, </span><span class="s5">&quot;collections&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedAttribute</span><span class="s4">(</span><span class="s5">&quot;UserString&quot;</span><span class="s4">, </span><span class="s5">&quot;UserString&quot;</span><span class="s4">, </span><span class="s5">&quot;collections&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedAttribute</span><span class="s4">(</span><span class="s5">&quot;xrange&quot;</span><span class="s4">, </span><span class="s5">&quot;__builtin__&quot;</span><span class="s4">, </span><span class="s5">&quot;builtins&quot;</span><span class="s4">, </span><span class="s5">&quot;xrange&quot;</span><span class="s4">, </span><span class="s5">&quot;range&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedAttribute</span><span class="s4">(</span><span class="s5">&quot;zip&quot;</span><span class="s4">, </span><span class="s5">&quot;itertools&quot;</span><span class="s4">, </span><span class="s5">&quot;builtins&quot;</span><span class="s4">, </span><span class="s5">&quot;izip&quot;</span><span class="s4">, </span><span class="s5">&quot;zip&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedAttribute</span><span class="s4">(</span><span class="s5">&quot;zip_longest&quot;</span><span class="s4">, </span><span class="s5">&quot;itertools&quot;</span><span class="s4">, </span><span class="s5">&quot;itertools&quot;</span><span class="s4">, </span><span class="s5">&quot;izip_longest&quot;</span><span class="s4">, </span><span class="s5">&quot;zip_longest&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedModule</span><span class="s4">(</span><span class="s5">&quot;builtins&quot;</span><span class="s4">, </span><span class="s5">&quot;__builtin__&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedModule</span><span class="s4">(</span><span class="s5">&quot;configparser&quot;</span><span class="s4">, </span><span class="s5">&quot;ConfigParser&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedModule</span><span class="s4">(</span><span class="s5">&quot;collections_abc&quot;</span><span class="s4">, </span><span class="s5">&quot;collections&quot;</span><span class="s4">, </span><span class="s5">&quot;collections.abc&quot; </span><span class="s3">if </span><span class="s1">sys</span><span class="s4">.</span><span class="s1">version_info </span><span class="s4">&gt;= (</span><span class="s6">3</span><span class="s4">, </span><span class="s6">3</span><span class="s4">) </span><span class="s3">else </span><span class="s5">&quot;collections&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedModule</span><span class="s4">(</span><span class="s5">&quot;copyreg&quot;</span><span class="s4">, </span><span class="s5">&quot;copy_reg&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedModule</span><span class="s4">(</span><span class="s5">&quot;dbm_gnu&quot;</span><span class="s4">, </span><span class="s5">&quot;gdbm&quot;</span><span class="s4">, </span><span class="s5">&quot;dbm.gnu&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedModule</span><span class="s4">(</span><span class="s5">&quot;dbm_ndbm&quot;</span><span class="s4">, </span><span class="s5">&quot;dbm&quot;</span><span class="s4">, </span><span class="s5">&quot;dbm.ndbm&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedModule</span><span class="s4">(</span><span class="s5">&quot;_dummy_thread&quot;</span><span class="s4">, </span><span class="s5">&quot;dummy_thread&quot;</span><span class="s4">, </span><span class="s5">&quot;_dummy_thread&quot; </span><span class="s3">if </span><span class="s1">sys</span><span class="s4">.</span><span class="s1">version_info </span><span class="s4">&lt; (</span><span class="s6">3</span><span class="s4">, </span><span class="s6">9</span><span class="s4">) </span><span class="s3">else </span><span class="s5">&quot;_thread&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedModule</span><span class="s4">(</span><span class="s5">&quot;http_cookiejar&quot;</span><span class="s4">, </span><span class="s5">&quot;cookielib&quot;</span><span class="s4">, </span><span class="s5">&quot;http.cookiejar&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedModule</span><span class="s4">(</span><span class="s5">&quot;http_cookies&quot;</span><span class="s4">, </span><span class="s5">&quot;Cookie&quot;</span><span class="s4">, </span><span class="s5">&quot;http.cookies&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedModule</span><span class="s4">(</span><span class="s5">&quot;html_entities&quot;</span><span class="s4">, </span><span class="s5">&quot;htmlentitydefs&quot;</span><span class="s4">, </span><span class="s5">&quot;html.entities&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedModule</span><span class="s4">(</span><span class="s5">&quot;html_parser&quot;</span><span class="s4">, </span><span class="s5">&quot;HTMLParser&quot;</span><span class="s4">, </span><span class="s5">&quot;html.parser&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedModule</span><span class="s4">(</span><span class="s5">&quot;http_client&quot;</span><span class="s4">, </span><span class="s5">&quot;httplib&quot;</span><span class="s4">, </span><span class="s5">&quot;http.client&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedModule</span><span class="s4">(</span><span class="s5">&quot;email_mime_base&quot;</span><span class="s4">, </span><span class="s5">&quot;email.MIMEBase&quot;</span><span class="s4">, </span><span class="s5">&quot;email.mime.base&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedModule</span><span class="s4">(</span><span class="s5">&quot;email_mime_image&quot;</span><span class="s4">, </span><span class="s5">&quot;email.MIMEImage&quot;</span><span class="s4">, </span><span class="s5">&quot;email.mime.image&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedModule</span><span class="s4">(</span><span class="s5">&quot;email_mime_multipart&quot;</span><span class="s4">, </span><span class="s5">&quot;email.MIMEMultipart&quot;</span><span class="s4">, </span><span class="s5">&quot;email.mime.multipart&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedModule</span><span class="s4">(</span><span class="s5">&quot;email_mime_nonmultipart&quot;</span><span class="s4">, </span><span class="s5">&quot;email.MIMENonMultipart&quot;</span><span class="s4">, </span><span class="s5">&quot;email.mime.nonmultipart&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedModule</span><span class="s4">(</span><span class="s5">&quot;email_mime_text&quot;</span><span class="s4">, </span><span class="s5">&quot;email.MIMEText&quot;</span><span class="s4">, </span><span class="s5">&quot;email.mime.text&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedModule</span><span class="s4">(</span><span class="s5">&quot;BaseHTTPServer&quot;</span><span class="s4">, </span><span class="s5">&quot;BaseHTTPServer&quot;</span><span class="s4">, </span><span class="s5">&quot;http.server&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedModule</span><span class="s4">(</span><span class="s5">&quot;CGIHTTPServer&quot;</span><span class="s4">, </span><span class="s5">&quot;CGIHTTPServer&quot;</span><span class="s4">, </span><span class="s5">&quot;http.server&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedModule</span><span class="s4">(</span><span class="s5">&quot;SimpleHTTPServer&quot;</span><span class="s4">, </span><span class="s5">&quot;SimpleHTTPServer&quot;</span><span class="s4">, </span><span class="s5">&quot;http.server&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedModule</span><span class="s4">(</span><span class="s5">&quot;cPickle&quot;</span><span class="s4">, </span><span class="s5">&quot;cPickle&quot;</span><span class="s4">, </span><span class="s5">&quot;pickle&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedModule</span><span class="s4">(</span><span class="s5">&quot;queue&quot;</span><span class="s4">, </span><span class="s5">&quot;Queue&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedModule</span><span class="s4">(</span><span class="s5">&quot;reprlib&quot;</span><span class="s4">, </span><span class="s5">&quot;repr&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedModule</span><span class="s4">(</span><span class="s5">&quot;socketserver&quot;</span><span class="s4">, </span><span class="s5">&quot;SocketServer&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedModule</span><span class="s4">(</span><span class="s5">&quot;_thread&quot;</span><span class="s4">, </span><span class="s5">&quot;thread&quot;</span><span class="s4">, </span><span class="s5">&quot;_thread&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedModule</span><span class="s4">(</span><span class="s5">&quot;tkinter&quot;</span><span class="s4">, </span><span class="s5">&quot;Tkinter&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedModule</span><span class="s4">(</span><span class="s5">&quot;tkinter_dialog&quot;</span><span class="s4">, </span><span class="s5">&quot;Dialog&quot;</span><span class="s4">, </span><span class="s5">&quot;tkinter.dialog&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedModule</span><span class="s4">(</span><span class="s5">&quot;tkinter_filedialog&quot;</span><span class="s4">, </span><span class="s5">&quot;FileDialog&quot;</span><span class="s4">, </span><span class="s5">&quot;tkinter.filedialog&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedModule</span><span class="s4">(</span><span class="s5">&quot;tkinter_scrolledtext&quot;</span><span class="s4">, </span><span class="s5">&quot;ScrolledText&quot;</span><span class="s4">, </span><span class="s5">&quot;tkinter.scrolledtext&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedModule</span><span class="s4">(</span><span class="s5">&quot;tkinter_simpledialog&quot;</span><span class="s4">, </span><span class="s5">&quot;SimpleDialog&quot;</span><span class="s4">, </span><span class="s5">&quot;tkinter.simpledialog&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedModule</span><span class="s4">(</span><span class="s5">&quot;tkinter_tix&quot;</span><span class="s4">, </span><span class="s5">&quot;Tix&quot;</span><span class="s4">, </span><span class="s5">&quot;tkinter.tix&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedModule</span><span class="s4">(</span><span class="s5">&quot;tkinter_ttk&quot;</span><span class="s4">, </span><span class="s5">&quot;ttk&quot;</span><span class="s4">, </span><span class="s5">&quot;tkinter.ttk&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedModule</span><span class="s4">(</span><span class="s5">&quot;tkinter_constants&quot;</span><span class="s4">, </span><span class="s5">&quot;Tkconstants&quot;</span><span class="s4">, </span><span class="s5">&quot;tkinter.constants&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedModule</span><span class="s4">(</span><span class="s5">&quot;tkinter_dnd&quot;</span><span class="s4">, </span><span class="s5">&quot;Tkdnd&quot;</span><span class="s4">, </span><span class="s5">&quot;tkinter.dnd&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedModule</span><span class="s4">(</span><span class="s5">&quot;tkinter_colorchooser&quot;</span><span class="s4">, </span><span class="s5">&quot;tkColorChooser&quot;</span><span class="s4">,</span>
+                <span class="s5">&quot;tkinter.colorchooser&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedModule</span><span class="s4">(</span><span class="s5">&quot;tkinter_commondialog&quot;</span><span class="s4">, </span><span class="s5">&quot;tkCommonDialog&quot;</span><span class="s4">,</span>
+                <span class="s5">&quot;tkinter.commondialog&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedModule</span><span class="s4">(</span><span class="s5">&quot;tkinter_tkfiledialog&quot;</span><span class="s4">, </span><span class="s5">&quot;tkFileDialog&quot;</span><span class="s4">, </span><span class="s5">&quot;tkinter.filedialog&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedModule</span><span class="s4">(</span><span class="s5">&quot;tkinter_font&quot;</span><span class="s4">, </span><span class="s5">&quot;tkFont&quot;</span><span class="s4">, </span><span class="s5">&quot;tkinter.font&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedModule</span><span class="s4">(</span><span class="s5">&quot;tkinter_messagebox&quot;</span><span class="s4">, </span><span class="s5">&quot;tkMessageBox&quot;</span><span class="s4">, </span><span class="s5">&quot;tkinter.messagebox&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedModule</span><span class="s4">(</span><span class="s5">&quot;tkinter_tksimpledialog&quot;</span><span class="s4">, </span><span class="s5">&quot;tkSimpleDialog&quot;</span><span class="s4">,</span>
+                <span class="s5">&quot;tkinter.simpledialog&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedModule</span><span class="s4">(</span><span class="s5">&quot;urllib_parse&quot;</span><span class="s4">, </span><span class="s1">__name__ </span><span class="s4">+ </span><span class="s5">&quot;.moves.urllib_parse&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib.parse&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedModule</span><span class="s4">(</span><span class="s5">&quot;urllib_error&quot;</span><span class="s4">, </span><span class="s1">__name__ </span><span class="s4">+ </span><span class="s5">&quot;.moves.urllib_error&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib.error&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedModule</span><span class="s4">(</span><span class="s5">&quot;urllib&quot;</span><span class="s4">, </span><span class="s1">__name__ </span><span class="s4">+ </span><span class="s5">&quot;.moves.urllib&quot;</span><span class="s4">, </span><span class="s1">__name__ </span><span class="s4">+ </span><span class="s5">&quot;.moves.urllib&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedModule</span><span class="s4">(</span><span class="s5">&quot;urllib_robotparser&quot;</span><span class="s4">, </span><span class="s5">&quot;robotparser&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib.robotparser&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedModule</span><span class="s4">(</span><span class="s5">&quot;xmlrpc_client&quot;</span><span class="s4">, </span><span class="s5">&quot;xmlrpclib&quot;</span><span class="s4">, </span><span class="s5">&quot;xmlrpc.client&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedModule</span><span class="s4">(</span><span class="s5">&quot;xmlrpc_server&quot;</span><span class="s4">, </span><span class="s5">&quot;SimpleXMLRPCServer&quot;</span><span class="s4">, </span><span class="s5">&quot;xmlrpc.server&quot;</span><span class="s4">),</span>
+<span class="s4">]</span>
+<span class="s0"># Add windows specific modules.</span>
+<span class="s3">if </span><span class="s1">sys</span><span class="s4">.</span><span class="s1">platform </span><span class="s4">== </span><span class="s5">&quot;win32&quot;</span><span class="s4">:</span>
+    <span class="s1">_moved_attributes </span><span class="s4">+= [</span>
+        <span class="s1">MovedModule</span><span class="s4">(</span><span class="s5">&quot;winreg&quot;</span><span class="s4">, </span><span class="s5">&quot;_winreg&quot;</span><span class="s4">),</span>
+    <span class="s4">]</span>
+
+<span class="s3">for </span><span class="s1">attr </span><span class="s3">in </span><span class="s1">_moved_attributes</span><span class="s4">:</span>
+    <span class="s1">setattr</span><span class="s4">(</span><span class="s1">_MovedItems</span><span class="s4">, </span><span class="s1">attr</span><span class="s4">.</span><span class="s1">name</span><span class="s4">, </span><span class="s1">attr</span><span class="s4">)</span>
+    <span class="s3">if </span><span class="s1">isinstance</span><span class="s4">(</span><span class="s1">attr</span><span class="s4">, </span><span class="s1">MovedModule</span><span class="s4">):</span>
+        <span class="s1">_importer</span><span class="s4">.</span><span class="s1">_add_module</span><span class="s4">(</span><span class="s1">attr</span><span class="s4">, </span><span class="s5">&quot;moves.&quot; </span><span class="s4">+ </span><span class="s1">attr</span><span class="s4">.</span><span class="s1">name</span><span class="s4">)</span>
+<span class="s3">del </span><span class="s1">attr</span>
+
+<span class="s1">_MovedItems</span><span class="s4">.</span><span class="s1">_moved_attributes </span><span class="s4">= </span><span class="s1">_moved_attributes</span>
+
+<span class="s1">moves </span><span class="s4">= </span><span class="s1">_MovedItems</span><span class="s4">(</span><span class="s1">__name__ </span><span class="s4">+ </span><span class="s5">&quot;.moves&quot;</span><span class="s4">)</span>
+<span class="s1">_importer</span><span class="s4">.</span><span class="s1">_add_module</span><span class="s4">(</span><span class="s1">moves</span><span class="s4">, </span><span class="s5">&quot;moves&quot;</span><span class="s4">)</span>
+
+
+<span class="s3">class </span><span class="s1">Module_six_moves_urllib_parse</span><span class="s4">(</span><span class="s1">_LazyModule</span><span class="s4">):</span>
+
+    <span class="s2">&quot;&quot;&quot;Lazy loading of moved objects in six.moves.urllib_parse&quot;&quot;&quot;</span>
+
+
+<span class="s1">_urllib_parse_moved_attributes </span><span class="s4">= [</span>
+    <span class="s1">MovedAttribute</span><span class="s4">(</span><span class="s5">&quot;ParseResult&quot;</span><span class="s4">, </span><span class="s5">&quot;urlparse&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib.parse&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedAttribute</span><span class="s4">(</span><span class="s5">&quot;SplitResult&quot;</span><span class="s4">, </span><span class="s5">&quot;urlparse&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib.parse&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedAttribute</span><span class="s4">(</span><span class="s5">&quot;parse_qs&quot;</span><span class="s4">, </span><span class="s5">&quot;urlparse&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib.parse&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedAttribute</span><span class="s4">(</span><span class="s5">&quot;parse_qsl&quot;</span><span class="s4">, </span><span class="s5">&quot;urlparse&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib.parse&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedAttribute</span><span class="s4">(</span><span class="s5">&quot;urldefrag&quot;</span><span class="s4">, </span><span class="s5">&quot;urlparse&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib.parse&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedAttribute</span><span class="s4">(</span><span class="s5">&quot;urljoin&quot;</span><span class="s4">, </span><span class="s5">&quot;urlparse&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib.parse&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedAttribute</span><span class="s4">(</span><span class="s5">&quot;urlparse&quot;</span><span class="s4">, </span><span class="s5">&quot;urlparse&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib.parse&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedAttribute</span><span class="s4">(</span><span class="s5">&quot;urlsplit&quot;</span><span class="s4">, </span><span class="s5">&quot;urlparse&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib.parse&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedAttribute</span><span class="s4">(</span><span class="s5">&quot;urlunparse&quot;</span><span class="s4">, </span><span class="s5">&quot;urlparse&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib.parse&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedAttribute</span><span class="s4">(</span><span class="s5">&quot;urlunsplit&quot;</span><span class="s4">, </span><span class="s5">&quot;urlparse&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib.parse&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedAttribute</span><span class="s4">(</span><span class="s5">&quot;quote&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib.parse&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedAttribute</span><span class="s4">(</span><span class="s5">&quot;quote_plus&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib.parse&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedAttribute</span><span class="s4">(</span><span class="s5">&quot;unquote&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib.parse&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedAttribute</span><span class="s4">(</span><span class="s5">&quot;unquote_plus&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib.parse&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedAttribute</span><span class="s4">(</span><span class="s5">&quot;unquote_to_bytes&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib.parse&quot;</span><span class="s4">, </span><span class="s5">&quot;unquote&quot;</span><span class="s4">, </span><span class="s5">&quot;unquote_to_bytes&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedAttribute</span><span class="s4">(</span><span class="s5">&quot;urlencode&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib.parse&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedAttribute</span><span class="s4">(</span><span class="s5">&quot;splitquery&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib.parse&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedAttribute</span><span class="s4">(</span><span class="s5">&quot;splittag&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib.parse&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedAttribute</span><span class="s4">(</span><span class="s5">&quot;splituser&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib.parse&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedAttribute</span><span class="s4">(</span><span class="s5">&quot;splitvalue&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib.parse&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedAttribute</span><span class="s4">(</span><span class="s5">&quot;uses_fragment&quot;</span><span class="s4">, </span><span class="s5">&quot;urlparse&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib.parse&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedAttribute</span><span class="s4">(</span><span class="s5">&quot;uses_netloc&quot;</span><span class="s4">, </span><span class="s5">&quot;urlparse&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib.parse&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedAttribute</span><span class="s4">(</span><span class="s5">&quot;uses_params&quot;</span><span class="s4">, </span><span class="s5">&quot;urlparse&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib.parse&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedAttribute</span><span class="s4">(</span><span class="s5">&quot;uses_query&quot;</span><span class="s4">, </span><span class="s5">&quot;urlparse&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib.parse&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedAttribute</span><span class="s4">(</span><span class="s5">&quot;uses_relative&quot;</span><span class="s4">, </span><span class="s5">&quot;urlparse&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib.parse&quot;</span><span class="s4">),</span>
+<span class="s4">]</span>
+<span class="s3">for </span><span class="s1">attr </span><span class="s3">in </span><span class="s1">_urllib_parse_moved_attributes</span><span class="s4">:</span>
+    <span class="s1">setattr</span><span class="s4">(</span><span class="s1">Module_six_moves_urllib_parse</span><span class="s4">, </span><span class="s1">attr</span><span class="s4">.</span><span class="s1">name</span><span class="s4">, </span><span class="s1">attr</span><span class="s4">)</span>
+<span class="s3">del </span><span class="s1">attr</span>
+
+<span class="s1">Module_six_moves_urllib_parse</span><span class="s4">.</span><span class="s1">_moved_attributes </span><span class="s4">= </span><span class="s1">_urllib_parse_moved_attributes</span>
+
+<span class="s1">_importer</span><span class="s4">.</span><span class="s1">_add_module</span><span class="s4">(</span><span class="s1">Module_six_moves_urllib_parse</span><span class="s4">(</span><span class="s1">__name__ </span><span class="s4">+ </span><span class="s5">&quot;.moves.urllib_parse&quot;</span><span class="s4">),</span>
+                      <span class="s5">&quot;moves.urllib_parse&quot;</span><span class="s4">, </span><span class="s5">&quot;moves.urllib.parse&quot;</span><span class="s4">)</span>
+
+
+<span class="s3">class </span><span class="s1">Module_six_moves_urllib_error</span><span class="s4">(</span><span class="s1">_LazyModule</span><span class="s4">):</span>
+
+    <span class="s2">&quot;&quot;&quot;Lazy loading of moved objects in six.moves.urllib_error&quot;&quot;&quot;</span>
+
+
+<span class="s1">_urllib_error_moved_attributes </span><span class="s4">= [</span>
+    <span class="s1">MovedAttribute</span><span class="s4">(</span><span class="s5">&quot;URLError&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib2&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib.error&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedAttribute</span><span class="s4">(</span><span class="s5">&quot;HTTPError&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib2&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib.error&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedAttribute</span><span class="s4">(</span><span class="s5">&quot;ContentTooShortError&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib.error&quot;</span><span class="s4">),</span>
+<span class="s4">]</span>
+<span class="s3">for </span><span class="s1">attr </span><span class="s3">in </span><span class="s1">_urllib_error_moved_attributes</span><span class="s4">:</span>
+    <span class="s1">setattr</span><span class="s4">(</span><span class="s1">Module_six_moves_urllib_error</span><span class="s4">, </span><span class="s1">attr</span><span class="s4">.</span><span class="s1">name</span><span class="s4">, </span><span class="s1">attr</span><span class="s4">)</span>
+<span class="s3">del </span><span class="s1">attr</span>
+
+<span class="s1">Module_six_moves_urllib_error</span><span class="s4">.</span><span class="s1">_moved_attributes </span><span class="s4">= </span><span class="s1">_urllib_error_moved_attributes</span>
+
+<span class="s1">_importer</span><span class="s4">.</span><span class="s1">_add_module</span><span class="s4">(</span><span class="s1">Module_six_moves_urllib_error</span><span class="s4">(</span><span class="s1">__name__ </span><span class="s4">+ </span><span class="s5">&quot;.moves.urllib.error&quot;</span><span class="s4">),</span>
+                      <span class="s5">&quot;moves.urllib_error&quot;</span><span class="s4">, </span><span class="s5">&quot;moves.urllib.error&quot;</span><span class="s4">)</span>
+
+
+<span class="s3">class </span><span class="s1">Module_six_moves_urllib_request</span><span class="s4">(</span><span class="s1">_LazyModule</span><span class="s4">):</span>
+
+    <span class="s2">&quot;&quot;&quot;Lazy loading of moved objects in six.moves.urllib_request&quot;&quot;&quot;</span>
+
+
+<span class="s1">_urllib_request_moved_attributes </span><span class="s4">= [</span>
+    <span class="s1">MovedAttribute</span><span class="s4">(</span><span class="s5">&quot;urlopen&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib2&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib.request&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedAttribute</span><span class="s4">(</span><span class="s5">&quot;install_opener&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib2&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib.request&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedAttribute</span><span class="s4">(</span><span class="s5">&quot;build_opener&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib2&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib.request&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedAttribute</span><span class="s4">(</span><span class="s5">&quot;pathname2url&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib.request&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedAttribute</span><span class="s4">(</span><span class="s5">&quot;url2pathname&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib.request&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedAttribute</span><span class="s4">(</span><span class="s5">&quot;getproxies&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib.request&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedAttribute</span><span class="s4">(</span><span class="s5">&quot;Request&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib2&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib.request&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedAttribute</span><span class="s4">(</span><span class="s5">&quot;OpenerDirector&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib2&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib.request&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedAttribute</span><span class="s4">(</span><span class="s5">&quot;HTTPDefaultErrorHandler&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib2&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib.request&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedAttribute</span><span class="s4">(</span><span class="s5">&quot;HTTPRedirectHandler&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib2&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib.request&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedAttribute</span><span class="s4">(</span><span class="s5">&quot;HTTPCookieProcessor&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib2&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib.request&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedAttribute</span><span class="s4">(</span><span class="s5">&quot;ProxyHandler&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib2&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib.request&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedAttribute</span><span class="s4">(</span><span class="s5">&quot;BaseHandler&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib2&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib.request&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedAttribute</span><span class="s4">(</span><span class="s5">&quot;HTTPPasswordMgr&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib2&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib.request&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedAttribute</span><span class="s4">(</span><span class="s5">&quot;HTTPPasswordMgrWithDefaultRealm&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib2&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib.request&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedAttribute</span><span class="s4">(</span><span class="s5">&quot;AbstractBasicAuthHandler&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib2&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib.request&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedAttribute</span><span class="s4">(</span><span class="s5">&quot;HTTPBasicAuthHandler&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib2&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib.request&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedAttribute</span><span class="s4">(</span><span class="s5">&quot;ProxyBasicAuthHandler&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib2&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib.request&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedAttribute</span><span class="s4">(</span><span class="s5">&quot;AbstractDigestAuthHandler&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib2&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib.request&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedAttribute</span><span class="s4">(</span><span class="s5">&quot;HTTPDigestAuthHandler&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib2&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib.request&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedAttribute</span><span class="s4">(</span><span class="s5">&quot;ProxyDigestAuthHandler&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib2&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib.request&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedAttribute</span><span class="s4">(</span><span class="s5">&quot;HTTPHandler&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib2&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib.request&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedAttribute</span><span class="s4">(</span><span class="s5">&quot;HTTPSHandler&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib2&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib.request&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedAttribute</span><span class="s4">(</span><span class="s5">&quot;FileHandler&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib2&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib.request&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedAttribute</span><span class="s4">(</span><span class="s5">&quot;FTPHandler&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib2&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib.request&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedAttribute</span><span class="s4">(</span><span class="s5">&quot;CacheFTPHandler&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib2&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib.request&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedAttribute</span><span class="s4">(</span><span class="s5">&quot;UnknownHandler&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib2&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib.request&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedAttribute</span><span class="s4">(</span><span class="s5">&quot;HTTPErrorProcessor&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib2&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib.request&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedAttribute</span><span class="s4">(</span><span class="s5">&quot;urlretrieve&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib.request&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedAttribute</span><span class="s4">(</span><span class="s5">&quot;urlcleanup&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib.request&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedAttribute</span><span class="s4">(</span><span class="s5">&quot;URLopener&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib.request&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedAttribute</span><span class="s4">(</span><span class="s5">&quot;FancyURLopener&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib.request&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedAttribute</span><span class="s4">(</span><span class="s5">&quot;proxy_bypass&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib.request&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedAttribute</span><span class="s4">(</span><span class="s5">&quot;parse_http_list&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib2&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib.request&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedAttribute</span><span class="s4">(</span><span class="s5">&quot;parse_keqv_list&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib2&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib.request&quot;</span><span class="s4">),</span>
+<span class="s4">]</span>
+<span class="s3">for </span><span class="s1">attr </span><span class="s3">in </span><span class="s1">_urllib_request_moved_attributes</span><span class="s4">:</span>
+    <span class="s1">setattr</span><span class="s4">(</span><span class="s1">Module_six_moves_urllib_request</span><span class="s4">, </span><span class="s1">attr</span><span class="s4">.</span><span class="s1">name</span><span class="s4">, </span><span class="s1">attr</span><span class="s4">)</span>
+<span class="s3">del </span><span class="s1">attr</span>
+
+<span class="s1">Module_six_moves_urllib_request</span><span class="s4">.</span><span class="s1">_moved_attributes </span><span class="s4">= </span><span class="s1">_urllib_request_moved_attributes</span>
+
+<span class="s1">_importer</span><span class="s4">.</span><span class="s1">_add_module</span><span class="s4">(</span><span class="s1">Module_six_moves_urllib_request</span><span class="s4">(</span><span class="s1">__name__ </span><span class="s4">+ </span><span class="s5">&quot;.moves.urllib.request&quot;</span><span class="s4">),</span>
+                      <span class="s5">&quot;moves.urllib_request&quot;</span><span class="s4">, </span><span class="s5">&quot;moves.urllib.request&quot;</span><span class="s4">)</span>
+
+
+<span class="s3">class </span><span class="s1">Module_six_moves_urllib_response</span><span class="s4">(</span><span class="s1">_LazyModule</span><span class="s4">):</span>
+
+    <span class="s2">&quot;&quot;&quot;Lazy loading of moved objects in six.moves.urllib_response&quot;&quot;&quot;</span>
+
+
+<span class="s1">_urllib_response_moved_attributes </span><span class="s4">= [</span>
+    <span class="s1">MovedAttribute</span><span class="s4">(</span><span class="s5">&quot;addbase&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib.response&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedAttribute</span><span class="s4">(</span><span class="s5">&quot;addclosehook&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib.response&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedAttribute</span><span class="s4">(</span><span class="s5">&quot;addinfo&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib.response&quot;</span><span class="s4">),</span>
+    <span class="s1">MovedAttribute</span><span class="s4">(</span><span class="s5">&quot;addinfourl&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib.response&quot;</span><span class="s4">),</span>
+<span class="s4">]</span>
+<span class="s3">for </span><span class="s1">attr </span><span class="s3">in </span><span class="s1">_urllib_response_moved_attributes</span><span class="s4">:</span>
+    <span class="s1">setattr</span><span class="s4">(</span><span class="s1">Module_six_moves_urllib_response</span><span class="s4">, </span><span class="s1">attr</span><span class="s4">.</span><span class="s1">name</span><span class="s4">, </span><span class="s1">attr</span><span class="s4">)</span>
+<span class="s3">del </span><span class="s1">attr</span>
+
+<span class="s1">Module_six_moves_urllib_response</span><span class="s4">.</span><span class="s1">_moved_attributes </span><span class="s4">= </span><span class="s1">_urllib_response_moved_attributes</span>
+
+<span class="s1">_importer</span><span class="s4">.</span><span class="s1">_add_module</span><span class="s4">(</span><span class="s1">Module_six_moves_urllib_response</span><span class="s4">(</span><span class="s1">__name__ </span><span class="s4">+ </span><span class="s5">&quot;.moves.urllib.response&quot;</span><span class="s4">),</span>
+                      <span class="s5">&quot;moves.urllib_response&quot;</span><span class="s4">, </span><span class="s5">&quot;moves.urllib.response&quot;</span><span class="s4">)</span>
+
+
+<span class="s3">class </span><span class="s1">Module_six_moves_urllib_robotparser</span><span class="s4">(</span><span class="s1">_LazyModule</span><span class="s4">):</span>
+
+    <span class="s2">&quot;&quot;&quot;Lazy loading of moved objects in six.moves.urllib_robotparser&quot;&quot;&quot;</span>
+
+
+<span class="s1">_urllib_robotparser_moved_attributes </span><span class="s4">= [</span>
+    <span class="s1">MovedAttribute</span><span class="s4">(</span><span class="s5">&quot;RobotFileParser&quot;</span><span class="s4">, </span><span class="s5">&quot;robotparser&quot;</span><span class="s4">, </span><span class="s5">&quot;urllib.robotparser&quot;</span><span class="s4">),</span>
+<span class="s4">]</span>
+<span class="s3">for </span><span class="s1">attr </span><span class="s3">in </span><span class="s1">_urllib_robotparser_moved_attributes</span><span class="s4">:</span>
+    <span class="s1">setattr</span><span class="s4">(</span><span class="s1">Module_six_moves_urllib_robotparser</span><span class="s4">, </span><span class="s1">attr</span><span class="s4">.</span><span class="s1">name</span><span class="s4">, </span><span class="s1">attr</span><span class="s4">)</span>
+<span class="s3">del </span><span class="s1">attr</span>
+
+<span class="s1">Module_six_moves_urllib_robotparser</span><span class="s4">.</span><span class="s1">_moved_attributes </span><span class="s4">= </span><span class="s1">_urllib_robotparser_moved_attributes</span>
+
+<span class="s1">_importer</span><span class="s4">.</span><span class="s1">_add_module</span><span class="s4">(</span><span class="s1">Module_six_moves_urllib_robotparser</span><span class="s4">(</span><span class="s1">__name__ </span><span class="s4">+ </span><span class="s5">&quot;.moves.urllib.robotparser&quot;</span><span class="s4">),</span>
+                      <span class="s5">&quot;moves.urllib_robotparser&quot;</span><span class="s4">, </span><span class="s5">&quot;moves.urllib.robotparser&quot;</span><span class="s4">)</span>
+
+
+<span class="s3">class </span><span class="s1">Module_six_moves_urllib</span><span class="s4">(</span><span class="s1">types</span><span class="s4">.</span><span class="s1">ModuleType</span><span class="s4">):</span>
+
+    <span class="s2">&quot;&quot;&quot;Create a six.moves.urllib namespace that resembles the Python 3 namespace&quot;&quot;&quot;</span>
+    <span class="s1">__path__ </span><span class="s4">= []  </span><span class="s0"># mark as package</span>
+    <span class="s1">parse </span><span class="s4">= </span><span class="s1">_importer</span><span class="s4">.</span><span class="s1">_get_module</span><span class="s4">(</span><span class="s5">&quot;moves.urllib_parse&quot;</span><span class="s4">)</span>
+    <span class="s1">error </span><span class="s4">= </span><span class="s1">_importer</span><span class="s4">.</span><span class="s1">_get_module</span><span class="s4">(</span><span class="s5">&quot;moves.urllib_error&quot;</span><span class="s4">)</span>
+    <span class="s1">request </span><span class="s4">= </span><span class="s1">_importer</span><span class="s4">.</span><span class="s1">_get_module</span><span class="s4">(</span><span class="s5">&quot;moves.urllib_request&quot;</span><span class="s4">)</span>
+    <span class="s1">response </span><span class="s4">= </span><span class="s1">_importer</span><span class="s4">.</span><span class="s1">_get_module</span><span class="s4">(</span><span class="s5">&quot;moves.urllib_response&quot;</span><span class="s4">)</span>
+    <span class="s1">robotparser </span><span class="s4">= </span><span class="s1">_importer</span><span class="s4">.</span><span class="s1">_get_module</span><span class="s4">(</span><span class="s5">&quot;moves.urllib_robotparser&quot;</span><span class="s4">)</span>
+
+    <span class="s3">def </span><span class="s1">__dir__</span><span class="s4">(</span><span class="s1">self</span><span class="s4">):</span>
+        <span class="s3">return </span><span class="s4">[</span><span class="s5">'parse'</span><span class="s4">, </span><span class="s5">'error'</span><span class="s4">, </span><span class="s5">'request'</span><span class="s4">, </span><span class="s5">'response'</span><span class="s4">, </span><span class="s5">'robotparser'</span><span class="s4">]</span>
+
+<span class="s1">_importer</span><span class="s4">.</span><span class="s1">_add_module</span><span class="s4">(</span><span class="s1">Module_six_moves_urllib</span><span class="s4">(</span><span class="s1">__name__ </span><span class="s4">+ </span><span class="s5">&quot;.moves.urllib&quot;</span><span class="s4">),</span>
+                      <span class="s5">&quot;moves.urllib&quot;</span><span class="s4">)</span>
+
+
+<span class="s3">def </span><span class="s1">add_move</span><span class="s4">(</span><span class="s1">move</span><span class="s4">):</span>
+    <span class="s2">&quot;&quot;&quot;Add an item to six.moves.&quot;&quot;&quot;</span>
+    <span class="s1">setattr</span><span class="s4">(</span><span class="s1">_MovedItems</span><span class="s4">, </span><span class="s1">move</span><span class="s4">.</span><span class="s1">name</span><span class="s4">, </span><span class="s1">move</span><span class="s4">)</span>
+
+
+<span class="s3">def </span><span class="s1">remove_move</span><span class="s4">(</span><span class="s1">name</span><span class="s4">):</span>
+    <span class="s2">&quot;&quot;&quot;Remove item from six.moves.&quot;&quot;&quot;</span>
+    <span class="s3">try</span><span class="s4">:</span>
+        <span class="s1">delattr</span><span class="s4">(</span><span class="s1">_MovedItems</span><span class="s4">, </span><span class="s1">name</span><span class="s4">)</span>
+    <span class="s3">except </span><span class="s1">AttributeError</span><span class="s4">:</span>
+        <span class="s3">try</span><span class="s4">:</span>
+            <span class="s3">del </span><span class="s1">moves</span><span class="s4">.</span><span class="s1">__dict__</span><span class="s4">[</span><span class="s1">name</span><span class="s4">]</span>
+        <span class="s3">except </span><span class="s1">KeyError</span><span class="s4">:</span>
+            <span class="s3">raise </span><span class="s1">AttributeError</span><span class="s4">(</span><span class="s5">&quot;no such move, %r&quot; </span><span class="s4">% (</span><span class="s1">name</span><span class="s4">,))</span>
+
+
+<span class="s3">if </span><span class="s1">PY3</span><span class="s4">:</span>
+    <span class="s1">_meth_func </span><span class="s4">= </span><span class="s5">&quot;__func__&quot;</span>
+    <span class="s1">_meth_self </span><span class="s4">= </span><span class="s5">&quot;__self__&quot;</span>
+
+    <span class="s1">_func_closure </span><span class="s4">= </span><span class="s5">&quot;__closure__&quot;</span>
+    <span class="s1">_func_code </span><span class="s4">= </span><span class="s5">&quot;__code__&quot;</span>
+    <span class="s1">_func_defaults </span><span class="s4">= </span><span class="s5">&quot;__defaults__&quot;</span>
+    <span class="s1">_func_globals </span><span class="s4">= </span><span class="s5">&quot;__globals__&quot;</span>
+<span class="s3">else</span><span class="s4">:</span>
+    <span class="s1">_meth_func </span><span class="s4">= </span><span class="s5">&quot;im_func&quot;</span>
+    <span class="s1">_meth_self </span><span class="s4">= </span><span class="s5">&quot;im_self&quot;</span>
+
+    <span class="s1">_func_closure </span><span class="s4">= </span><span class="s5">&quot;func_closure&quot;</span>
+    <span class="s1">_func_code </span><span class="s4">= </span><span class="s5">&quot;func_code&quot;</span>
+    <span class="s1">_func_defaults </span><span class="s4">= </span><span class="s5">&quot;func_defaults&quot;</span>
+    <span class="s1">_func_globals </span><span class="s4">= </span><span class="s5">&quot;func_globals&quot;</span>
+
+
+<span class="s3">try</span><span class="s4">:</span>
+    <span class="s1">advance_iterator </span><span class="s4">= </span><span class="s1">next</span>
+<span class="s3">except </span><span class="s1">NameError</span><span class="s4">:</span>
+    <span class="s3">def </span><span class="s1">advance_iterator</span><span class="s4">(</span><span class="s1">it</span><span class="s4">):</span>
+        <span class="s3">return </span><span class="s1">it</span><span class="s4">.</span><span class="s1">next</span><span class="s4">()</span>
+<span class="s1">next </span><span class="s4">= </span><span class="s1">advance_iterator</span>
+
+
+<span class="s3">try</span><span class="s4">:</span>
+    <span class="s1">callable </span><span class="s4">= </span><span class="s1">callable</span>
+<span class="s3">except </span><span class="s1">NameError</span><span class="s4">:</span>
+    <span class="s3">def </span><span class="s1">callable</span><span class="s4">(</span><span class="s1">obj</span><span class="s4">):</span>
+        <span class="s3">return </span><span class="s1">any</span><span class="s4">(</span><span class="s5">&quot;__call__&quot; </span><span class="s3">in </span><span class="s1">klass</span><span class="s4">.</span><span class="s1">__dict__ </span><span class="s3">for </span><span class="s1">klass </span><span class="s3">in </span><span class="s1">type</span><span class="s4">(</span><span class="s1">obj</span><span class="s4">).</span><span class="s1">__mro__</span><span class="s4">)</span>
+
+
+<span class="s3">if </span><span class="s1">PY3</span><span class="s4">:</span>
+    <span class="s3">def </span><span class="s1">get_unbound_function</span><span class="s4">(</span><span class="s1">unbound</span><span class="s4">):</span>
+        <span class="s3">return </span><span class="s1">unbound</span>
+
+    <span class="s1">create_bound_method </span><span class="s4">= </span><span class="s1">types</span><span class="s4">.</span><span class="s1">MethodType</span>
+
+    <span class="s3">def </span><span class="s1">create_unbound_method</span><span class="s4">(</span><span class="s1">func</span><span class="s4">, </span><span class="s1">cls</span><span class="s4">):</span>
+        <span class="s3">return </span><span class="s1">func</span>
+
+    <span class="s1">Iterator </span><span class="s4">= </span><span class="s1">object</span>
+<span class="s3">else</span><span class="s4">:</span>
+    <span class="s3">def </span><span class="s1">get_unbound_function</span><span class="s4">(</span><span class="s1">unbound</span><span class="s4">):</span>
+        <span class="s3">return </span><span class="s1">unbound</span><span class="s4">.</span><span class="s1">im_func</span>
+
+    <span class="s3">def </span><span class="s1">create_bound_method</span><span class="s4">(</span><span class="s1">func</span><span class="s4">, </span><span class="s1">obj</span><span class="s4">):</span>
+        <span class="s3">return </span><span class="s1">types</span><span class="s4">.</span><span class="s1">MethodType</span><span class="s4">(</span><span class="s1">func</span><span class="s4">, </span><span class="s1">obj</span><span class="s4">, </span><span class="s1">obj</span><span class="s4">.</span><span class="s1">__class__</span><span class="s4">)</span>
+
+    <span class="s3">def </span><span class="s1">create_unbound_method</span><span class="s4">(</span><span class="s1">func</span><span class="s4">, </span><span class="s1">cls</span><span class="s4">):</span>
+        <span class="s3">return </span><span class="s1">types</span><span class="s4">.</span><span class="s1">MethodType</span><span class="s4">(</span><span class="s1">func</span><span class="s4">, </span><span class="s3">None</span><span class="s4">, </span><span class="s1">cls</span><span class="s4">)</span>
+
+    <span class="s3">class </span><span class="s1">Iterator</span><span class="s4">(</span><span class="s1">object</span><span class="s4">):</span>
+
+        <span class="s3">def </span><span class="s1">next</span><span class="s4">(</span><span class="s1">self</span><span class="s4">):</span>
+            <span class="s3">return </span><span class="s1">type</span><span class="s4">(</span><span class="s1">self</span><span class="s4">).</span><span class="s1">__next__</span><span class="s4">(</span><span class="s1">self</span><span class="s4">)</span>
+
+    <span class="s1">callable </span><span class="s4">= </span><span class="s1">callable</span>
+<span class="s1">_add_doc</span><span class="s4">(</span><span class="s1">get_unbound_function</span><span class="s4">,</span>
+         <span class="s5">&quot;&quot;&quot;Get the function out of a possibly unbound function&quot;&quot;&quot;</span><span class="s4">)</span>
+
+
+<span class="s1">get_method_function </span><span class="s4">= </span><span class="s1">operator</span><span class="s4">.</span><span class="s1">attrgetter</span><span class="s4">(</span><span class="s1">_meth_func</span><span class="s4">)</span>
+<span class="s1">get_method_self </span><span class="s4">= </span><span class="s1">operator</span><span class="s4">.</span><span class="s1">attrgetter</span><span class="s4">(</span><span class="s1">_meth_self</span><span class="s4">)</span>
+<span class="s1">get_function_closure </span><span class="s4">= </span><span class="s1">operator</span><span class="s4">.</span><span class="s1">attrgetter</span><span class="s4">(</span><span class="s1">_func_closure</span><span class="s4">)</span>
+<span class="s1">get_function_code </span><span class="s4">= </span><span class="s1">operator</span><span class="s4">.</span><span class="s1">attrgetter</span><span class="s4">(</span><span class="s1">_func_code</span><span class="s4">)</span>
+<span class="s1">get_function_defaults </span><span class="s4">= </span><span class="s1">operator</span><span class="s4">.</span><span class="s1">attrgetter</span><span class="s4">(</span><span class="s1">_func_defaults</span><span class="s4">)</span>
+<span class="s1">get_function_globals </span><span class="s4">= </span><span class="s1">operator</span><span class="s4">.</span><span class="s1">attrgetter</span><span class="s4">(</span><span class="s1">_func_globals</span><span class="s4">)</span>
+
+
+<span class="s3">if </span><span class="s1">PY3</span><span class="s4">:</span>
+    <span class="s3">def </span><span class="s1">iterkeys</span><span class="s4">(</span><span class="s1">d</span><span class="s4">, **</span><span class="s1">kw</span><span class="s4">):</span>
+        <span class="s3">return </span><span class="s1">iter</span><span class="s4">(</span><span class="s1">d</span><span class="s4">.</span><span class="s1">keys</span><span class="s4">(**</span><span class="s1">kw</span><span class="s4">))</span>
+
+    <span class="s3">def </span><span class="s1">itervalues</span><span class="s4">(</span><span class="s1">d</span><span class="s4">, **</span><span class="s1">kw</span><span class="s4">):</span>
+        <span class="s3">return </span><span class="s1">iter</span><span class="s4">(</span><span class="s1">d</span><span class="s4">.</span><span class="s1">values</span><span class="s4">(**</span><span class="s1">kw</span><span class="s4">))</span>
+
+    <span class="s3">def </span><span class="s1">iteritems</span><span class="s4">(</span><span class="s1">d</span><span class="s4">, **</span><span class="s1">kw</span><span class="s4">):</span>
+        <span class="s3">return </span><span class="s1">iter</span><span class="s4">(</span><span class="s1">d</span><span class="s4">.</span><span class="s1">items</span><span class="s4">(**</span><span class="s1">kw</span><span class="s4">))</span>
+
+    <span class="s3">def </span><span class="s1">iterlists</span><span class="s4">(</span><span class="s1">d</span><span class="s4">, **</span><span class="s1">kw</span><span class="s4">):</span>
+        <span class="s3">return </span><span class="s1">iter</span><span class="s4">(</span><span class="s1">d</span><span class="s4">.</span><span class="s1">lists</span><span class="s4">(**</span><span class="s1">kw</span><span class="s4">))</span>
+
+    <span class="s1">viewkeys </span><span class="s4">= </span><span class="s1">operator</span><span class="s4">.</span><span class="s1">methodcaller</span><span class="s4">(</span><span class="s5">&quot;keys&quot;</span><span class="s4">)</span>
+
+    <span class="s1">viewvalues </span><span class="s4">= </span><span class="s1">operator</span><span class="s4">.</span><span class="s1">methodcaller</span><span class="s4">(</span><span class="s5">&quot;values&quot;</span><span class="s4">)</span>
+
+    <span class="s1">viewitems </span><span class="s4">= </span><span class="s1">operator</span><span class="s4">.</span><span class="s1">methodcaller</span><span class="s4">(</span><span class="s5">&quot;items&quot;</span><span class="s4">)</span>
+<span class="s3">else</span><span class="s4">:</span>
+    <span class="s3">def </span><span class="s1">iterkeys</span><span class="s4">(</span><span class="s1">d</span><span class="s4">, **</span><span class="s1">kw</span><span class="s4">):</span>
+        <span class="s3">return </span><span class="s1">d</span><span class="s4">.</span><span class="s1">iterkeys</span><span class="s4">(**</span><span class="s1">kw</span><span class="s4">)</span>
+
+    <span class="s3">def </span><span class="s1">itervalues</span><span class="s4">(</span><span class="s1">d</span><span class="s4">, **</span><span class="s1">kw</span><span class="s4">):</span>
+        <span class="s3">return </span><span class="s1">d</span><span class="s4">.</span><span class="s1">itervalues</span><span class="s4">(**</span><span class="s1">kw</span><span class="s4">)</span>
+
+    <span class="s3">def </span><span class="s1">iteritems</span><span class="s4">(</span><span class="s1">d</span><span class="s4">, **</span><span class="s1">kw</span><span class="s4">):</span>
+        <span class="s3">return </span><span class="s1">d</span><span class="s4">.</span><span class="s1">iteritems</span><span class="s4">(**</span><span class="s1">kw</span><span class="s4">)</span>
+
+    <span class="s3">def </span><span class="s1">iterlists</span><span class="s4">(</span><span class="s1">d</span><span class="s4">, **</span><span class="s1">kw</span><span class="s4">):</span>
+        <span class="s3">return </span><span class="s1">d</span><span class="s4">.</span><span class="s1">iterlists</span><span class="s4">(**</span><span class="s1">kw</span><span class="s4">)</span>
+
+    <span class="s1">viewkeys </span><span class="s4">= </span><span class="s1">operator</span><span class="s4">.</span><span class="s1">methodcaller</span><span class="s4">(</span><span class="s5">&quot;viewkeys&quot;</span><span class="s4">)</span>
+
+    <span class="s1">viewvalues </span><span class="s4">= </span><span class="s1">operator</span><span class="s4">.</span><span class="s1">methodcaller</span><span class="s4">(</span><span class="s5">&quot;viewvalues&quot;</span><span class="s4">)</span>
+
+    <span class="s1">viewitems </span><span class="s4">= </span><span class="s1">operator</span><span class="s4">.</span><span class="s1">methodcaller</span><span class="s4">(</span><span class="s5">&quot;viewitems&quot;</span><span class="s4">)</span>
+
+<span class="s1">_add_doc</span><span class="s4">(</span><span class="s1">iterkeys</span><span class="s4">, </span><span class="s5">&quot;Return an iterator over the keys of a dictionary.&quot;</span><span class="s4">)</span>
+<span class="s1">_add_doc</span><span class="s4">(</span><span class="s1">itervalues</span><span class="s4">, </span><span class="s5">&quot;Return an iterator over the values of a dictionary.&quot;</span><span class="s4">)</span>
+<span class="s1">_add_doc</span><span class="s4">(</span><span class="s1">iteritems</span><span class="s4">,</span>
+         <span class="s5">&quot;Return an iterator over the (key, value) pairs of a dictionary.&quot;</span><span class="s4">)</span>
+<span class="s1">_add_doc</span><span class="s4">(</span><span class="s1">iterlists</span><span class="s4">,</span>
+         <span class="s5">&quot;Return an iterator over the (key, [values]) pairs of a dictionary.&quot;</span><span class="s4">)</span>
+
+
+<span class="s3">if </span><span class="s1">PY3</span><span class="s4">:</span>
+    <span class="s3">def </span><span class="s1">b</span><span class="s4">(</span><span class="s1">s</span><span class="s4">):</span>
+        <span class="s3">return </span><span class="s1">s</span><span class="s4">.</span><span class="s1">encode</span><span class="s4">(</span><span class="s5">&quot;latin-1&quot;</span><span class="s4">)</span>
+
+    <span class="s3">def </span><span class="s1">u</span><span class="s4">(</span><span class="s1">s</span><span class="s4">):</span>
+        <span class="s3">return </span><span class="s1">s</span>
+    <span class="s1">unichr </span><span class="s4">= </span><span class="s1">chr</span>
+    <span class="s3">import </span><span class="s1">struct</span>
+    <span class="s1">int2byte </span><span class="s4">= </span><span class="s1">struct</span><span class="s4">.</span><span class="s1">Struct</span><span class="s4">(</span><span class="s5">&quot;&gt;B&quot;</span><span class="s4">).</span><span class="s1">pack</span>
+    <span class="s3">del </span><span class="s1">struct</span>
+    <span class="s1">byte2int </span><span class="s4">= </span><span class="s1">operator</span><span class="s4">.</span><span class="s1">itemgetter</span><span class="s4">(</span><span class="s6">0</span><span class="s4">)</span>
+    <span class="s1">indexbytes </span><span class="s4">= </span><span class="s1">operator</span><span class="s4">.</span><span class="s1">getitem</span>
+    <span class="s1">iterbytes </span><span class="s4">= </span><span class="s1">iter</span>
+    <span class="s3">import </span><span class="s1">io</span>
+    <span class="s1">StringIO </span><span class="s4">= </span><span class="s1">io</span><span class="s4">.</span><span class="s1">StringIO</span>
+    <span class="s1">BytesIO </span><span class="s4">= </span><span class="s1">io</span><span class="s4">.</span><span class="s1">BytesIO</span>
+    <span class="s3">del </span><span class="s1">io</span>
+    <span class="s1">_assertCountEqual </span><span class="s4">= </span><span class="s5">&quot;assertCountEqual&quot;</span>
+    <span class="s3">if </span><span class="s1">sys</span><span class="s4">.</span><span class="s1">version_info</span><span class="s4">[</span><span class="s6">1</span><span class="s4">] &lt;= </span><span class="s6">1</span><span class="s4">:</span>
+        <span class="s1">_assertRaisesRegex </span><span class="s4">= </span><span class="s5">&quot;assertRaisesRegexp&quot;</span>
+        <span class="s1">_assertRegex </span><span class="s4">= </span><span class="s5">&quot;assertRegexpMatches&quot;</span>
+        <span class="s1">_assertNotRegex </span><span class="s4">= </span><span class="s5">&quot;assertNotRegexpMatches&quot;</span>
+    <span class="s3">else</span><span class="s4">:</span>
+        <span class="s1">_assertRaisesRegex </span><span class="s4">= </span><span class="s5">&quot;assertRaisesRegex&quot;</span>
+        <span class="s1">_assertRegex </span><span class="s4">= </span><span class="s5">&quot;assertRegex&quot;</span>
+        <span class="s1">_assertNotRegex </span><span class="s4">= </span><span class="s5">&quot;assertNotRegex&quot;</span>
+<span class="s3">else</span><span class="s4">:</span>
+    <span class="s3">def </span><span class="s1">b</span><span class="s4">(</span><span class="s1">s</span><span class="s4">):</span>
+        <span class="s3">return </span><span class="s1">s</span>
+    <span class="s0"># Workaround for standalone backslash</span>
+
+    <span class="s3">def </span><span class="s1">u</span><span class="s4">(</span><span class="s1">s</span><span class="s4">):</span>
+        <span class="s3">return </span><span class="s1">unicode</span><span class="s4">(</span><span class="s1">s</span><span class="s4">.</span><span class="s1">replace</span><span class="s4">(</span><span class="s5">r'\\'</span><span class="s4">, </span><span class="s5">r'\\\\'</span><span class="s4">), </span><span class="s5">&quot;unicode_escape&quot;</span><span class="s4">)</span>
+    <span class="s1">unichr </span><span class="s4">= </span><span class="s1">unichr</span>
+    <span class="s1">int2byte </span><span class="s4">= </span><span class="s1">chr</span>
+
+    <span class="s3">def </span><span class="s1">byte2int</span><span class="s4">(</span><span class="s1">bs</span><span class="s4">):</span>
+        <span class="s3">return </span><span class="s1">ord</span><span class="s4">(</span><span class="s1">bs</span><span class="s4">[</span><span class="s6">0</span><span class="s4">])</span>
+
+    <span class="s3">def </span><span class="s1">indexbytes</span><span class="s4">(</span><span class="s1">buf</span><span class="s4">, </span><span class="s1">i</span><span class="s4">):</span>
+        <span class="s3">return </span><span class="s1">ord</span><span class="s4">(</span><span class="s1">buf</span><span class="s4">[</span><span class="s1">i</span><span class="s4">])</span>
+    <span class="s1">iterbytes </span><span class="s4">= </span><span class="s1">functools</span><span class="s4">.</span><span class="s1">partial</span><span class="s4">(</span><span class="s1">itertools</span><span class="s4">.</span><span class="s1">imap</span><span class="s4">, </span><span class="s1">ord</span><span class="s4">)</span>
+    <span class="s3">import </span><span class="s1">StringIO</span>
+    <span class="s1">StringIO </span><span class="s4">= </span><span class="s1">BytesIO </span><span class="s4">= </span><span class="s1">StringIO</span><span class="s4">.</span><span class="s1">StringIO</span>
+    <span class="s1">_assertCountEqual </span><span class="s4">= </span><span class="s5">&quot;assertItemsEqual&quot;</span>
+    <span class="s1">_assertRaisesRegex </span><span class="s4">= </span><span class="s5">&quot;assertRaisesRegexp&quot;</span>
+    <span class="s1">_assertRegex </span><span class="s4">= </span><span class="s5">&quot;assertRegexpMatches&quot;</span>
+    <span class="s1">_assertNotRegex </span><span class="s4">= </span><span class="s5">&quot;assertNotRegexpMatches&quot;</span>
+<span class="s1">_add_doc</span><span class="s4">(</span><span class="s1">b</span><span class="s4">, </span><span class="s5">&quot;&quot;&quot;Byte literal&quot;&quot;&quot;</span><span class="s4">)</span>
+<span class="s1">_add_doc</span><span class="s4">(</span><span class="s1">u</span><span class="s4">, </span><span class="s5">&quot;&quot;&quot;Text literal&quot;&quot;&quot;</span><span class="s4">)</span>
+
+
+<span class="s3">def </span><span class="s1">assertCountEqual</span><span class="s4">(</span><span class="s1">self</span><span class="s4">, *</span><span class="s1">args</span><span class="s4">, **</span><span class="s1">kwargs</span><span class="s4">):</span>
+    <span class="s3">return </span><span class="s1">getattr</span><span class="s4">(</span><span class="s1">self</span><span class="s4">, </span><span class="s1">_assertCountEqual</span><span class="s4">)(*</span><span class="s1">args</span><span class="s4">, **</span><span class="s1">kwargs</span><span class="s4">)</span>
+
+
+<span class="s3">def </span><span class="s1">assertRaisesRegex</span><span class="s4">(</span><span class="s1">self</span><span class="s4">, *</span><span class="s1">args</span><span class="s4">, **</span><span class="s1">kwargs</span><span class="s4">):</span>
+    <span class="s3">return </span><span class="s1">getattr</span><span class="s4">(</span><span class="s1">self</span><span class="s4">, </span><span class="s1">_assertRaisesRegex</span><span class="s4">)(*</span><span class="s1">args</span><span class="s4">, **</span><span class="s1">kwargs</span><span class="s4">)</span>
+
+
+<span class="s3">def </span><span class="s1">assertRegex</span><span class="s4">(</span><span class="s1">self</span><span class="s4">, *</span><span class="s1">args</span><span class="s4">, **</span><span class="s1">kwargs</span><span class="s4">):</span>
+    <span class="s3">return </span><span class="s1">getattr</span><span class="s4">(</span><span class="s1">self</span><span class="s4">, </span><span class="s1">_assertRegex</span><span class="s4">)(*</span><span class="s1">args</span><span class="s4">, **</span><span class="s1">kwargs</span><span class="s4">)</span>
+
+
+<span class="s3">def </span><span class="s1">assertNotRegex</span><span class="s4">(</span><span class="s1">self</span><span class="s4">, *</span><span class="s1">args</span><span class="s4">, **</span><span class="s1">kwargs</span><span class="s4">):</span>
+    <span class="s3">return </span><span class="s1">getattr</span><span class="s4">(</span><span class="s1">self</span><span class="s4">, </span><span class="s1">_assertNotRegex</span><span class="s4">)(*</span><span class="s1">args</span><span class="s4">, **</span><span class="s1">kwargs</span><span class="s4">)</span>
+
+
+<span class="s3">if </span><span class="s1">PY3</span><span class="s4">:</span>
+    <span class="s1">exec_ </span><span class="s4">= </span><span class="s1">getattr</span><span class="s4">(</span><span class="s1">moves</span><span class="s4">.</span><span class="s1">builtins</span><span class="s4">, </span><span class="s5">&quot;exec&quot;</span><span class="s4">)</span>
+
+    <span class="s3">def </span><span class="s1">reraise</span><span class="s4">(</span><span class="s1">tp</span><span class="s4">, </span><span class="s1">value</span><span class="s4">, </span><span class="s1">tb</span><span class="s4">=</span><span class="s3">None</span><span class="s4">):</span>
+        <span class="s3">try</span><span class="s4">:</span>
+            <span class="s3">if </span><span class="s1">value </span><span class="s3">is None</span><span class="s4">:</span>
+                <span class="s1">value </span><span class="s4">= </span><span class="s1">tp</span><span class="s4">()</span>
+            <span class="s3">if </span><span class="s1">value</span><span class="s4">.</span><span class="s1">__traceback__ </span><span class="s3">is not </span><span class="s1">tb</span><span class="s4">:</span>
+                <span class="s3">raise </span><span class="s1">value</span><span class="s4">.</span><span class="s1">with_traceback</span><span class="s4">(</span><span class="s1">tb</span><span class="s4">)</span>
+            <span class="s3">raise </span><span class="s1">value</span>
+        <span class="s3">finally</span><span class="s4">:</span>
+            <span class="s1">value </span><span class="s4">= </span><span class="s3">None</span>
+            <span class="s1">tb </span><span class="s4">= </span><span class="s3">None</span>
+
+<span class="s3">else</span><span class="s4">:</span>
+    <span class="s3">def </span><span class="s1">exec_</span><span class="s4">(</span><span class="s1">_code_</span><span class="s4">, </span><span class="s1">_globs_</span><span class="s4">=</span><span class="s3">None</span><span class="s4">, </span><span class="s1">_locs_</span><span class="s4">=</span><span class="s3">None</span><span class="s4">):</span>
+        <span class="s2">&quot;&quot;&quot;Execute code in a namespace.&quot;&quot;&quot;</span>
+        <span class="s3">if </span><span class="s1">_globs_ </span><span class="s3">is None</span><span class="s4">:</span>
+            <span class="s1">frame </span><span class="s4">= </span><span class="s1">sys</span><span class="s4">.</span><span class="s1">_getframe</span><span class="s4">(</span><span class="s6">1</span><span class="s4">)</span>
+            <span class="s1">_globs_ </span><span class="s4">= </span><span class="s1">frame</span><span class="s4">.</span><span class="s1">f_globals</span>
+            <span class="s3">if </span><span class="s1">_locs_ </span><span class="s3">is None</span><span class="s4">:</span>
+                <span class="s1">_locs_ </span><span class="s4">= </span><span class="s1">frame</span><span class="s4">.</span><span class="s1">f_locals</span>
+            <span class="s3">del </span><span class="s1">frame</span>
+        <span class="s3">elif </span><span class="s1">_locs_ </span><span class="s3">is None</span><span class="s4">:</span>
+            <span class="s1">_locs_ </span><span class="s4">= </span><span class="s1">_globs_</span>
+        <span class="s1">exec</span><span class="s4">(</span><span class="s5">&quot;&quot;&quot;exec _code_ in _globs_, _locs_&quot;&quot;&quot;</span><span class="s4">)</span>
+
+    <span class="s1">exec_</span><span class="s4">(</span><span class="s5">&quot;&quot;&quot;def reraise(tp, value, tb=None): 
+    try: 
+        raise tp, value, tb 
+    finally: 
+        tb = None 
+&quot;&quot;&quot;</span><span class="s4">)</span>
+
+
+<span class="s3">if </span><span class="s1">sys</span><span class="s4">.</span><span class="s1">version_info</span><span class="s4">[:</span><span class="s6">2</span><span class="s4">] &gt; (</span><span class="s6">3</span><span class="s4">,):</span>
+    <span class="s1">exec_</span><span class="s4">(</span><span class="s5">&quot;&quot;&quot;def raise_from(value, from_value): 
+    try: 
+        raise value from from_value 
+    finally: 
+        value = None 
+&quot;&quot;&quot;</span><span class="s4">)</span>
+<span class="s3">else</span><span class="s4">:</span>
+    <span class="s3">def </span><span class="s1">raise_from</span><span class="s4">(</span><span class="s1">value</span><span class="s4">, </span><span class="s1">from_value</span><span class="s4">):</span>
+        <span class="s3">raise </span><span class="s1">value</span>
+
+
+<span class="s1">print_ </span><span class="s4">= </span><span class="s1">getattr</span><span class="s4">(</span><span class="s1">moves</span><span class="s4">.</span><span class="s1">builtins</span><span class="s4">, </span><span class="s5">&quot;print&quot;</span><span class="s4">, </span><span class="s3">None</span><span class="s4">)</span>
+<span class="s3">if </span><span class="s1">print_ </span><span class="s3">is None</span><span class="s4">:</span>
+    <span class="s3">def </span><span class="s1">print_</span><span class="s4">(*</span><span class="s1">args</span><span class="s4">, **</span><span class="s1">kwargs</span><span class="s4">):</span>
+        <span class="s2">&quot;&quot;&quot;The new-style print function for Python 2.4 and 2.5.&quot;&quot;&quot;</span>
+        <span class="s1">fp </span><span class="s4">= </span><span class="s1">kwargs</span><span class="s4">.</span><span class="s1">pop</span><span class="s4">(</span><span class="s5">&quot;file&quot;</span><span class="s4">, </span><span class="s1">sys</span><span class="s4">.</span><span class="s1">stdout</span><span class="s4">)</span>
+        <span class="s3">if </span><span class="s1">fp </span><span class="s3">is None</span><span class="s4">:</span>
+            <span class="s3">return</span>
+
+        <span class="s3">def </span><span class="s1">write</span><span class="s4">(</span><span class="s1">data</span><span class="s4">):</span>
+            <span class="s3">if not </span><span class="s1">isinstance</span><span class="s4">(</span><span class="s1">data</span><span class="s4">, </span><span class="s1">basestring</span><span class="s4">):</span>
+                <span class="s1">data </span><span class="s4">= </span><span class="s1">str</span><span class="s4">(</span><span class="s1">data</span><span class="s4">)</span>
+            <span class="s0"># If the file has an encoding, encode unicode with it.</span>
+            <span class="s3">if </span><span class="s4">(</span><span class="s1">isinstance</span><span class="s4">(</span><span class="s1">fp</span><span class="s4">, </span><span class="s1">file</span><span class="s4">) </span><span class="s3">and</span>
+                    <span class="s1">isinstance</span><span class="s4">(</span><span class="s1">data</span><span class="s4">, </span><span class="s1">unicode</span><span class="s4">) </span><span class="s3">and</span>
+                    <span class="s1">fp</span><span class="s4">.</span><span class="s1">encoding </span><span class="s3">is not None</span><span class="s4">):</span>
+                <span class="s1">errors </span><span class="s4">= </span><span class="s1">getattr</span><span class="s4">(</span><span class="s1">fp</span><span class="s4">, </span><span class="s5">&quot;errors&quot;</span><span class="s4">, </span><span class="s3">None</span><span class="s4">)</span>
+                <span class="s3">if </span><span class="s1">errors </span><span class="s3">is None</span><span class="s4">:</span>
+                    <span class="s1">errors </span><span class="s4">= </span><span class="s5">&quot;strict&quot;</span>
+                <span class="s1">data </span><span class="s4">= </span><span class="s1">data</span><span class="s4">.</span><span class="s1">encode</span><span class="s4">(</span><span class="s1">fp</span><span class="s4">.</span><span class="s1">encoding</span><span class="s4">, </span><span class="s1">errors</span><span class="s4">)</span>
+            <span class="s1">fp</span><span class="s4">.</span><span class="s1">write</span><span class="s4">(</span><span class="s1">data</span><span class="s4">)</span>
+        <span class="s1">want_unicode </span><span class="s4">= </span><span class="s3">False</span>
+        <span class="s1">sep </span><span class="s4">= </span><span class="s1">kwargs</span><span class="s4">.</span><span class="s1">pop</span><span class="s4">(</span><span class="s5">&quot;sep&quot;</span><span class="s4">, </span><span class="s3">None</span><span class="s4">)</span>
+        <span class="s3">if </span><span class="s1">sep </span><span class="s3">is not None</span><span class="s4">:</span>
+            <span class="s3">if </span><span class="s1">isinstance</span><span class="s4">(</span><span class="s1">sep</span><span class="s4">, </span><span class="s1">unicode</span><span class="s4">):</span>
+                <span class="s1">want_unicode </span><span class="s4">= </span><span class="s3">True</span>
+            <span class="s3">elif not </span><span class="s1">isinstance</span><span class="s4">(</span><span class="s1">sep</span><span class="s4">, </span><span class="s1">str</span><span class="s4">):</span>
+                <span class="s3">raise </span><span class="s1">TypeError</span><span class="s4">(</span><span class="s5">&quot;sep must be None or a string&quot;</span><span class="s4">)</span>
+        <span class="s1">end </span><span class="s4">= </span><span class="s1">kwargs</span><span class="s4">.</span><span class="s1">pop</span><span class="s4">(</span><span class="s5">&quot;end&quot;</span><span class="s4">, </span><span class="s3">None</span><span class="s4">)</span>
+        <span class="s3">if </span><span class="s1">end </span><span class="s3">is not None</span><span class="s4">:</span>
+            <span class="s3">if </span><span class="s1">isinstance</span><span class="s4">(</span><span class="s1">end</span><span class="s4">, </span><span class="s1">unicode</span><span class="s4">):</span>
+                <span class="s1">want_unicode </span><span class="s4">= </span><span class="s3">True</span>
+            <span class="s3">elif not </span><span class="s1">isinstance</span><span class="s4">(</span><span class="s1">end</span><span class="s4">, </span><span class="s1">str</span><span class="s4">):</span>
+                <span class="s3">raise </span><span class="s1">TypeError</span><span class="s4">(</span><span class="s5">&quot;end must be None or a string&quot;</span><span class="s4">)</span>
+        <span class="s3">if </span><span class="s1">kwargs</span><span class="s4">:</span>
+            <span class="s3">raise </span><span class="s1">TypeError</span><span class="s4">(</span><span class="s5">&quot;invalid keyword arguments to print()&quot;</span><span class="s4">)</span>
+        <span class="s3">if not </span><span class="s1">want_unicode</span><span class="s4">:</span>
+            <span class="s3">for </span><span class="s1">arg </span><span class="s3">in </span><span class="s1">args</span><span class="s4">:</span>
+                <span class="s3">if </span><span class="s1">isinstance</span><span class="s4">(</span><span class="s1">arg</span><span class="s4">, </span><span class="s1">unicode</span><span class="s4">):</span>
+                    <span class="s1">want_unicode </span><span class="s4">= </span><span class="s3">True</span>
+                    <span class="s3">break</span>
+        <span class="s3">if </span><span class="s1">want_unicode</span><span class="s4">:</span>
+            <span class="s1">newline </span><span class="s4">= </span><span class="s1">unicode</span><span class="s4">(</span><span class="s5">&quot;</span><span class="s3">\n</span><span class="s5">&quot;</span><span class="s4">)</span>
+            <span class="s1">space </span><span class="s4">= </span><span class="s1">unicode</span><span class="s4">(</span><span class="s5">&quot; &quot;</span><span class="s4">)</span>
+        <span class="s3">else</span><span class="s4">:</span>
+            <span class="s1">newline </span><span class="s4">= </span><span class="s5">&quot;</span><span class="s3">\n</span><span class="s5">&quot;</span>
+            <span class="s1">space </span><span class="s4">= </span><span class="s5">&quot; &quot;</span>
+        <span class="s3">if </span><span class="s1">sep </span><span class="s3">is None</span><span class="s4">:</span>
+            <span class="s1">sep </span><span class="s4">= </span><span class="s1">space</span>
+        <span class="s3">if </span><span class="s1">end </span><span class="s3">is None</span><span class="s4">:</span>
+            <span class="s1">end </span><span class="s4">= </span><span class="s1">newline</span>
+        <span class="s3">for </span><span class="s1">i</span><span class="s4">, </span><span class="s1">arg </span><span class="s3">in </span><span class="s1">enumerate</span><span class="s4">(</span><span class="s1">args</span><span class="s4">):</span>
+            <span class="s3">if </span><span class="s1">i</span><span class="s4">:</span>
+                <span class="s1">write</span><span class="s4">(</span><span class="s1">sep</span><span class="s4">)</span>
+            <span class="s1">write</span><span class="s4">(</span><span class="s1">arg</span><span class="s4">)</span>
+        <span class="s1">write</span><span class="s4">(</span><span class="s1">end</span><span class="s4">)</span>
+<span class="s3">if </span><span class="s1">sys</span><span class="s4">.</span><span class="s1">version_info</span><span class="s4">[:</span><span class="s6">2</span><span class="s4">] &lt; (</span><span class="s6">3</span><span class="s4">, </span><span class="s6">3</span><span class="s4">):</span>
+    <span class="s1">_print </span><span class="s4">= </span><span class="s1">print_</span>
+
+    <span class="s3">def </span><span class="s1">print_</span><span class="s4">(*</span><span class="s1">args</span><span class="s4">, **</span><span class="s1">kwargs</span><span class="s4">):</span>
+        <span class="s1">fp </span><span class="s4">= </span><span class="s1">kwargs</span><span class="s4">.</span><span class="s1">get</span><span class="s4">(</span><span class="s5">&quot;file&quot;</span><span class="s4">, </span><span class="s1">sys</span><span class="s4">.</span><span class="s1">stdout</span><span class="s4">)</span>
+        <span class="s1">flush </span><span class="s4">= </span><span class="s1">kwargs</span><span class="s4">.</span><span class="s1">pop</span><span class="s4">(</span><span class="s5">&quot;flush&quot;</span><span class="s4">, </span><span class="s3">False</span><span class="s4">)</span>
+        <span class="s1">_print</span><span class="s4">(*</span><span class="s1">args</span><span class="s4">, **</span><span class="s1">kwargs</span><span class="s4">)</span>
+        <span class="s3">if </span><span class="s1">flush </span><span class="s3">and </span><span class="s1">fp </span><span class="s3">is not None</span><span class="s4">:</span>
+            <span class="s1">fp</span><span class="s4">.</span><span class="s1">flush</span><span class="s4">()</span>
+
+<span class="s1">_add_doc</span><span class="s4">(</span><span class="s1">reraise</span><span class="s4">, </span><span class="s5">&quot;&quot;&quot;Reraise an exception.&quot;&quot;&quot;</span><span class="s4">)</span>
+
+<span class="s3">if </span><span class="s1">sys</span><span class="s4">.</span><span class="s1">version_info</span><span class="s4">[</span><span class="s6">0</span><span class="s4">:</span><span class="s6">2</span><span class="s4">] &lt; (</span><span class="s6">3</span><span class="s4">, </span><span class="s6">4</span><span class="s4">):</span>
+    <span class="s0"># This does exactly the same what the :func:`py3:functools.update_wrapper`</span>
+    <span class="s0"># function does on Python versions after 3.2. It sets the ``__wrapped__``</span>
+    <span class="s0"># attribute on ``wrapper`` object and it doesn't raise an error if any of</span>
+    <span class="s0"># the attributes mentioned in ``assigned`` and ``updated`` are missing on</span>
+    <span class="s0"># ``wrapped`` object.</span>
+    <span class="s3">def </span><span class="s1">_update_wrapper</span><span class="s4">(</span><span class="s1">wrapper</span><span class="s4">, </span><span class="s1">wrapped</span><span class="s4">,</span>
+                        <span class="s1">assigned</span><span class="s4">=</span><span class="s1">functools</span><span class="s4">.</span><span class="s1">WRAPPER_ASSIGNMENTS</span><span class="s4">,</span>
+                        <span class="s1">updated</span><span class="s4">=</span><span class="s1">functools</span><span class="s4">.</span><span class="s1">WRAPPER_UPDATES</span><span class="s4">):</span>
+        <span class="s3">for </span><span class="s1">attr </span><span class="s3">in </span><span class="s1">assigned</span><span class="s4">:</span>
+            <span class="s3">try</span><span class="s4">:</span>
+                <span class="s1">value </span><span class="s4">= </span><span class="s1">getattr</span><span class="s4">(</span><span class="s1">wrapped</span><span class="s4">, </span><span class="s1">attr</span><span class="s4">)</span>
+            <span class="s3">except </span><span class="s1">AttributeError</span><span class="s4">:</span>
+                <span class="s3">continue</span>
+            <span class="s3">else</span><span class="s4">:</span>
+                <span class="s1">setattr</span><span class="s4">(</span><span class="s1">wrapper</span><span class="s4">, </span><span class="s1">attr</span><span class="s4">, </span><span class="s1">value</span><span class="s4">)</span>
+        <span class="s3">for </span><span class="s1">attr </span><span class="s3">in </span><span class="s1">updated</span><span class="s4">:</span>
+            <span class="s1">getattr</span><span class="s4">(</span><span class="s1">wrapper</span><span class="s4">, </span><span class="s1">attr</span><span class="s4">).</span><span class="s1">update</span><span class="s4">(</span><span class="s1">getattr</span><span class="s4">(</span><span class="s1">wrapped</span><span class="s4">, </span><span class="s1">attr</span><span class="s4">, {}))</span>
+        <span class="s1">wrapper</span><span class="s4">.</span><span class="s1">__wrapped__ </span><span class="s4">= </span><span class="s1">wrapped</span>
+        <span class="s3">return </span><span class="s1">wrapper</span>
+    <span class="s1">_update_wrapper</span><span class="s4">.</span><span class="s1">__doc__ </span><span class="s4">= </span><span class="s1">functools</span><span class="s4">.</span><span class="s1">update_wrapper</span><span class="s4">.</span><span class="s1">__doc__</span>
+
+    <span class="s3">def </span><span class="s1">wraps</span><span class="s4">(</span><span class="s1">wrapped</span><span class="s4">, </span><span class="s1">assigned</span><span class="s4">=</span><span class="s1">functools</span><span class="s4">.</span><span class="s1">WRAPPER_ASSIGNMENTS</span><span class="s4">,</span>
+              <span class="s1">updated</span><span class="s4">=</span><span class="s1">functools</span><span class="s4">.</span><span class="s1">WRAPPER_UPDATES</span><span class="s4">):</span>
+        <span class="s3">return </span><span class="s1">functools</span><span class="s4">.</span><span class="s1">partial</span><span class="s4">(</span><span class="s1">_update_wrapper</span><span class="s4">, </span><span class="s1">wrapped</span><span class="s4">=</span><span class="s1">wrapped</span><span class="s4">,</span>
+                                 <span class="s1">assigned</span><span class="s4">=</span><span class="s1">assigned</span><span class="s4">, </span><span class="s1">updated</span><span class="s4">=</span><span class="s1">updated</span><span class="s4">)</span>
+    <span class="s1">wraps</span><span class="s4">.</span><span class="s1">__doc__ </span><span class="s4">= </span><span class="s1">functools</span><span class="s4">.</span><span class="s1">wraps</span><span class="s4">.</span><span class="s1">__doc__</span>
+
+<span class="s3">else</span><span class="s4">:</span>
+    <span class="s1">wraps </span><span class="s4">= </span><span class="s1">functools</span><span class="s4">.</span><span class="s1">wraps</span>
+
+
+<span class="s3">def </span><span class="s1">with_metaclass</span><span class="s4">(</span><span class="s1">meta</span><span class="s4">, *</span><span class="s1">bases</span><span class="s4">):</span>
+    <span class="s2">&quot;&quot;&quot;Create a base class with a metaclass.&quot;&quot;&quot;</span>
+    <span class="s0"># This requires a bit of explanation: the basic idea is to make a dummy</span>
+    <span class="s0"># metaclass for one level of class instantiation that replaces itself with</span>
+    <span class="s0"># the actual metaclass.</span>
+    <span class="s3">class </span><span class="s1">metaclass</span><span class="s4">(</span><span class="s1">type</span><span class="s4">):</span>
+
+        <span class="s3">def </span><span class="s1">__new__</span><span class="s4">(</span><span class="s1">cls</span><span class="s4">, </span><span class="s1">name</span><span class="s4">, </span><span class="s1">this_bases</span><span class="s4">, </span><span class="s1">d</span><span class="s4">):</span>
+            <span class="s3">if </span><span class="s1">sys</span><span class="s4">.</span><span class="s1">version_info</span><span class="s4">[:</span><span class="s6">2</span><span class="s4">] &gt;= (</span><span class="s6">3</span><span class="s4">, </span><span class="s6">7</span><span class="s4">):</span>
+                <span class="s0"># This version introduced PEP 560 that requires a bit</span>
+                <span class="s0"># of extra care (we mimic what is done by __build_class__).</span>
+                <span class="s1">resolved_bases </span><span class="s4">= </span><span class="s1">types</span><span class="s4">.</span><span class="s1">resolve_bases</span><span class="s4">(</span><span class="s1">bases</span><span class="s4">)</span>
+                <span class="s3">if </span><span class="s1">resolved_bases </span><span class="s3">is not </span><span class="s1">bases</span><span class="s4">:</span>
+                    <span class="s1">d</span><span class="s4">[</span><span class="s5">'__orig_bases__'</span><span class="s4">] = </span><span class="s1">bases</span>
+            <span class="s3">else</span><span class="s4">:</span>
+                <span class="s1">resolved_bases </span><span class="s4">= </span><span class="s1">bases</span>
+            <span class="s3">return </span><span class="s1">meta</span><span class="s4">(</span><span class="s1">name</span><span class="s4">, </span><span class="s1">resolved_bases</span><span class="s4">, </span><span class="s1">d</span><span class="s4">)</span>
+
+        <span class="s4">@</span><span class="s1">classmethod</span>
+        <span class="s3">def </span><span class="s1">__prepare__</span><span class="s4">(</span><span class="s1">cls</span><span class="s4">, </span><span class="s1">name</span><span class="s4">, </span><span class="s1">this_bases</span><span class="s4">):</span>
+            <span class="s3">return </span><span class="s1">meta</span><span class="s4">.</span><span class="s1">__prepare__</span><span class="s4">(</span><span class="s1">name</span><span class="s4">, </span><span class="s1">bases</span><span class="s4">)</span>
+    <span class="s3">return </span><span class="s1">type</span><span class="s4">.</span><span class="s1">__new__</span><span class="s4">(</span><span class="s1">metaclass</span><span class="s4">, </span><span class="s5">'temporary_class'</span><span class="s4">, (), {})</span>
+
+
+<span class="s3">def </span><span class="s1">add_metaclass</span><span class="s4">(</span><span class="s1">metaclass</span><span class="s4">):</span>
+    <span class="s2">&quot;&quot;&quot;Class decorator for creating a class with a metaclass.&quot;&quot;&quot;</span>
+    <span class="s3">def </span><span class="s1">wrapper</span><span class="s4">(</span><span class="s1">cls</span><span class="s4">):</span>
+        <span class="s1">orig_vars </span><span class="s4">= </span><span class="s1">cls</span><span class="s4">.</span><span class="s1">__dict__</span><span class="s4">.</span><span class="s1">copy</span><span class="s4">()</span>
+        <span class="s1">slots </span><span class="s4">= </span><span class="s1">orig_vars</span><span class="s4">.</span><span class="s1">get</span><span class="s4">(</span><span class="s5">'__slots__'</span><span class="s4">)</span>
+        <span class="s3">if </span><span class="s1">slots </span><span class="s3">is not None</span><span class="s4">:</span>
+            <span class="s3">if </span><span class="s1">isinstance</span><span class="s4">(</span><span class="s1">slots</span><span class="s4">, </span><span class="s1">str</span><span class="s4">):</span>
+                <span class="s1">slots </span><span class="s4">= [</span><span class="s1">slots</span><span class="s4">]</span>
+            <span class="s3">for </span><span class="s1">slots_var </span><span class="s3">in </span><span class="s1">slots</span><span class="s4">:</span>
+                <span class="s1">orig_vars</span><span class="s4">.</span><span class="s1">pop</span><span class="s4">(</span><span class="s1">slots_var</span><span class="s4">)</span>
+        <span class="s1">orig_vars</span><span class="s4">.</span><span class="s1">pop</span><span class="s4">(</span><span class="s5">'__dict__'</span><span class="s4">, </span><span class="s3">None</span><span class="s4">)</span>
+        <span class="s1">orig_vars</span><span class="s4">.</span><span class="s1">pop</span><span class="s4">(</span><span class="s5">'__weakref__'</span><span class="s4">, </span><span class="s3">None</span><span class="s4">)</span>
+        <span class="s3">if </span><span class="s1">hasattr</span><span class="s4">(</span><span class="s1">cls</span><span class="s4">, </span><span class="s5">'__qualname__'</span><span class="s4">):</span>
+            <span class="s1">orig_vars</span><span class="s4">[</span><span class="s5">'__qualname__'</span><span class="s4">] = </span><span class="s1">cls</span><span class="s4">.</span><span class="s1">__qualname__</span>
+        <span class="s3">return </span><span class="s1">metaclass</span><span class="s4">(</span><span class="s1">cls</span><span class="s4">.</span><span class="s1">__name__</span><span class="s4">, </span><span class="s1">cls</span><span class="s4">.</span><span class="s1">__bases__</span><span class="s4">, </span><span class="s1">orig_vars</span><span class="s4">)</span>
+    <span class="s3">return </span><span class="s1">wrapper</span>
+
+
+<span class="s3">def </span><span class="s1">ensure_binary</span><span class="s4">(</span><span class="s1">s</span><span class="s4">, </span><span class="s1">encoding</span><span class="s4">=</span><span class="s5">'utf-8'</span><span class="s4">, </span><span class="s1">errors</span><span class="s4">=</span><span class="s5">'strict'</span><span class="s4">):</span>
+    <span class="s2">&quot;&quot;&quot;Coerce **s** to six.binary_type. 
+ 
+    For Python 2: 
+      - `unicode` -&gt; encoded to `str` 
+      - `str` -&gt; `str` 
+ 
+    For Python 3: 
+      - `str` -&gt; encoded to `bytes` 
+      - `bytes` -&gt; `bytes` 
+    &quot;&quot;&quot;</span>
+    <span class="s3">if </span><span class="s1">isinstance</span><span class="s4">(</span><span class="s1">s</span><span class="s4">, </span><span class="s1">binary_type</span><span class="s4">):</span>
+        <span class="s3">return </span><span class="s1">s</span>
+    <span class="s3">if </span><span class="s1">isinstance</span><span class="s4">(</span><span class="s1">s</span><span class="s4">, </span><span class="s1">text_type</span><span class="s4">):</span>
+        <span class="s3">return </span><span class="s1">s</span><span class="s4">.</span><span class="s1">encode</span><span class="s4">(</span><span class="s1">encoding</span><span class="s4">, </span><span class="s1">errors</span><span class="s4">)</span>
+    <span class="s3">raise </span><span class="s1">TypeError</span><span class="s4">(</span><span class="s5">&quot;not expecting type '%s'&quot; </span><span class="s4">% </span><span class="s1">type</span><span class="s4">(</span><span class="s1">s</span><span class="s4">))</span>
+
+
+<span class="s3">def </span><span class="s1">ensure_str</span><span class="s4">(</span><span class="s1">s</span><span class="s4">, </span><span class="s1">encoding</span><span class="s4">=</span><span class="s5">'utf-8'</span><span class="s4">, </span><span class="s1">errors</span><span class="s4">=</span><span class="s5">'strict'</span><span class="s4">):</span>
+    <span class="s2">&quot;&quot;&quot;Coerce *s* to `str`. 
+ 
+    For Python 2: 
+      - `unicode` -&gt; encoded to `str` 
+      - `str` -&gt; `str` 
+ 
+    For Python 3: 
+      - `str` -&gt; `str` 
+      - `bytes` -&gt; decoded to `str` 
+    &quot;&quot;&quot;</span>
+    <span class="s0"># Optimization: Fast return for the common case.</span>
+    <span class="s3">if </span><span class="s1">type</span><span class="s4">(</span><span class="s1">s</span><span class="s4">) </span><span class="s3">is </span><span class="s1">str</span><span class="s4">:</span>
+        <span class="s3">return </span><span class="s1">s</span>
+    <span class="s3">if </span><span class="s1">PY2 </span><span class="s3">and </span><span class="s1">isinstance</span><span class="s4">(</span><span class="s1">s</span><span class="s4">, </span><span class="s1">text_type</span><span class="s4">):</span>
+        <span class="s3">return </span><span class="s1">s</span><span class="s4">.</span><span class="s1">encode</span><span class="s4">(</span><span class="s1">encoding</span><span class="s4">, </span><span class="s1">errors</span><span class="s4">)</span>
+    <span class="s3">elif </span><span class="s1">PY3 </span><span class="s3">and </span><span class="s1">isinstance</span><span class="s4">(</span><span class="s1">s</span><span class="s4">, </span><span class="s1">binary_type</span><span class="s4">):</span>
+        <span class="s3">return </span><span class="s1">s</span><span class="s4">.</span><span class="s1">decode</span><span class="s4">(</span><span class="s1">encoding</span><span class="s4">, </span><span class="s1">errors</span><span class="s4">)</span>
+    <span class="s3">elif not </span><span class="s1">isinstance</span><span class="s4">(</span><span class="s1">s</span><span class="s4">, (</span><span class="s1">text_type</span><span class="s4">, </span><span class="s1">binary_type</span><span class="s4">)):</span>
+        <span class="s3">raise </span><span class="s1">TypeError</span><span class="s4">(</span><span class="s5">&quot;not expecting type '%s'&quot; </span><span class="s4">% </span><span class="s1">type</span><span class="s4">(</span><span class="s1">s</span><span class="s4">))</span>
+    <span class="s3">return </span><span class="s1">s</span>
+
+
+<span class="s3">def </span><span class="s1">ensure_text</span><span class="s4">(</span><span class="s1">s</span><span class="s4">, </span><span class="s1">encoding</span><span class="s4">=</span><span class="s5">'utf-8'</span><span class="s4">, </span><span class="s1">errors</span><span class="s4">=</span><span class="s5">'strict'</span><span class="s4">):</span>
+    <span class="s2">&quot;&quot;&quot;Coerce *s* to six.text_type. 
+ 
+    For Python 2: 
+      - `unicode` -&gt; `unicode` 
+      - `str` -&gt; `unicode` 
+ 
+    For Python 3: 
+      - `str` -&gt; `str` 
+      - `bytes` -&gt; decoded to `str` 
+    &quot;&quot;&quot;</span>
+    <span class="s3">if </span><span class="s1">isinstance</span><span class="s4">(</span><span class="s1">s</span><span class="s4">, </span><span class="s1">binary_type</span><span class="s4">):</span>
+        <span class="s3">return </span><span class="s1">s</span><span class="s4">.</span><span class="s1">decode</span><span class="s4">(</span><span class="s1">encoding</span><span class="s4">, </span><span class="s1">errors</span><span class="s4">)</span>
+    <span class="s3">elif </span><span class="s1">isinstance</span><span class="s4">(</span><span class="s1">s</span><span class="s4">, </span><span class="s1">text_type</span><span class="s4">):</span>
+        <span class="s3">return </span><span class="s1">s</span>
+    <span class="s3">else</span><span class="s4">:</span>
+        <span class="s3">raise </span><span class="s1">TypeError</span><span class="s4">(</span><span class="s5">&quot;not expecting type '%s'&quot; </span><span class="s4">% </span><span class="s1">type</span><span class="s4">(</span><span class="s1">s</span><span class="s4">))</span>
+
+
+<span class="s3">def </span><span class="s1">python_2_unicode_compatible</span><span class="s4">(</span><span class="s1">klass</span><span class="s4">):</span>
+    <span class="s2">&quot;&quot;&quot; 
+    A class decorator that defines __unicode__ and __str__ methods under Python 2. 
+    Under Python 3 it does nothing. 
+ 
+    To support Python 2 and 3 with a single code base, define a __str__ method 
+    returning text and apply this decorator to the class. 
+    &quot;&quot;&quot;</span>
+    <span class="s3">if </span><span class="s1">PY2</span><span class="s4">:</span>
+        <span class="s3">if </span><span class="s5">'__str__' </span><span class="s3">not in </span><span class="s1">klass</span><span class="s4">.</span><span class="s1">__dict__</span><span class="s4">:</span>
+            <span class="s3">raise </span><span class="s1">ValueError</span><span class="s4">(</span><span class="s5">&quot;@python_2_unicode_compatible cannot be applied &quot;</span>
+                             <span class="s5">&quot;to %s because it doesn't define __str__().&quot; </span><span class="s4">%</span>
+                             <span class="s1">klass</span><span class="s4">.</span><span class="s1">__name__</span><span class="s4">)</span>
+        <span class="s1">klass</span><span class="s4">.</span><span class="s1">__unicode__ </span><span class="s4">= </span><span class="s1">klass</span><span class="s4">.</span><span class="s1">__str__</span>
+        <span class="s1">klass</span><span class="s4">.</span><span class="s1">__str__ </span><span class="s4">= </span><span class="s3">lambda </span><span class="s1">self</span><span class="s4">: </span><span class="s1">self</span><span class="s4">.</span><span class="s1">__unicode__</span><span class="s4">().</span><span class="s1">encode</span><span class="s4">(</span><span class="s5">'utf-8'</span><span class="s4">)</span>
+    <span class="s3">return </span><span class="s1">klass</span>
+
+
+<span class="s0"># Complete the moves implementation.</span>
+<span class="s0"># This code is at the end of this module to speed up module loading.</span>
+<span class="s0"># Turn this module into a package.</span>
+<span class="s1">__path__ </span><span class="s4">= []  </span><span class="s0"># required for PEP 302 and PEP 451</span>
+<span class="s1">__package__ </span><span class="s4">= </span><span class="s1">__name__  </span><span class="s0"># see PEP 366 @ReservedAssignment</span>
+<span class="s3">if </span><span class="s1">globals</span><span class="s4">().</span><span class="s1">get</span><span class="s4">(</span><span class="s5">&quot;__spec__&quot;</span><span class="s4">) </span><span class="s3">is not None</span><span class="s4">:</span>
+    <span class="s1">__spec__</span><span class="s4">.</span><span class="s1">submodule_search_locations </span><span class="s4">= []  </span><span class="s0"># PEP 451 @UndefinedVariable</span>
+<span class="s0"># Remove other six meta path importers, since they cause problems. This can</span>
+<span class="s0"># happen if six is removed from sys.modules and then reloaded. (Setuptools does</span>
+<span class="s0"># this for some reason.)</span>
+<span class="s3">if </span><span class="s1">sys</span><span class="s4">.</span><span class="s1">meta_path</span><span class="s4">:</span>
+    <span class="s3">for </span><span class="s1">i</span><span class="s4">, </span><span class="s1">importer </span><span class="s3">in </span><span class="s1">enumerate</span><span class="s4">(</span><span class="s1">sys</span><span class="s4">.</span><span class="s1">meta_path</span><span class="s4">):</span>
+        <span class="s0"># Here's some real nastiness: Another &quot;instance&quot; of the six module might</span>
+        <span class="s0"># be floating around. Therefore, we can't use isinstance() to check for</span>
+        <span class="s0"># the six meta path importer, since the other six instance will have</span>
+        <span class="s0"># inserted an importer with different class.</span>
+        <span class="s3">if </span><span class="s4">(</span><span class="s1">type</span><span class="s4">(</span><span class="s1">importer</span><span class="s4">).</span><span class="s1">__name__ </span><span class="s4">== </span><span class="s5">&quot;_SixMetaPathImporter&quot; </span><span class="s3">and</span>
+                <span class="s1">importer</span><span class="s4">.</span><span class="s1">name </span><span class="s4">== </span><span class="s1">__name__</span><span class="s4">):</span>
+            <span class="s3">del </span><span class="s1">sys</span><span class="s4">.</span><span class="s1">meta_path</span><span class="s4">[</span><span class="s1">i</span><span class="s4">]</span>
+            <span class="s3">break</span>
+    <span class="s3">del </span><span class="s1">i</span><span class="s4">, </span><span class="s1">importer</span>
+<span class="s0"># Finally, add the importer to the meta path import hook.</span>
+<span class="s1">sys</span><span class="s4">.</span><span class="s1">meta_path</span><span class="s4">.</span><span class="s1">append</span><span class="s4">(</span><span class="s1">_importer</span><span class="s4">)</span>
+</pre>
+</body>
+</html>

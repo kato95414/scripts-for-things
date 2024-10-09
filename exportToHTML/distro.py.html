@@ -1,0 +1,1422 @@
+<html>
+<head>
+<title>distro.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #7a7e85;}
+.s1 { color: #bcbec4;}
+.s2 { color: #5f826b; font-style: italic;}
+.s3 { color: #cf8e6d;}
+.s4 { color: #bcbec4;}
+.s5 { color: #6aab73;}
+.s6 { color: #2aacb8;}
+</style>
+</head>
+<body bgcolor="#1e1f22">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+distro.py</font>
+</center></td></tr></table>
+<pre><span class="s0">#!/usr/bin/env python</span>
+<span class="s0"># Copyright 2015,2016,2017 Nir Cohen</span>
+<span class="s0">#</span>
+<span class="s0"># Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);</span>
+<span class="s0"># you may not use this file except in compliance with the License.</span>
+<span class="s0"># You may obtain a copy of the License at</span>
+<span class="s0">#</span>
+<span class="s0"># http://www.apache.org/licenses/LICENSE-2.0</span>
+<span class="s0">#</span>
+<span class="s0"># Unless required by applicable law or agreed to in writing, software</span>
+<span class="s0"># distributed under the License is distributed on an &quot;AS IS&quot; BASIS,</span>
+<span class="s0"># WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.</span>
+<span class="s0"># See the License for the specific language governing permissions and</span>
+<span class="s0"># limitations under the License.</span>
+
+<span class="s2">&quot;&quot;&quot; 
+The ``distro`` package (``distro`` stands for Linux Distribution) provides 
+information about the Linux distribution it runs on, such as a reliable 
+machine-readable distro ID, or version information. 
+ 
+It is the recommended replacement for Python's original 
+:py:func:`platform.linux_distribution` function, but it provides much more 
+functionality. An alternative implementation became necessary because Python 
+3.5 deprecated this function, and Python 3.8 removed it altogether. Its 
+predecessor function :py:func:`platform.dist` was already deprecated since 
+Python 2.6 and removed in Python 3.8. Still, there are many cases in which 
+access to OS distribution information is needed. See `Python issue 1322 
+&lt;https://bugs.python.org/issue1322&gt;`_ for more information. 
+&quot;&quot;&quot;</span>
+
+<span class="s3">import </span><span class="s1">argparse</span>
+<span class="s3">import </span><span class="s1">json</span>
+<span class="s3">import </span><span class="s1">logging</span>
+<span class="s3">import </span><span class="s1">os</span>
+<span class="s3">import </span><span class="s1">re</span>
+<span class="s3">import </span><span class="s1">shlex</span>
+<span class="s3">import </span><span class="s1">subprocess</span>
+<span class="s3">import </span><span class="s1">sys</span>
+<span class="s3">import </span><span class="s1">warnings</span>
+<span class="s3">from </span><span class="s1">typing </span><span class="s3">import </span><span class="s4">(</span>
+    <span class="s1">Any</span><span class="s4">,</span>
+    <span class="s1">Callable</span><span class="s4">,</span>
+    <span class="s1">Dict</span><span class="s4">,</span>
+    <span class="s1">Iterable</span><span class="s4">,</span>
+    <span class="s1">Optional</span><span class="s4">,</span>
+    <span class="s1">Sequence</span><span class="s4">,</span>
+    <span class="s1">TextIO</span><span class="s4">,</span>
+    <span class="s1">Tuple</span><span class="s4">,</span>
+    <span class="s1">Type</span><span class="s4">,</span>
+<span class="s4">)</span>
+
+<span class="s3">try</span><span class="s4">:</span>
+    <span class="s3">from </span><span class="s1">typing </span><span class="s3">import </span><span class="s1">TypedDict</span>
+<span class="s3">except </span><span class="s1">ImportError</span><span class="s4">:</span>
+    <span class="s0"># Python 3.7</span>
+    <span class="s1">TypedDict </span><span class="s4">= </span><span class="s1">dict</span>
+
+<span class="s1">__version__ </span><span class="s4">= </span><span class="s5">&quot;1.8.0&quot;</span>
+
+
+<span class="s3">class </span><span class="s1">VersionDict</span><span class="s4">(</span><span class="s1">TypedDict</span><span class="s4">):</span>
+    <span class="s1">major</span><span class="s4">: </span><span class="s1">str</span>
+    <span class="s1">minor</span><span class="s4">: </span><span class="s1">str</span>
+    <span class="s1">build_number</span><span class="s4">: </span><span class="s1">str</span>
+
+
+<span class="s3">class </span><span class="s1">InfoDict</span><span class="s4">(</span><span class="s1">TypedDict</span><span class="s4">):</span>
+    <span class="s1">id</span><span class="s4">: </span><span class="s1">str</span>
+    <span class="s1">version</span><span class="s4">: </span><span class="s1">str</span>
+    <span class="s1">version_parts</span><span class="s4">: </span><span class="s1">VersionDict</span>
+    <span class="s1">like</span><span class="s4">: </span><span class="s1">str</span>
+    <span class="s1">codename</span><span class="s4">: </span><span class="s1">str</span>
+
+
+<span class="s1">_UNIXCONFDIR </span><span class="s4">= </span><span class="s1">os</span><span class="s4">.</span><span class="s1">environ</span><span class="s4">.</span><span class="s1">get</span><span class="s4">(</span><span class="s5">&quot;UNIXCONFDIR&quot;</span><span class="s4">, </span><span class="s5">&quot;/etc&quot;</span><span class="s4">)</span>
+<span class="s1">_UNIXUSRLIBDIR </span><span class="s4">= </span><span class="s1">os</span><span class="s4">.</span><span class="s1">environ</span><span class="s4">.</span><span class="s1">get</span><span class="s4">(</span><span class="s5">&quot;UNIXUSRLIBDIR&quot;</span><span class="s4">, </span><span class="s5">&quot;/usr/lib&quot;</span><span class="s4">)</span>
+<span class="s1">_OS_RELEASE_BASENAME </span><span class="s4">= </span><span class="s5">&quot;os-release&quot;</span>
+
+<span class="s0">#: Translation table for normalizing the &quot;ID&quot; attribute defined in os-release</span>
+<span class="s0">#: files, for use by the :func:`distro.id` method.</span>
+<span class="s0">#:</span>
+<span class="s0">#: * Key: Value as defined in the os-release file, translated to lower case,</span>
+<span class="s0">#:   with blanks translated to underscores.</span>
+<span class="s0">#:</span>
+<span class="s0">#: * Value: Normalized value.</span>
+<span class="s1">NORMALIZED_OS_ID </span><span class="s4">= {</span>
+    <span class="s5">&quot;ol&quot;</span><span class="s4">: </span><span class="s5">&quot;oracle&quot;</span><span class="s4">,  </span><span class="s0"># Oracle Linux</span>
+    <span class="s5">&quot;opensuse-leap&quot;</span><span class="s4">: </span><span class="s5">&quot;opensuse&quot;</span><span class="s4">,  </span><span class="s0"># Newer versions of OpenSuSE report as opensuse-leap</span>
+<span class="s4">}</span>
+
+<span class="s0">#: Translation table for normalizing the &quot;Distributor ID&quot; attribute returned by</span>
+<span class="s0">#: the lsb_release command, for use by the :func:`distro.id` method.</span>
+<span class="s0">#:</span>
+<span class="s0">#: * Key: Value as returned by the lsb_release command, translated to lower</span>
+<span class="s0">#:   case, with blanks translated to underscores.</span>
+<span class="s0">#:</span>
+<span class="s0">#: * Value: Normalized value.</span>
+<span class="s1">NORMALIZED_LSB_ID </span><span class="s4">= {</span>
+    <span class="s5">&quot;enterpriseenterpriseas&quot;</span><span class="s4">: </span><span class="s5">&quot;oracle&quot;</span><span class="s4">,  </span><span class="s0"># Oracle Enterprise Linux 4</span>
+    <span class="s5">&quot;enterpriseenterpriseserver&quot;</span><span class="s4">: </span><span class="s5">&quot;oracle&quot;</span><span class="s4">,  </span><span class="s0"># Oracle Linux 5</span>
+    <span class="s5">&quot;redhatenterpriseworkstation&quot;</span><span class="s4">: </span><span class="s5">&quot;rhel&quot;</span><span class="s4">,  </span><span class="s0"># RHEL 6, 7 Workstation</span>
+    <span class="s5">&quot;redhatenterpriseserver&quot;</span><span class="s4">: </span><span class="s5">&quot;rhel&quot;</span><span class="s4">,  </span><span class="s0"># RHEL 6, 7 Server</span>
+    <span class="s5">&quot;redhatenterprisecomputenode&quot;</span><span class="s4">: </span><span class="s5">&quot;rhel&quot;</span><span class="s4">,  </span><span class="s0"># RHEL 6 ComputeNode</span>
+<span class="s4">}</span>
+
+<span class="s0">#: Translation table for normalizing the distro ID derived from the file name</span>
+<span class="s0">#: of distro release files, for use by the :func:`distro.id` method.</span>
+<span class="s0">#:</span>
+<span class="s0">#: * Key: Value as derived from the file name of a distro release file,</span>
+<span class="s0">#:   translated to lower case, with blanks translated to underscores.</span>
+<span class="s0">#:</span>
+<span class="s0">#: * Value: Normalized value.</span>
+<span class="s1">NORMALIZED_DISTRO_ID </span><span class="s4">= {</span>
+    <span class="s5">&quot;redhat&quot;</span><span class="s4">: </span><span class="s5">&quot;rhel&quot;</span><span class="s4">,  </span><span class="s0"># RHEL 6.x, 7.x</span>
+<span class="s4">}</span>
+
+<span class="s0"># Pattern for content of distro release file (reversed)</span>
+<span class="s1">_DISTRO_RELEASE_CONTENT_REVERSED_PATTERN </span><span class="s4">= </span><span class="s1">re</span><span class="s4">.</span><span class="s1">compile</span><span class="s4">(</span>
+    <span class="s5">r&quot;(?:[^)]*\)(.*)\()? *(?:STL )?([\d.+\-a-z]*\d) *(?:esaeler *)?(.+)&quot;</span>
+<span class="s4">)</span>
+
+<span class="s0"># Pattern for base file name of distro release file</span>
+<span class="s1">_DISTRO_RELEASE_BASENAME_PATTERN </span><span class="s4">= </span><span class="s1">re</span><span class="s4">.</span><span class="s1">compile</span><span class="s4">(</span><span class="s5">r&quot;(\w+)[-_](release|version)$&quot;</span><span class="s4">)</span>
+
+<span class="s0"># Base file names to be looked up for if _UNIXCONFDIR is not readable.</span>
+<span class="s1">_DISTRO_RELEASE_BASENAMES </span><span class="s4">= [</span>
+    <span class="s5">&quot;SuSE-release&quot;</span><span class="s4">,</span>
+    <span class="s5">&quot;arch-release&quot;</span><span class="s4">,</span>
+    <span class="s5">&quot;base-release&quot;</span><span class="s4">,</span>
+    <span class="s5">&quot;centos-release&quot;</span><span class="s4">,</span>
+    <span class="s5">&quot;fedora-release&quot;</span><span class="s4">,</span>
+    <span class="s5">&quot;gentoo-release&quot;</span><span class="s4">,</span>
+    <span class="s5">&quot;mageia-release&quot;</span><span class="s4">,</span>
+    <span class="s5">&quot;mandrake-release&quot;</span><span class="s4">,</span>
+    <span class="s5">&quot;mandriva-release&quot;</span><span class="s4">,</span>
+    <span class="s5">&quot;mandrivalinux-release&quot;</span><span class="s4">,</span>
+    <span class="s5">&quot;manjaro-release&quot;</span><span class="s4">,</span>
+    <span class="s5">&quot;oracle-release&quot;</span><span class="s4">,</span>
+    <span class="s5">&quot;redhat-release&quot;</span><span class="s4">,</span>
+    <span class="s5">&quot;rocky-release&quot;</span><span class="s4">,</span>
+    <span class="s5">&quot;sl-release&quot;</span><span class="s4">,</span>
+    <span class="s5">&quot;slackware-version&quot;</span><span class="s4">,</span>
+<span class="s4">]</span>
+
+<span class="s0"># Base file names to be ignored when searching for distro release file</span>
+<span class="s1">_DISTRO_RELEASE_IGNORE_BASENAMES </span><span class="s4">= (</span>
+    <span class="s5">&quot;debian_version&quot;</span><span class="s4">,</span>
+    <span class="s5">&quot;lsb-release&quot;</span><span class="s4">,</span>
+    <span class="s5">&quot;oem-release&quot;</span><span class="s4">,</span>
+    <span class="s1">_OS_RELEASE_BASENAME</span><span class="s4">,</span>
+    <span class="s5">&quot;system-release&quot;</span><span class="s4">,</span>
+    <span class="s5">&quot;plesk-release&quot;</span><span class="s4">,</span>
+    <span class="s5">&quot;iredmail-release&quot;</span><span class="s4">,</span>
+<span class="s4">)</span>
+
+
+<span class="s3">def </span><span class="s1">linux_distribution</span><span class="s4">(</span><span class="s1">full_distribution_name</span><span class="s4">: </span><span class="s1">bool </span><span class="s4">= </span><span class="s3">True</span><span class="s4">) </span><span class="s1">-&gt; Tuple</span><span class="s4">[</span><span class="s1">str</span><span class="s4">, </span><span class="s1">str</span><span class="s4">, </span><span class="s1">str</span><span class="s4">]:</span>
+    <span class="s2">&quot;&quot;&quot; 
+    .. deprecated:: 1.6.0 
+ 
+        :func:`distro.linux_distribution()` is deprecated. It should only be 
+        used as a compatibility shim with Python's 
+        :py:func:`platform.linux_distribution()`. Please use :func:`distro.id`, 
+        :func:`distro.version` and :func:`distro.name` instead. 
+ 
+    Return information about the current OS distribution as a tuple 
+    ``(id_name, version, codename)`` with items as follows: 
+ 
+    * ``id_name``:  If *full_distribution_name* is false, the result of 
+      :func:`distro.id`. Otherwise, the result of :func:`distro.name`. 
+ 
+    * ``version``:  The result of :func:`distro.version`. 
+ 
+    * ``codename``:  The extra item (usually in parentheses) after the 
+      os-release version number, or the result of :func:`distro.codename`. 
+ 
+    The interface of this function is compatible with the original 
+    :py:func:`platform.linux_distribution` function, supporting a subset of 
+    its parameters. 
+ 
+    The data it returns may not exactly be the same, because it uses more data 
+    sources than the original function, and that may lead to different data if 
+    the OS distribution is not consistent across multiple data sources it 
+    provides (there are indeed such distributions ...). 
+ 
+    Another reason for differences is the fact that the :func:`distro.id` 
+    method normalizes the distro ID string to a reliable machine-readable value 
+    for a number of popular OS distributions. 
+    &quot;&quot;&quot;</span>
+    <span class="s1">warnings</span><span class="s4">.</span><span class="s1">warn</span><span class="s4">(</span>
+        <span class="s5">&quot;distro.linux_distribution() is deprecated. It should only be used as a &quot;</span>
+        <span class="s5">&quot;compatibility shim with Python's platform.linux_distribution(). Please use &quot;</span>
+        <span class="s5">&quot;distro.id(), distro.version() and distro.name() instead.&quot;</span><span class="s4">,</span>
+        <span class="s1">DeprecationWarning</span><span class="s4">,</span>
+        <span class="s1">stacklevel</span><span class="s4">=</span><span class="s6">2</span><span class="s4">,</span>
+    <span class="s4">)</span>
+    <span class="s3">return </span><span class="s1">_distro</span><span class="s4">.</span><span class="s1">linux_distribution</span><span class="s4">(</span><span class="s1">full_distribution_name</span><span class="s4">)</span>
+
+
+<span class="s3">def </span><span class="s1">id</span><span class="s4">() </span><span class="s1">-&gt; str</span><span class="s4">:</span>
+    <span class="s2">&quot;&quot;&quot; 
+    Return the distro ID of the current distribution, as a 
+    machine-readable string. 
+ 
+    For a number of OS distributions, the returned distro ID value is 
+    *reliable*, in the sense that it is documented and that it does not change 
+    across releases of the distribution. 
+ 
+    This package maintains the following reliable distro ID values: 
+ 
+    ==============  ========================================= 
+    Distro ID       Distribution 
+    ==============  ========================================= 
+    &quot;ubuntu&quot;        Ubuntu 
+    &quot;debian&quot;        Debian 
+    &quot;rhel&quot;          RedHat Enterprise Linux 
+    &quot;centos&quot;        CentOS 
+    &quot;fedora&quot;        Fedora 
+    &quot;sles&quot;          SUSE Linux Enterprise Server 
+    &quot;opensuse&quot;      openSUSE 
+    &quot;amzn&quot;          Amazon Linux 
+    &quot;arch&quot;          Arch Linux 
+    &quot;buildroot&quot;     Buildroot 
+    &quot;cloudlinux&quot;    CloudLinux OS 
+    &quot;exherbo&quot;       Exherbo Linux 
+    &quot;gentoo&quot;        GenToo Linux 
+    &quot;ibm_powerkvm&quot;  IBM PowerKVM 
+    &quot;kvmibm&quot;        KVM for IBM z Systems 
+    &quot;linuxmint&quot;     Linux Mint 
+    &quot;mageia&quot;        Mageia 
+    &quot;mandriva&quot;      Mandriva Linux 
+    &quot;parallels&quot;     Parallels 
+    &quot;pidora&quot;        Pidora 
+    &quot;raspbian&quot;      Raspbian 
+    &quot;oracle&quot;        Oracle Linux (and Oracle Enterprise Linux) 
+    &quot;scientific&quot;    Scientific Linux 
+    &quot;slackware&quot;     Slackware 
+    &quot;xenserver&quot;     XenServer 
+    &quot;openbsd&quot;       OpenBSD 
+    &quot;netbsd&quot;        NetBSD 
+    &quot;freebsd&quot;       FreeBSD 
+    &quot;midnightbsd&quot;   MidnightBSD 
+    &quot;rocky&quot;         Rocky Linux 
+    &quot;aix&quot;           AIX 
+    &quot;guix&quot;          Guix System 
+    ==============  ========================================= 
+ 
+    If you have a need to get distros for reliable IDs added into this set, 
+    or if you find that the :func:`distro.id` function returns a different 
+    distro ID for one of the listed distros, please create an issue in the 
+    `distro issue tracker`_. 
+ 
+    **Lookup hierarchy and transformations:** 
+ 
+    First, the ID is obtained from the following sources, in the specified 
+    order. The first available and non-empty value is used: 
+ 
+    * the value of the &quot;ID&quot; attribute of the os-release file, 
+ 
+    * the value of the &quot;Distributor ID&quot; attribute returned by the lsb_release 
+      command, 
+ 
+    * the first part of the file name of the distro release file, 
+ 
+    The so determined ID value then passes the following transformations, 
+    before it is returned by this method: 
+ 
+    * it is translated to lower case, 
+ 
+    * blanks (which should not be there anyway) are translated to underscores, 
+ 
+    * a normalization of the ID is performed, based upon 
+      `normalization tables`_. The purpose of this normalization is to ensure 
+      that the ID is as reliable as possible, even across incompatible changes 
+      in the OS distributions. A common reason for an incompatible change is 
+      the addition of an os-release file, or the addition of the lsb_release 
+      command, with ID values that differ from what was previously determined 
+      from the distro release file name. 
+    &quot;&quot;&quot;</span>
+    <span class="s3">return </span><span class="s1">_distro</span><span class="s4">.</span><span class="s1">id</span><span class="s4">()</span>
+
+
+<span class="s3">def </span><span class="s1">name</span><span class="s4">(</span><span class="s1">pretty</span><span class="s4">: </span><span class="s1">bool </span><span class="s4">= </span><span class="s3">False</span><span class="s4">) </span><span class="s1">-&gt; str</span><span class="s4">:</span>
+    <span class="s2">&quot;&quot;&quot; 
+    Return the name of the current OS distribution, as a human-readable 
+    string. 
+ 
+    If *pretty* is false, the name is returned without version or codename. 
+    (e.g. &quot;CentOS Linux&quot;) 
+ 
+    If *pretty* is true, the version and codename are appended. 
+    (e.g. &quot;CentOS Linux 7.1.1503 (Core)&quot;) 
+ 
+    **Lookup hierarchy:** 
+ 
+    The name is obtained from the following sources, in the specified order. 
+    The first available and non-empty value is used: 
+ 
+    * If *pretty* is false: 
+ 
+      - the value of the &quot;NAME&quot; attribute of the os-release file, 
+ 
+      - the value of the &quot;Distributor ID&quot; attribute returned by the lsb_release 
+        command, 
+ 
+      - the value of the &quot;&lt;name&gt;&quot; field of the distro release file. 
+ 
+    * If *pretty* is true: 
+ 
+      - the value of the &quot;PRETTY_NAME&quot; attribute of the os-release file, 
+ 
+      - the value of the &quot;Description&quot; attribute returned by the lsb_release 
+        command, 
+ 
+      - the value of the &quot;&lt;name&gt;&quot; field of the distro release file, appended 
+        with the value of the pretty version (&quot;&lt;version_id&gt;&quot; and &quot;&lt;codename&gt;&quot; 
+        fields) of the distro release file, if available. 
+    &quot;&quot;&quot;</span>
+    <span class="s3">return </span><span class="s1">_distro</span><span class="s4">.</span><span class="s1">name</span><span class="s4">(</span><span class="s1">pretty</span><span class="s4">)</span>
+
+
+<span class="s3">def </span><span class="s1">version</span><span class="s4">(</span><span class="s1">pretty</span><span class="s4">: </span><span class="s1">bool </span><span class="s4">= </span><span class="s3">False</span><span class="s4">, </span><span class="s1">best</span><span class="s4">: </span><span class="s1">bool </span><span class="s4">= </span><span class="s3">False</span><span class="s4">) </span><span class="s1">-&gt; str</span><span class="s4">:</span>
+    <span class="s2">&quot;&quot;&quot; 
+    Return the version of the current OS distribution, as a human-readable 
+    string. 
+ 
+    If *pretty* is false, the version is returned without codename (e.g. 
+    &quot;7.0&quot;). 
+ 
+    If *pretty* is true, the codename in parenthesis is appended, if the 
+    codename is non-empty (e.g. &quot;7.0 (Maipo)&quot;). 
+ 
+    Some distributions provide version numbers with different precisions in 
+    the different sources of distribution information. Examining the different 
+    sources in a fixed priority order does not always yield the most precise 
+    version (e.g. for Debian 8.2, or CentOS 7.1). 
+ 
+    Some other distributions may not provide this kind of information. In these 
+    cases, an empty string would be returned. This behavior can be observed 
+    with rolling releases distributions (e.g. Arch Linux). 
+ 
+    The *best* parameter can be used to control the approach for the returned 
+    version: 
+ 
+    If *best* is false, the first non-empty version number in priority order of 
+    the examined sources is returned. 
+ 
+    If *best* is true, the most precise version number out of all examined 
+    sources is returned. 
+ 
+    **Lookup hierarchy:** 
+ 
+    In all cases, the version number is obtained from the following sources. 
+    If *best* is false, this order represents the priority order: 
+ 
+    * the value of the &quot;VERSION_ID&quot; attribute of the os-release file, 
+    * the value of the &quot;Release&quot; attribute returned by the lsb_release 
+      command, 
+    * the version number parsed from the &quot;&lt;version_id&gt;&quot; field of the first line 
+      of the distro release file, 
+    * the version number parsed from the &quot;PRETTY_NAME&quot; attribute of the 
+      os-release file, if it follows the format of the distro release files. 
+    * the version number parsed from the &quot;Description&quot; attribute returned by 
+      the lsb_release command, if it follows the format of the distro release 
+      files. 
+    &quot;&quot;&quot;</span>
+    <span class="s3">return </span><span class="s1">_distro</span><span class="s4">.</span><span class="s1">version</span><span class="s4">(</span><span class="s1">pretty</span><span class="s4">, </span><span class="s1">best</span><span class="s4">)</span>
+
+
+<span class="s3">def </span><span class="s1">version_parts</span><span class="s4">(</span><span class="s1">best</span><span class="s4">: </span><span class="s1">bool </span><span class="s4">= </span><span class="s3">False</span><span class="s4">) </span><span class="s1">-&gt; Tuple</span><span class="s4">[</span><span class="s1">str</span><span class="s4">, </span><span class="s1">str</span><span class="s4">, </span><span class="s1">str</span><span class="s4">]:</span>
+    <span class="s2">&quot;&quot;&quot; 
+    Return the version of the current OS distribution as a tuple 
+    ``(major, minor, build_number)`` with items as follows: 
+ 
+    * ``major``:  The result of :func:`distro.major_version`. 
+ 
+    * ``minor``:  The result of :func:`distro.minor_version`. 
+ 
+    * ``build_number``:  The result of :func:`distro.build_number`. 
+ 
+    For a description of the *best* parameter, see the :func:`distro.version` 
+    method. 
+    &quot;&quot;&quot;</span>
+    <span class="s3">return </span><span class="s1">_distro</span><span class="s4">.</span><span class="s1">version_parts</span><span class="s4">(</span><span class="s1">best</span><span class="s4">)</span>
+
+
+<span class="s3">def </span><span class="s1">major_version</span><span class="s4">(</span><span class="s1">best</span><span class="s4">: </span><span class="s1">bool </span><span class="s4">= </span><span class="s3">False</span><span class="s4">) </span><span class="s1">-&gt; str</span><span class="s4">:</span>
+    <span class="s2">&quot;&quot;&quot; 
+    Return the major version of the current OS distribution, as a string, 
+    if provided. 
+    Otherwise, the empty string is returned. The major version is the first 
+    part of the dot-separated version string. 
+ 
+    For a description of the *best* parameter, see the :func:`distro.version` 
+    method. 
+    &quot;&quot;&quot;</span>
+    <span class="s3">return </span><span class="s1">_distro</span><span class="s4">.</span><span class="s1">major_version</span><span class="s4">(</span><span class="s1">best</span><span class="s4">)</span>
+
+
+<span class="s3">def </span><span class="s1">minor_version</span><span class="s4">(</span><span class="s1">best</span><span class="s4">: </span><span class="s1">bool </span><span class="s4">= </span><span class="s3">False</span><span class="s4">) </span><span class="s1">-&gt; str</span><span class="s4">:</span>
+    <span class="s2">&quot;&quot;&quot; 
+    Return the minor version of the current OS distribution, as a string, 
+    if provided. 
+    Otherwise, the empty string is returned. The minor version is the second 
+    part of the dot-separated version string. 
+ 
+    For a description of the *best* parameter, see the :func:`distro.version` 
+    method. 
+    &quot;&quot;&quot;</span>
+    <span class="s3">return </span><span class="s1">_distro</span><span class="s4">.</span><span class="s1">minor_version</span><span class="s4">(</span><span class="s1">best</span><span class="s4">)</span>
+
+
+<span class="s3">def </span><span class="s1">build_number</span><span class="s4">(</span><span class="s1">best</span><span class="s4">: </span><span class="s1">bool </span><span class="s4">= </span><span class="s3">False</span><span class="s4">) </span><span class="s1">-&gt; str</span><span class="s4">:</span>
+    <span class="s2">&quot;&quot;&quot; 
+    Return the build number of the current OS distribution, as a string, 
+    if provided. 
+    Otherwise, the empty string is returned. The build number is the third part 
+    of the dot-separated version string. 
+ 
+    For a description of the *best* parameter, see the :func:`distro.version` 
+    method. 
+    &quot;&quot;&quot;</span>
+    <span class="s3">return </span><span class="s1">_distro</span><span class="s4">.</span><span class="s1">build_number</span><span class="s4">(</span><span class="s1">best</span><span class="s4">)</span>
+
+
+<span class="s3">def </span><span class="s1">like</span><span class="s4">() </span><span class="s1">-&gt; str</span><span class="s4">:</span>
+    <span class="s2">&quot;&quot;&quot; 
+    Return a space-separated list of distro IDs of distributions that are 
+    closely related to the current OS distribution in regards to packaging 
+    and programming interfaces, for example distributions the current 
+    distribution is a derivative from. 
+ 
+    **Lookup hierarchy:** 
+ 
+    This information item is only provided by the os-release file. 
+    For details, see the description of the &quot;ID_LIKE&quot; attribute in the 
+    `os-release man page 
+    &lt;http://www.freedesktop.org/software/systemd/man/os-release.html&gt;`_. 
+    &quot;&quot;&quot;</span>
+    <span class="s3">return </span><span class="s1">_distro</span><span class="s4">.</span><span class="s1">like</span><span class="s4">()</span>
+
+
+<span class="s3">def </span><span class="s1">codename</span><span class="s4">() </span><span class="s1">-&gt; str</span><span class="s4">:</span>
+    <span class="s2">&quot;&quot;&quot; 
+    Return the codename for the release of the current OS distribution, 
+    as a string. 
+ 
+    If the distribution does not have a codename, an empty string is returned. 
+ 
+    Note that the returned codename is not always really a codename. For 
+    example, openSUSE returns &quot;x86_64&quot;. This function does not handle such 
+    cases in any special way and just returns the string it finds, if any. 
+ 
+    **Lookup hierarchy:** 
+ 
+    * the codename within the &quot;VERSION&quot; attribute of the os-release file, if 
+      provided, 
+ 
+    * the value of the &quot;Codename&quot; attribute returned by the lsb_release 
+      command, 
+ 
+    * the value of the &quot;&lt;codename&gt;&quot; field of the distro release file. 
+    &quot;&quot;&quot;</span>
+    <span class="s3">return </span><span class="s1">_distro</span><span class="s4">.</span><span class="s1">codename</span><span class="s4">()</span>
+
+
+<span class="s3">def </span><span class="s1">info</span><span class="s4">(</span><span class="s1">pretty</span><span class="s4">: </span><span class="s1">bool </span><span class="s4">= </span><span class="s3">False</span><span class="s4">, </span><span class="s1">best</span><span class="s4">: </span><span class="s1">bool </span><span class="s4">= </span><span class="s3">False</span><span class="s4">) </span><span class="s1">-&gt; InfoDict</span><span class="s4">:</span>
+    <span class="s2">&quot;&quot;&quot; 
+    Return certain machine-readable information items about the current OS 
+    distribution in a dictionary, as shown in the following example: 
+ 
+    .. sourcecode:: python 
+ 
+        { 
+            'id': 'rhel', 
+            'version': '7.0', 
+            'version_parts': { 
+                'major': '7', 
+                'minor': '0', 
+                'build_number': '' 
+            }, 
+            'like': 'fedora', 
+            'codename': 'Maipo' 
+        } 
+ 
+    The dictionary structure and keys are always the same, regardless of which 
+    information items are available in the underlying data sources. The values 
+    for the various keys are as follows: 
+ 
+    * ``id``:  The result of :func:`distro.id`. 
+ 
+    * ``version``:  The result of :func:`distro.version`. 
+ 
+    * ``version_parts -&gt; major``:  The result of :func:`distro.major_version`. 
+ 
+    * ``version_parts -&gt; minor``:  The result of :func:`distro.minor_version`. 
+ 
+    * ``version_parts -&gt; build_number``:  The result of 
+      :func:`distro.build_number`. 
+ 
+    * ``like``:  The result of :func:`distro.like`. 
+ 
+    * ``codename``:  The result of :func:`distro.codename`. 
+ 
+    For a description of the *pretty* and *best* parameters, see the 
+    :func:`distro.version` method. 
+    &quot;&quot;&quot;</span>
+    <span class="s3">return </span><span class="s1">_distro</span><span class="s4">.</span><span class="s1">info</span><span class="s4">(</span><span class="s1">pretty</span><span class="s4">, </span><span class="s1">best</span><span class="s4">)</span>
+
+
+<span class="s3">def </span><span class="s1">os_release_info</span><span class="s4">() </span><span class="s1">-&gt; Dict</span><span class="s4">[</span><span class="s1">str</span><span class="s4">, </span><span class="s1">str</span><span class="s4">]:</span>
+    <span class="s2">&quot;&quot;&quot; 
+    Return a dictionary containing key-value pairs for the information items 
+    from the os-release file data source of the current OS distribution. 
+ 
+    See `os-release file`_ for details about these information items. 
+    &quot;&quot;&quot;</span>
+    <span class="s3">return </span><span class="s1">_distro</span><span class="s4">.</span><span class="s1">os_release_info</span><span class="s4">()</span>
+
+
+<span class="s3">def </span><span class="s1">lsb_release_info</span><span class="s4">() </span><span class="s1">-&gt; Dict</span><span class="s4">[</span><span class="s1">str</span><span class="s4">, </span><span class="s1">str</span><span class="s4">]:</span>
+    <span class="s2">&quot;&quot;&quot; 
+    Return a dictionary containing key-value pairs for the information items 
+    from the lsb_release command data source of the current OS distribution. 
+ 
+    See `lsb_release command output`_ for details about these information 
+    items. 
+    &quot;&quot;&quot;</span>
+    <span class="s3">return </span><span class="s1">_distro</span><span class="s4">.</span><span class="s1">lsb_release_info</span><span class="s4">()</span>
+
+
+<span class="s3">def </span><span class="s1">distro_release_info</span><span class="s4">() </span><span class="s1">-&gt; Dict</span><span class="s4">[</span><span class="s1">str</span><span class="s4">, </span><span class="s1">str</span><span class="s4">]:</span>
+    <span class="s2">&quot;&quot;&quot; 
+    Return a dictionary containing key-value pairs for the information items 
+    from the distro release file data source of the current OS distribution. 
+ 
+    See `distro release file`_ for details about these information items. 
+    &quot;&quot;&quot;</span>
+    <span class="s3">return </span><span class="s1">_distro</span><span class="s4">.</span><span class="s1">distro_release_info</span><span class="s4">()</span>
+
+
+<span class="s3">def </span><span class="s1">uname_info</span><span class="s4">() </span><span class="s1">-&gt; Dict</span><span class="s4">[</span><span class="s1">str</span><span class="s4">, </span><span class="s1">str</span><span class="s4">]:</span>
+    <span class="s2">&quot;&quot;&quot; 
+    Return a dictionary containing key-value pairs for the information items 
+    from the distro release file data source of the current OS distribution. 
+    &quot;&quot;&quot;</span>
+    <span class="s3">return </span><span class="s1">_distro</span><span class="s4">.</span><span class="s1">uname_info</span><span class="s4">()</span>
+
+
+<span class="s3">def </span><span class="s1">os_release_attr</span><span class="s4">(</span><span class="s1">attribute</span><span class="s4">: </span><span class="s1">str</span><span class="s4">) </span><span class="s1">-&gt; str</span><span class="s4">:</span>
+    <span class="s2">&quot;&quot;&quot; 
+    Return a single named information item from the os-release file data source 
+    of the current OS distribution. 
+ 
+    Parameters: 
+ 
+    * ``attribute`` (string): Key of the information item. 
+ 
+    Returns: 
+ 
+    * (string): Value of the information item, if the item exists. 
+      The empty string, if the item does not exist. 
+ 
+    See `os-release file`_ for details about these information items. 
+    &quot;&quot;&quot;</span>
+    <span class="s3">return </span><span class="s1">_distro</span><span class="s4">.</span><span class="s1">os_release_attr</span><span class="s4">(</span><span class="s1">attribute</span><span class="s4">)</span>
+
+
+<span class="s3">def </span><span class="s1">lsb_release_attr</span><span class="s4">(</span><span class="s1">attribute</span><span class="s4">: </span><span class="s1">str</span><span class="s4">) </span><span class="s1">-&gt; str</span><span class="s4">:</span>
+    <span class="s2">&quot;&quot;&quot; 
+    Return a single named information item from the lsb_release command output 
+    data source of the current OS distribution. 
+ 
+    Parameters: 
+ 
+    * ``attribute`` (string): Key of the information item. 
+ 
+    Returns: 
+ 
+    * (string): Value of the information item, if the item exists. 
+      The empty string, if the item does not exist. 
+ 
+    See `lsb_release command output`_ for details about these information 
+    items. 
+    &quot;&quot;&quot;</span>
+    <span class="s3">return </span><span class="s1">_distro</span><span class="s4">.</span><span class="s1">lsb_release_attr</span><span class="s4">(</span><span class="s1">attribute</span><span class="s4">)</span>
+
+
+<span class="s3">def </span><span class="s1">distro_release_attr</span><span class="s4">(</span><span class="s1">attribute</span><span class="s4">: </span><span class="s1">str</span><span class="s4">) </span><span class="s1">-&gt; str</span><span class="s4">:</span>
+    <span class="s2">&quot;&quot;&quot; 
+    Return a single named information item from the distro release file 
+    data source of the current OS distribution. 
+ 
+    Parameters: 
+ 
+    * ``attribute`` (string): Key of the information item. 
+ 
+    Returns: 
+ 
+    * (string): Value of the information item, if the item exists. 
+      The empty string, if the item does not exist. 
+ 
+    See `distro release file`_ for details about these information items. 
+    &quot;&quot;&quot;</span>
+    <span class="s3">return </span><span class="s1">_distro</span><span class="s4">.</span><span class="s1">distro_release_attr</span><span class="s4">(</span><span class="s1">attribute</span><span class="s4">)</span>
+
+
+<span class="s3">def </span><span class="s1">uname_attr</span><span class="s4">(</span><span class="s1">attribute</span><span class="s4">: </span><span class="s1">str</span><span class="s4">) </span><span class="s1">-&gt; str</span><span class="s4">:</span>
+    <span class="s2">&quot;&quot;&quot; 
+    Return a single named information item from the distro release file 
+    data source of the current OS distribution. 
+ 
+    Parameters: 
+ 
+    * ``attribute`` (string): Key of the information item. 
+ 
+    Returns: 
+ 
+    * (string): Value of the information item, if the item exists. 
+                The empty string, if the item does not exist. 
+    &quot;&quot;&quot;</span>
+    <span class="s3">return </span><span class="s1">_distro</span><span class="s4">.</span><span class="s1">uname_attr</span><span class="s4">(</span><span class="s1">attribute</span><span class="s4">)</span>
+
+
+<span class="s3">try</span><span class="s4">:</span>
+    <span class="s3">from </span><span class="s1">functools </span><span class="s3">import </span><span class="s1">cached_property</span>
+<span class="s3">except </span><span class="s1">ImportError</span><span class="s4">:</span>
+    <span class="s0"># Python &lt; 3.8</span>
+    <span class="s3">class </span><span class="s1">cached_property</span><span class="s4">:  </span><span class="s0"># type: ignore</span>
+        <span class="s2">&quot;&quot;&quot;A version of @property which caches the value.  On access, it calls the 
+        underlying function and sets the value in `__dict__` so future accesses 
+        will not re-call the property. 
+        &quot;&quot;&quot;</span>
+
+        <span class="s3">def </span><span class="s1">__init__</span><span class="s4">(</span><span class="s1">self</span><span class="s4">, </span><span class="s1">f</span><span class="s4">: </span><span class="s1">Callable</span><span class="s4">[[</span><span class="s1">Any</span><span class="s4">], </span><span class="s1">Any</span><span class="s4">]) </span><span class="s1">-&gt; </span><span class="s3">None</span><span class="s4">:</span>
+            <span class="s1">self</span><span class="s4">.</span><span class="s1">_fname </span><span class="s4">= </span><span class="s1">f</span><span class="s4">.</span><span class="s1">__name__</span>
+            <span class="s1">self</span><span class="s4">.</span><span class="s1">_f </span><span class="s4">= </span><span class="s1">f</span>
+
+        <span class="s3">def </span><span class="s1">__get__</span><span class="s4">(</span><span class="s1">self</span><span class="s4">, </span><span class="s1">obj</span><span class="s4">: </span><span class="s1">Any</span><span class="s4">, </span><span class="s1">owner</span><span class="s4">: </span><span class="s1">Type</span><span class="s4">[</span><span class="s1">Any</span><span class="s4">]) </span><span class="s1">-&gt; Any</span><span class="s4">:</span>
+            <span class="s3">assert </span><span class="s1">obj </span><span class="s3">is not None</span><span class="s4">, </span><span class="s5">f&quot;call </span><span class="s3">{</span><span class="s1">self</span><span class="s4">.</span><span class="s1">_fname</span><span class="s3">} </span><span class="s5">on an instance&quot;</span>
+            <span class="s1">ret </span><span class="s4">= </span><span class="s1">obj</span><span class="s4">.</span><span class="s1">__dict__</span><span class="s4">[</span><span class="s1">self</span><span class="s4">.</span><span class="s1">_fname</span><span class="s4">] = </span><span class="s1">self</span><span class="s4">.</span><span class="s1">_f</span><span class="s4">(</span><span class="s1">obj</span><span class="s4">)</span>
+            <span class="s3">return </span><span class="s1">ret</span>
+
+
+<span class="s3">class </span><span class="s1">LinuxDistribution</span><span class="s4">:</span>
+    <span class="s2">&quot;&quot;&quot; 
+    Provides information about a OS distribution. 
+ 
+    This package creates a private module-global instance of this class with 
+    default initialization arguments, that is used by the 
+    `consolidated accessor functions`_ and `single source accessor functions`_. 
+    By using default initialization arguments, that module-global instance 
+    returns data about the current OS distribution (i.e. the distro this 
+    package runs on). 
+ 
+    Normally, it is not necessary to create additional instances of this class. 
+    However, in situations where control is needed over the exact data sources 
+    that are used, instances of this class can be created with a specific 
+    distro release file, or a specific os-release file, or without invoking the 
+    lsb_release command. 
+    &quot;&quot;&quot;</span>
+
+    <span class="s3">def </span><span class="s1">__init__</span><span class="s4">(</span>
+        <span class="s1">self</span><span class="s4">,</span>
+        <span class="s1">include_lsb</span><span class="s4">: </span><span class="s1">Optional</span><span class="s4">[</span><span class="s1">bool</span><span class="s4">] = </span><span class="s3">None</span><span class="s4">,</span>
+        <span class="s1">os_release_file</span><span class="s4">: </span><span class="s1">str </span><span class="s4">= </span><span class="s5">&quot;&quot;</span><span class="s4">,</span>
+        <span class="s1">distro_release_file</span><span class="s4">: </span><span class="s1">str </span><span class="s4">= </span><span class="s5">&quot;&quot;</span><span class="s4">,</span>
+        <span class="s1">include_uname</span><span class="s4">: </span><span class="s1">Optional</span><span class="s4">[</span><span class="s1">bool</span><span class="s4">] = </span><span class="s3">None</span><span class="s4">,</span>
+        <span class="s1">root_dir</span><span class="s4">: </span><span class="s1">Optional</span><span class="s4">[</span><span class="s1">str</span><span class="s4">] = </span><span class="s3">None</span><span class="s4">,</span>
+        <span class="s1">include_oslevel</span><span class="s4">: </span><span class="s1">Optional</span><span class="s4">[</span><span class="s1">bool</span><span class="s4">] = </span><span class="s3">None</span><span class="s4">,</span>
+    <span class="s4">) </span><span class="s1">-&gt; </span><span class="s3">None</span><span class="s4">:</span>
+        <span class="s2">&quot;&quot;&quot; 
+        The initialization method of this class gathers information from the 
+        available data sources, and stores that in private instance attributes. 
+        Subsequent access to the information items uses these private instance 
+        attributes, so that the data sources are read only once. 
+ 
+        Parameters: 
+ 
+        * ``include_lsb`` (bool): Controls whether the 
+          `lsb_release command output`_ is included as a data source. 
+ 
+          If the lsb_release command is not available in the program execution 
+          path, the data source for the lsb_release command will be empty. 
+ 
+        * ``os_release_file`` (string): The path name of the 
+          `os-release file`_ that is to be used as a data source. 
+ 
+          An empty string (the default) will cause the default path name to 
+          be used (see `os-release file`_ for details). 
+ 
+          If the specified or defaulted os-release file does not exist, the 
+          data source for the os-release file will be empty. 
+ 
+        * ``distro_release_file`` (string): The path name of the 
+          `distro release file`_ that is to be used as a data source. 
+ 
+          An empty string (the default) will cause a default search algorithm 
+          to be used (see `distro release file`_ for details). 
+ 
+          If the specified distro release file does not exist, or if no default 
+          distro release file can be found, the data source for the distro 
+          release file will be empty. 
+ 
+        * ``include_uname`` (bool): Controls whether uname command output is 
+          included as a data source. If the uname command is not available in 
+          the program execution path the data source for the uname command will 
+          be empty. 
+ 
+        * ``root_dir`` (string): The absolute path to the root directory to use 
+          to find distro-related information files. Note that ``include_*`` 
+          parameters must not be enabled in combination with ``root_dir``. 
+ 
+        * ``include_oslevel`` (bool): Controls whether (AIX) oslevel command 
+          output is included as a data source. If the oslevel command is not 
+          available in the program execution path the data source will be 
+          empty. 
+ 
+        Public instance attributes: 
+ 
+        * ``os_release_file`` (string): The path name of the 
+          `os-release file`_ that is actually used as a data source. The 
+          empty string if no distro release file is used as a data source. 
+ 
+        * ``distro_release_file`` (string): The path name of the 
+          `distro release file`_ that is actually used as a data source. The 
+          empty string if no distro release file is used as a data source. 
+ 
+        * ``include_lsb`` (bool): The result of the ``include_lsb`` parameter. 
+          This controls whether the lsb information will be loaded. 
+ 
+        * ``include_uname`` (bool): The result of the ``include_uname`` 
+          parameter. This controls whether the uname information will 
+          be loaded. 
+ 
+        * ``include_oslevel`` (bool): The result of the ``include_oslevel`` 
+          parameter. This controls whether (AIX) oslevel information will be 
+          loaded. 
+ 
+        * ``root_dir`` (string): The result of the ``root_dir`` parameter. 
+          The absolute path to the root directory to use to find distro-related 
+          information files. 
+ 
+        Raises: 
+ 
+        * :py:exc:`ValueError`: Initialization parameters combination is not 
+           supported. 
+ 
+        * :py:exc:`OSError`: Some I/O issue with an os-release file or distro 
+          release file. 
+ 
+        * :py:exc:`UnicodeError`: A data source has unexpected characters or 
+          uses an unexpected encoding. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">self</span><span class="s4">.</span><span class="s1">root_dir </span><span class="s4">= </span><span class="s1">root_dir</span>
+        <span class="s1">self</span><span class="s4">.</span><span class="s1">etc_dir </span><span class="s4">= </span><span class="s1">os</span><span class="s4">.</span><span class="s1">path</span><span class="s4">.</span><span class="s1">join</span><span class="s4">(</span><span class="s1">root_dir</span><span class="s4">, </span><span class="s5">&quot;etc&quot;</span><span class="s4">) </span><span class="s3">if </span><span class="s1">root_dir </span><span class="s3">else </span><span class="s1">_UNIXCONFDIR</span>
+        <span class="s1">self</span><span class="s4">.</span><span class="s1">usr_lib_dir </span><span class="s4">= (</span>
+            <span class="s1">os</span><span class="s4">.</span><span class="s1">path</span><span class="s4">.</span><span class="s1">join</span><span class="s4">(</span><span class="s1">root_dir</span><span class="s4">, </span><span class="s5">&quot;usr/lib&quot;</span><span class="s4">) </span><span class="s3">if </span><span class="s1">root_dir </span><span class="s3">else </span><span class="s1">_UNIXUSRLIBDIR</span>
+        <span class="s4">)</span>
+
+        <span class="s3">if </span><span class="s1">os_release_file</span><span class="s4">:</span>
+            <span class="s1">self</span><span class="s4">.</span><span class="s1">os_release_file </span><span class="s4">= </span><span class="s1">os_release_file</span>
+        <span class="s3">else</span><span class="s4">:</span>
+            <span class="s1">etc_dir_os_release_file </span><span class="s4">= </span><span class="s1">os</span><span class="s4">.</span><span class="s1">path</span><span class="s4">.</span><span class="s1">join</span><span class="s4">(</span><span class="s1">self</span><span class="s4">.</span><span class="s1">etc_dir</span><span class="s4">, </span><span class="s1">_OS_RELEASE_BASENAME</span><span class="s4">)</span>
+            <span class="s1">usr_lib_os_release_file </span><span class="s4">= </span><span class="s1">os</span><span class="s4">.</span><span class="s1">path</span><span class="s4">.</span><span class="s1">join</span><span class="s4">(</span>
+                <span class="s1">self</span><span class="s4">.</span><span class="s1">usr_lib_dir</span><span class="s4">, </span><span class="s1">_OS_RELEASE_BASENAME</span>
+            <span class="s4">)</span>
+
+            <span class="s0"># NOTE: The idea is to respect order **and** have it set</span>
+            <span class="s0">#       at all times for API backwards compatibility.</span>
+            <span class="s3">if </span><span class="s1">os</span><span class="s4">.</span><span class="s1">path</span><span class="s4">.</span><span class="s1">isfile</span><span class="s4">(</span><span class="s1">etc_dir_os_release_file</span><span class="s4">) </span><span class="s3">or not </span><span class="s1">os</span><span class="s4">.</span><span class="s1">path</span><span class="s4">.</span><span class="s1">isfile</span><span class="s4">(</span>
+                <span class="s1">usr_lib_os_release_file</span>
+            <span class="s4">):</span>
+                <span class="s1">self</span><span class="s4">.</span><span class="s1">os_release_file </span><span class="s4">= </span><span class="s1">etc_dir_os_release_file</span>
+            <span class="s3">else</span><span class="s4">:</span>
+                <span class="s1">self</span><span class="s4">.</span><span class="s1">os_release_file </span><span class="s4">= </span><span class="s1">usr_lib_os_release_file</span>
+
+        <span class="s1">self</span><span class="s4">.</span><span class="s1">distro_release_file </span><span class="s4">= </span><span class="s1">distro_release_file </span><span class="s3">or </span><span class="s5">&quot;&quot;  </span><span class="s0"># updated later</span>
+
+        <span class="s1">is_root_dir_defined </span><span class="s4">= </span><span class="s1">root_dir </span><span class="s3">is not None</span>
+        <span class="s3">if </span><span class="s1">is_root_dir_defined </span><span class="s3">and </span><span class="s4">(</span><span class="s1">include_lsb </span><span class="s3">or </span><span class="s1">include_uname </span><span class="s3">or </span><span class="s1">include_oslevel</span><span class="s4">):</span>
+            <span class="s3">raise </span><span class="s1">ValueError</span><span class="s4">(</span>
+                <span class="s5">&quot;Including subprocess data sources from specific root_dir is disallowed&quot;</span>
+                <span class="s5">&quot; to prevent false information&quot;</span>
+            <span class="s4">)</span>
+        <span class="s1">self</span><span class="s4">.</span><span class="s1">include_lsb </span><span class="s4">= (</span>
+            <span class="s1">include_lsb </span><span class="s3">if </span><span class="s1">include_lsb </span><span class="s3">is not None else not </span><span class="s1">is_root_dir_defined</span>
+        <span class="s4">)</span>
+        <span class="s1">self</span><span class="s4">.</span><span class="s1">include_uname </span><span class="s4">= (</span>
+            <span class="s1">include_uname </span><span class="s3">if </span><span class="s1">include_uname </span><span class="s3">is not None else not </span><span class="s1">is_root_dir_defined</span>
+        <span class="s4">)</span>
+        <span class="s1">self</span><span class="s4">.</span><span class="s1">include_oslevel </span><span class="s4">= (</span>
+            <span class="s1">include_oslevel </span><span class="s3">if </span><span class="s1">include_oslevel </span><span class="s3">is not None else not </span><span class="s1">is_root_dir_defined</span>
+        <span class="s4">)</span>
+
+    <span class="s3">def </span><span class="s1">__repr__</span><span class="s4">(</span><span class="s1">self</span><span class="s4">) </span><span class="s1">-&gt; str</span><span class="s4">:</span>
+        <span class="s2">&quot;&quot;&quot;Return repr of all info&quot;&quot;&quot;</span>
+        <span class="s3">return </span><span class="s4">(</span>
+            <span class="s5">&quot;LinuxDistribution(&quot;</span>
+            <span class="s5">&quot;os_release_file={self.os_release_file!r}, &quot;</span>
+            <span class="s5">&quot;distro_release_file={self.distro_release_file!r}, &quot;</span>
+            <span class="s5">&quot;include_lsb={self.include_lsb!r}, &quot;</span>
+            <span class="s5">&quot;include_uname={self.include_uname!r}, &quot;</span>
+            <span class="s5">&quot;include_oslevel={self.include_oslevel!r}, &quot;</span>
+            <span class="s5">&quot;root_dir={self.root_dir!r}, &quot;</span>
+            <span class="s5">&quot;_os_release_info={self._os_release_info!r}, &quot;</span>
+            <span class="s5">&quot;_lsb_release_info={self._lsb_release_info!r}, &quot;</span>
+            <span class="s5">&quot;_distro_release_info={self._distro_release_info!r}, &quot;</span>
+            <span class="s5">&quot;_uname_info={self._uname_info!r}, &quot;</span>
+            <span class="s5">&quot;_oslevel_info={self._oslevel_info!r})&quot;</span><span class="s4">.</span><span class="s1">format</span><span class="s4">(</span><span class="s1">self</span><span class="s4">=</span><span class="s1">self</span><span class="s4">)</span>
+        <span class="s4">)</span>
+
+    <span class="s3">def </span><span class="s1">linux_distribution</span><span class="s4">(</span>
+        <span class="s1">self</span><span class="s4">, </span><span class="s1">full_distribution_name</span><span class="s4">: </span><span class="s1">bool </span><span class="s4">= </span><span class="s3">True</span>
+    <span class="s4">) </span><span class="s1">-&gt; Tuple</span><span class="s4">[</span><span class="s1">str</span><span class="s4">, </span><span class="s1">str</span><span class="s4">, </span><span class="s1">str</span><span class="s4">]:</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Return information about the OS distribution that is compatible 
+        with Python's :func:`platform.linux_distribution`, supporting a subset 
+        of its parameters. 
+ 
+        For details, see :func:`distro.linux_distribution`. 
+        &quot;&quot;&quot;</span>
+        <span class="s3">return </span><span class="s4">(</span>
+            <span class="s1">self</span><span class="s4">.</span><span class="s1">name</span><span class="s4">() </span><span class="s3">if </span><span class="s1">full_distribution_name </span><span class="s3">else </span><span class="s1">self</span><span class="s4">.</span><span class="s1">id</span><span class="s4">(),</span>
+            <span class="s1">self</span><span class="s4">.</span><span class="s1">version</span><span class="s4">(),</span>
+            <span class="s1">self</span><span class="s4">.</span><span class="s1">_os_release_info</span><span class="s4">.</span><span class="s1">get</span><span class="s4">(</span><span class="s5">&quot;release_codename&quot;</span><span class="s4">) </span><span class="s3">or </span><span class="s1">self</span><span class="s4">.</span><span class="s1">codename</span><span class="s4">(),</span>
+        <span class="s4">)</span>
+
+    <span class="s3">def </span><span class="s1">id</span><span class="s4">(</span><span class="s1">self</span><span class="s4">) </span><span class="s1">-&gt; str</span><span class="s4">:</span>
+        <span class="s2">&quot;&quot;&quot;Return the distro ID of the OS distribution, as a string. 
+ 
+        For details, see :func:`distro.id`. 
+        &quot;&quot;&quot;</span>
+
+        <span class="s3">def </span><span class="s1">normalize</span><span class="s4">(</span><span class="s1">distro_id</span><span class="s4">: </span><span class="s1">str</span><span class="s4">, </span><span class="s1">table</span><span class="s4">: </span><span class="s1">Dict</span><span class="s4">[</span><span class="s1">str</span><span class="s4">, </span><span class="s1">str</span><span class="s4">]) </span><span class="s1">-&gt; str</span><span class="s4">:</span>
+            <span class="s1">distro_id </span><span class="s4">= </span><span class="s1">distro_id</span><span class="s4">.</span><span class="s1">lower</span><span class="s4">().</span><span class="s1">replace</span><span class="s4">(</span><span class="s5">&quot; &quot;</span><span class="s4">, </span><span class="s5">&quot;_&quot;</span><span class="s4">)</span>
+            <span class="s3">return </span><span class="s1">table</span><span class="s4">.</span><span class="s1">get</span><span class="s4">(</span><span class="s1">distro_id</span><span class="s4">, </span><span class="s1">distro_id</span><span class="s4">)</span>
+
+        <span class="s1">distro_id </span><span class="s4">= </span><span class="s1">self</span><span class="s4">.</span><span class="s1">os_release_attr</span><span class="s4">(</span><span class="s5">&quot;id&quot;</span><span class="s4">)</span>
+        <span class="s3">if </span><span class="s1">distro_id</span><span class="s4">:</span>
+            <span class="s3">return </span><span class="s1">normalize</span><span class="s4">(</span><span class="s1">distro_id</span><span class="s4">, </span><span class="s1">NORMALIZED_OS_ID</span><span class="s4">)</span>
+
+        <span class="s1">distro_id </span><span class="s4">= </span><span class="s1">self</span><span class="s4">.</span><span class="s1">lsb_release_attr</span><span class="s4">(</span><span class="s5">&quot;distributor_id&quot;</span><span class="s4">)</span>
+        <span class="s3">if </span><span class="s1">distro_id</span><span class="s4">:</span>
+            <span class="s3">return </span><span class="s1">normalize</span><span class="s4">(</span><span class="s1">distro_id</span><span class="s4">, </span><span class="s1">NORMALIZED_LSB_ID</span><span class="s4">)</span>
+
+        <span class="s1">distro_id </span><span class="s4">= </span><span class="s1">self</span><span class="s4">.</span><span class="s1">distro_release_attr</span><span class="s4">(</span><span class="s5">&quot;id&quot;</span><span class="s4">)</span>
+        <span class="s3">if </span><span class="s1">distro_id</span><span class="s4">:</span>
+            <span class="s3">return </span><span class="s1">normalize</span><span class="s4">(</span><span class="s1">distro_id</span><span class="s4">, </span><span class="s1">NORMALIZED_DISTRO_ID</span><span class="s4">)</span>
+
+        <span class="s1">distro_id </span><span class="s4">= </span><span class="s1">self</span><span class="s4">.</span><span class="s1">uname_attr</span><span class="s4">(</span><span class="s5">&quot;id&quot;</span><span class="s4">)</span>
+        <span class="s3">if </span><span class="s1">distro_id</span><span class="s4">:</span>
+            <span class="s3">return </span><span class="s1">normalize</span><span class="s4">(</span><span class="s1">distro_id</span><span class="s4">, </span><span class="s1">NORMALIZED_DISTRO_ID</span><span class="s4">)</span>
+
+        <span class="s3">return </span><span class="s5">&quot;&quot;</span>
+
+    <span class="s3">def </span><span class="s1">name</span><span class="s4">(</span><span class="s1">self</span><span class="s4">, </span><span class="s1">pretty</span><span class="s4">: </span><span class="s1">bool </span><span class="s4">= </span><span class="s3">False</span><span class="s4">) </span><span class="s1">-&gt; str</span><span class="s4">:</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Return the name of the OS distribution, as a string. 
+ 
+        For details, see :func:`distro.name`. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">name </span><span class="s4">= (</span>
+            <span class="s1">self</span><span class="s4">.</span><span class="s1">os_release_attr</span><span class="s4">(</span><span class="s5">&quot;name&quot;</span><span class="s4">)</span>
+            <span class="s3">or </span><span class="s1">self</span><span class="s4">.</span><span class="s1">lsb_release_attr</span><span class="s4">(</span><span class="s5">&quot;distributor_id&quot;</span><span class="s4">)</span>
+            <span class="s3">or </span><span class="s1">self</span><span class="s4">.</span><span class="s1">distro_release_attr</span><span class="s4">(</span><span class="s5">&quot;name&quot;</span><span class="s4">)</span>
+            <span class="s3">or </span><span class="s1">self</span><span class="s4">.</span><span class="s1">uname_attr</span><span class="s4">(</span><span class="s5">&quot;name&quot;</span><span class="s4">)</span>
+        <span class="s4">)</span>
+        <span class="s3">if </span><span class="s1">pretty</span><span class="s4">:</span>
+            <span class="s1">name </span><span class="s4">= </span><span class="s1">self</span><span class="s4">.</span><span class="s1">os_release_attr</span><span class="s4">(</span><span class="s5">&quot;pretty_name&quot;</span><span class="s4">) </span><span class="s3">or </span><span class="s1">self</span><span class="s4">.</span><span class="s1">lsb_release_attr</span><span class="s4">(</span>
+                <span class="s5">&quot;description&quot;</span>
+            <span class="s4">)</span>
+            <span class="s3">if not </span><span class="s1">name</span><span class="s4">:</span>
+                <span class="s1">name </span><span class="s4">= </span><span class="s1">self</span><span class="s4">.</span><span class="s1">distro_release_attr</span><span class="s4">(</span><span class="s5">&quot;name&quot;</span><span class="s4">) </span><span class="s3">or </span><span class="s1">self</span><span class="s4">.</span><span class="s1">uname_attr</span><span class="s4">(</span><span class="s5">&quot;name&quot;</span><span class="s4">)</span>
+                <span class="s1">version </span><span class="s4">= </span><span class="s1">self</span><span class="s4">.</span><span class="s1">version</span><span class="s4">(</span><span class="s1">pretty</span><span class="s4">=</span><span class="s3">True</span><span class="s4">)</span>
+                <span class="s3">if </span><span class="s1">version</span><span class="s4">:</span>
+                    <span class="s1">name </span><span class="s4">= </span><span class="s5">f&quot;</span><span class="s3">{</span><span class="s1">name</span><span class="s3">} {</span><span class="s1">version</span><span class="s3">}</span><span class="s5">&quot;</span>
+        <span class="s3">return </span><span class="s1">name </span><span class="s3">or </span><span class="s5">&quot;&quot;</span>
+
+    <span class="s3">def </span><span class="s1">version</span><span class="s4">(</span><span class="s1">self</span><span class="s4">, </span><span class="s1">pretty</span><span class="s4">: </span><span class="s1">bool </span><span class="s4">= </span><span class="s3">False</span><span class="s4">, </span><span class="s1">best</span><span class="s4">: </span><span class="s1">bool </span><span class="s4">= </span><span class="s3">False</span><span class="s4">) </span><span class="s1">-&gt; str</span><span class="s4">:</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Return the version of the OS distribution, as a string. 
+ 
+        For details, see :func:`distro.version`. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">versions </span><span class="s4">= [</span>
+            <span class="s1">self</span><span class="s4">.</span><span class="s1">os_release_attr</span><span class="s4">(</span><span class="s5">&quot;version_id&quot;</span><span class="s4">),</span>
+            <span class="s1">self</span><span class="s4">.</span><span class="s1">lsb_release_attr</span><span class="s4">(</span><span class="s5">&quot;release&quot;</span><span class="s4">),</span>
+            <span class="s1">self</span><span class="s4">.</span><span class="s1">distro_release_attr</span><span class="s4">(</span><span class="s5">&quot;version_id&quot;</span><span class="s4">),</span>
+            <span class="s1">self</span><span class="s4">.</span><span class="s1">_parse_distro_release_content</span><span class="s4">(</span><span class="s1">self</span><span class="s4">.</span><span class="s1">os_release_attr</span><span class="s4">(</span><span class="s5">&quot;pretty_name&quot;</span><span class="s4">)).</span><span class="s1">get</span><span class="s4">(</span>
+                <span class="s5">&quot;version_id&quot;</span><span class="s4">, </span><span class="s5">&quot;&quot;</span>
+            <span class="s4">),</span>
+            <span class="s1">self</span><span class="s4">.</span><span class="s1">_parse_distro_release_content</span><span class="s4">(</span>
+                <span class="s1">self</span><span class="s4">.</span><span class="s1">lsb_release_attr</span><span class="s4">(</span><span class="s5">&quot;description&quot;</span><span class="s4">)</span>
+            <span class="s4">).</span><span class="s1">get</span><span class="s4">(</span><span class="s5">&quot;version_id&quot;</span><span class="s4">, </span><span class="s5">&quot;&quot;</span><span class="s4">),</span>
+            <span class="s1">self</span><span class="s4">.</span><span class="s1">uname_attr</span><span class="s4">(</span><span class="s5">&quot;release&quot;</span><span class="s4">),</span>
+        <span class="s4">]</span>
+        <span class="s3">if </span><span class="s1">self</span><span class="s4">.</span><span class="s1">uname_attr</span><span class="s4">(</span><span class="s5">&quot;id&quot;</span><span class="s4">).</span><span class="s1">startswith</span><span class="s4">(</span><span class="s5">&quot;aix&quot;</span><span class="s4">):</span>
+            <span class="s0"># On AIX platforms, prefer oslevel command output.</span>
+            <span class="s1">versions</span><span class="s4">.</span><span class="s1">insert</span><span class="s4">(</span><span class="s6">0</span><span class="s4">, </span><span class="s1">self</span><span class="s4">.</span><span class="s1">oslevel_info</span><span class="s4">())</span>
+        <span class="s3">elif </span><span class="s1">self</span><span class="s4">.</span><span class="s1">id</span><span class="s4">() == </span><span class="s5">&quot;debian&quot; </span><span class="s3">or </span><span class="s5">&quot;debian&quot; </span><span class="s3">in </span><span class="s1">self</span><span class="s4">.</span><span class="s1">like</span><span class="s4">().</span><span class="s1">split</span><span class="s4">():</span>
+            <span class="s0"># On Debian-like, add debian_version file content to candidates list.</span>
+            <span class="s1">versions</span><span class="s4">.</span><span class="s1">append</span><span class="s4">(</span><span class="s1">self</span><span class="s4">.</span><span class="s1">_debian_version</span><span class="s4">)</span>
+        <span class="s1">version </span><span class="s4">= </span><span class="s5">&quot;&quot;</span>
+        <span class="s3">if </span><span class="s1">best</span><span class="s4">:</span>
+            <span class="s0"># This algorithm uses the last version in priority order that has</span>
+            <span class="s0"># the best precision. If the versions are not in conflict, that</span>
+            <span class="s0"># does not matter; otherwise, using the last one instead of the</span>
+            <span class="s0"># first one might be considered a surprise.</span>
+            <span class="s3">for </span><span class="s1">v </span><span class="s3">in </span><span class="s1">versions</span><span class="s4">:</span>
+                <span class="s3">if </span><span class="s1">v</span><span class="s4">.</span><span class="s1">count</span><span class="s4">(</span><span class="s5">&quot;.&quot;</span><span class="s4">) &gt; </span><span class="s1">version</span><span class="s4">.</span><span class="s1">count</span><span class="s4">(</span><span class="s5">&quot;.&quot;</span><span class="s4">) </span><span class="s3">or </span><span class="s1">version </span><span class="s4">== </span><span class="s5">&quot;&quot;</span><span class="s4">:</span>
+                    <span class="s1">version </span><span class="s4">= </span><span class="s1">v</span>
+        <span class="s3">else</span><span class="s4">:</span>
+            <span class="s3">for </span><span class="s1">v </span><span class="s3">in </span><span class="s1">versions</span><span class="s4">:</span>
+                <span class="s3">if </span><span class="s1">v </span><span class="s4">!= </span><span class="s5">&quot;&quot;</span><span class="s4">:</span>
+                    <span class="s1">version </span><span class="s4">= </span><span class="s1">v</span>
+                    <span class="s3">break</span>
+        <span class="s3">if </span><span class="s1">pretty </span><span class="s3">and </span><span class="s1">version </span><span class="s3">and </span><span class="s1">self</span><span class="s4">.</span><span class="s1">codename</span><span class="s4">():</span>
+            <span class="s1">version </span><span class="s4">= </span><span class="s5">f&quot;</span><span class="s3">{</span><span class="s1">version</span><span class="s3">} </span><span class="s5">(</span><span class="s3">{</span><span class="s1">self</span><span class="s4">.</span><span class="s1">codename</span><span class="s4">()</span><span class="s3">}</span><span class="s5">)&quot;</span>
+        <span class="s3">return </span><span class="s1">version</span>
+
+    <span class="s3">def </span><span class="s1">version_parts</span><span class="s4">(</span><span class="s1">self</span><span class="s4">, </span><span class="s1">best</span><span class="s4">: </span><span class="s1">bool </span><span class="s4">= </span><span class="s3">False</span><span class="s4">) </span><span class="s1">-&gt; Tuple</span><span class="s4">[</span><span class="s1">str</span><span class="s4">, </span><span class="s1">str</span><span class="s4">, </span><span class="s1">str</span><span class="s4">]:</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Return the version of the OS distribution, as a tuple of version 
+        numbers. 
+ 
+        For details, see :func:`distro.version_parts`. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">version_str </span><span class="s4">= </span><span class="s1">self</span><span class="s4">.</span><span class="s1">version</span><span class="s4">(</span><span class="s1">best</span><span class="s4">=</span><span class="s1">best</span><span class="s4">)</span>
+        <span class="s3">if </span><span class="s1">version_str</span><span class="s4">:</span>
+            <span class="s1">version_regex </span><span class="s4">= </span><span class="s1">re</span><span class="s4">.</span><span class="s1">compile</span><span class="s4">(</span><span class="s5">r&quot;(\d+)\.?(\d+)?\.?(\d+)?&quot;</span><span class="s4">)</span>
+            <span class="s1">matches </span><span class="s4">= </span><span class="s1">version_regex</span><span class="s4">.</span><span class="s1">match</span><span class="s4">(</span><span class="s1">version_str</span><span class="s4">)</span>
+            <span class="s3">if </span><span class="s1">matches</span><span class="s4">:</span>
+                <span class="s1">major</span><span class="s4">, </span><span class="s1">minor</span><span class="s4">, </span><span class="s1">build_number </span><span class="s4">= </span><span class="s1">matches</span><span class="s4">.</span><span class="s1">groups</span><span class="s4">()</span>
+                <span class="s3">return </span><span class="s1">major</span><span class="s4">, </span><span class="s1">minor </span><span class="s3">or </span><span class="s5">&quot;&quot;</span><span class="s4">, </span><span class="s1">build_number </span><span class="s3">or </span><span class="s5">&quot;&quot;</span>
+        <span class="s3">return </span><span class="s5">&quot;&quot;</span><span class="s4">, </span><span class="s5">&quot;&quot;</span><span class="s4">, </span><span class="s5">&quot;&quot;</span>
+
+    <span class="s3">def </span><span class="s1">major_version</span><span class="s4">(</span><span class="s1">self</span><span class="s4">, </span><span class="s1">best</span><span class="s4">: </span><span class="s1">bool </span><span class="s4">= </span><span class="s3">False</span><span class="s4">) </span><span class="s1">-&gt; str</span><span class="s4">:</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Return the major version number of the current distribution. 
+ 
+        For details, see :func:`distro.major_version`. 
+        &quot;&quot;&quot;</span>
+        <span class="s3">return </span><span class="s1">self</span><span class="s4">.</span><span class="s1">version_parts</span><span class="s4">(</span><span class="s1">best</span><span class="s4">)[</span><span class="s6">0</span><span class="s4">]</span>
+
+    <span class="s3">def </span><span class="s1">minor_version</span><span class="s4">(</span><span class="s1">self</span><span class="s4">, </span><span class="s1">best</span><span class="s4">: </span><span class="s1">bool </span><span class="s4">= </span><span class="s3">False</span><span class="s4">) </span><span class="s1">-&gt; str</span><span class="s4">:</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Return the minor version number of the current distribution. 
+ 
+        For details, see :func:`distro.minor_version`. 
+        &quot;&quot;&quot;</span>
+        <span class="s3">return </span><span class="s1">self</span><span class="s4">.</span><span class="s1">version_parts</span><span class="s4">(</span><span class="s1">best</span><span class="s4">)[</span><span class="s6">1</span><span class="s4">]</span>
+
+    <span class="s3">def </span><span class="s1">build_number</span><span class="s4">(</span><span class="s1">self</span><span class="s4">, </span><span class="s1">best</span><span class="s4">: </span><span class="s1">bool </span><span class="s4">= </span><span class="s3">False</span><span class="s4">) </span><span class="s1">-&gt; str</span><span class="s4">:</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Return the build number of the current distribution. 
+ 
+        For details, see :func:`distro.build_number`. 
+        &quot;&quot;&quot;</span>
+        <span class="s3">return </span><span class="s1">self</span><span class="s4">.</span><span class="s1">version_parts</span><span class="s4">(</span><span class="s1">best</span><span class="s4">)[</span><span class="s6">2</span><span class="s4">]</span>
+
+    <span class="s3">def </span><span class="s1">like</span><span class="s4">(</span><span class="s1">self</span><span class="s4">) </span><span class="s1">-&gt; str</span><span class="s4">:</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Return the IDs of distributions that are like the OS distribution. 
+ 
+        For details, see :func:`distro.like`. 
+        &quot;&quot;&quot;</span>
+        <span class="s3">return </span><span class="s1">self</span><span class="s4">.</span><span class="s1">os_release_attr</span><span class="s4">(</span><span class="s5">&quot;id_like&quot;</span><span class="s4">) </span><span class="s3">or </span><span class="s5">&quot;&quot;</span>
+
+    <span class="s3">def </span><span class="s1">codename</span><span class="s4">(</span><span class="s1">self</span><span class="s4">) </span><span class="s1">-&gt; str</span><span class="s4">:</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Return the codename of the OS distribution. 
+ 
+        For details, see :func:`distro.codename`. 
+        &quot;&quot;&quot;</span>
+        <span class="s3">try</span><span class="s4">:</span>
+            <span class="s0"># Handle os_release specially since distros might purposefully set</span>
+            <span class="s0"># this to empty string to have no codename</span>
+            <span class="s3">return </span><span class="s1">self</span><span class="s4">.</span><span class="s1">_os_release_info</span><span class="s4">[</span><span class="s5">&quot;codename&quot;</span><span class="s4">]</span>
+        <span class="s3">except </span><span class="s1">KeyError</span><span class="s4">:</span>
+            <span class="s3">return </span><span class="s4">(</span>
+                <span class="s1">self</span><span class="s4">.</span><span class="s1">lsb_release_attr</span><span class="s4">(</span><span class="s5">&quot;codename&quot;</span><span class="s4">)</span>
+                <span class="s3">or </span><span class="s1">self</span><span class="s4">.</span><span class="s1">distro_release_attr</span><span class="s4">(</span><span class="s5">&quot;codename&quot;</span><span class="s4">)</span>
+                <span class="s3">or </span><span class="s5">&quot;&quot;</span>
+            <span class="s4">)</span>
+
+    <span class="s3">def </span><span class="s1">info</span><span class="s4">(</span><span class="s1">self</span><span class="s4">, </span><span class="s1">pretty</span><span class="s4">: </span><span class="s1">bool </span><span class="s4">= </span><span class="s3">False</span><span class="s4">, </span><span class="s1">best</span><span class="s4">: </span><span class="s1">bool </span><span class="s4">= </span><span class="s3">False</span><span class="s4">) </span><span class="s1">-&gt; InfoDict</span><span class="s4">:</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Return certain machine-readable information about the OS 
+        distribution. 
+ 
+        For details, see :func:`distro.info`. 
+        &quot;&quot;&quot;</span>
+        <span class="s3">return </span><span class="s1">dict</span><span class="s4">(</span>
+            <span class="s1">id</span><span class="s4">=</span><span class="s1">self</span><span class="s4">.</span><span class="s1">id</span><span class="s4">(),</span>
+            <span class="s1">version</span><span class="s4">=</span><span class="s1">self</span><span class="s4">.</span><span class="s1">version</span><span class="s4">(</span><span class="s1">pretty</span><span class="s4">, </span><span class="s1">best</span><span class="s4">),</span>
+            <span class="s1">version_parts</span><span class="s4">=</span><span class="s1">dict</span><span class="s4">(</span>
+                <span class="s1">major</span><span class="s4">=</span><span class="s1">self</span><span class="s4">.</span><span class="s1">major_version</span><span class="s4">(</span><span class="s1">best</span><span class="s4">),</span>
+                <span class="s1">minor</span><span class="s4">=</span><span class="s1">self</span><span class="s4">.</span><span class="s1">minor_version</span><span class="s4">(</span><span class="s1">best</span><span class="s4">),</span>
+                <span class="s1">build_number</span><span class="s4">=</span><span class="s1">self</span><span class="s4">.</span><span class="s1">build_number</span><span class="s4">(</span><span class="s1">best</span><span class="s4">),</span>
+            <span class="s4">),</span>
+            <span class="s1">like</span><span class="s4">=</span><span class="s1">self</span><span class="s4">.</span><span class="s1">like</span><span class="s4">(),</span>
+            <span class="s1">codename</span><span class="s4">=</span><span class="s1">self</span><span class="s4">.</span><span class="s1">codename</span><span class="s4">(),</span>
+        <span class="s4">)</span>
+
+    <span class="s3">def </span><span class="s1">os_release_info</span><span class="s4">(</span><span class="s1">self</span><span class="s4">) </span><span class="s1">-&gt; Dict</span><span class="s4">[</span><span class="s1">str</span><span class="s4">, </span><span class="s1">str</span><span class="s4">]:</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Return a dictionary containing key-value pairs for the information 
+        items from the os-release file data source of the OS distribution. 
+ 
+        For details, see :func:`distro.os_release_info`. 
+        &quot;&quot;&quot;</span>
+        <span class="s3">return </span><span class="s1">self</span><span class="s4">.</span><span class="s1">_os_release_info</span>
+
+    <span class="s3">def </span><span class="s1">lsb_release_info</span><span class="s4">(</span><span class="s1">self</span><span class="s4">) </span><span class="s1">-&gt; Dict</span><span class="s4">[</span><span class="s1">str</span><span class="s4">, </span><span class="s1">str</span><span class="s4">]:</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Return a dictionary containing key-value pairs for the information 
+        items from the lsb_release command data source of the OS 
+        distribution. 
+ 
+        For details, see :func:`distro.lsb_release_info`. 
+        &quot;&quot;&quot;</span>
+        <span class="s3">return </span><span class="s1">self</span><span class="s4">.</span><span class="s1">_lsb_release_info</span>
+
+    <span class="s3">def </span><span class="s1">distro_release_info</span><span class="s4">(</span><span class="s1">self</span><span class="s4">) </span><span class="s1">-&gt; Dict</span><span class="s4">[</span><span class="s1">str</span><span class="s4">, </span><span class="s1">str</span><span class="s4">]:</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Return a dictionary containing key-value pairs for the information 
+        items from the distro release file data source of the OS 
+        distribution. 
+ 
+        For details, see :func:`distro.distro_release_info`. 
+        &quot;&quot;&quot;</span>
+        <span class="s3">return </span><span class="s1">self</span><span class="s4">.</span><span class="s1">_distro_release_info</span>
+
+    <span class="s3">def </span><span class="s1">uname_info</span><span class="s4">(</span><span class="s1">self</span><span class="s4">) </span><span class="s1">-&gt; Dict</span><span class="s4">[</span><span class="s1">str</span><span class="s4">, </span><span class="s1">str</span><span class="s4">]:</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Return a dictionary containing key-value pairs for the information 
+        items from the uname command data source of the OS distribution. 
+ 
+        For details, see :func:`distro.uname_info`. 
+        &quot;&quot;&quot;</span>
+        <span class="s3">return </span><span class="s1">self</span><span class="s4">.</span><span class="s1">_uname_info</span>
+
+    <span class="s3">def </span><span class="s1">oslevel_info</span><span class="s4">(</span><span class="s1">self</span><span class="s4">) </span><span class="s1">-&gt; str</span><span class="s4">:</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Return AIX' oslevel command output. 
+        &quot;&quot;&quot;</span>
+        <span class="s3">return </span><span class="s1">self</span><span class="s4">.</span><span class="s1">_oslevel_info</span>
+
+    <span class="s3">def </span><span class="s1">os_release_attr</span><span class="s4">(</span><span class="s1">self</span><span class="s4">, </span><span class="s1">attribute</span><span class="s4">: </span><span class="s1">str</span><span class="s4">) </span><span class="s1">-&gt; str</span><span class="s4">:</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Return a single named information item from the os-release file data 
+        source of the OS distribution. 
+ 
+        For details, see :func:`distro.os_release_attr`. 
+        &quot;&quot;&quot;</span>
+        <span class="s3">return </span><span class="s1">self</span><span class="s4">.</span><span class="s1">_os_release_info</span><span class="s4">.</span><span class="s1">get</span><span class="s4">(</span><span class="s1">attribute</span><span class="s4">, </span><span class="s5">&quot;&quot;</span><span class="s4">)</span>
+
+    <span class="s3">def </span><span class="s1">lsb_release_attr</span><span class="s4">(</span><span class="s1">self</span><span class="s4">, </span><span class="s1">attribute</span><span class="s4">: </span><span class="s1">str</span><span class="s4">) </span><span class="s1">-&gt; str</span><span class="s4">:</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Return a single named information item from the lsb_release command 
+        output data source of the OS distribution. 
+ 
+        For details, see :func:`distro.lsb_release_attr`. 
+        &quot;&quot;&quot;</span>
+        <span class="s3">return </span><span class="s1">self</span><span class="s4">.</span><span class="s1">_lsb_release_info</span><span class="s4">.</span><span class="s1">get</span><span class="s4">(</span><span class="s1">attribute</span><span class="s4">, </span><span class="s5">&quot;&quot;</span><span class="s4">)</span>
+
+    <span class="s3">def </span><span class="s1">distro_release_attr</span><span class="s4">(</span><span class="s1">self</span><span class="s4">, </span><span class="s1">attribute</span><span class="s4">: </span><span class="s1">str</span><span class="s4">) </span><span class="s1">-&gt; str</span><span class="s4">:</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Return a single named information item from the distro release file 
+        data source of the OS distribution. 
+ 
+        For details, see :func:`distro.distro_release_attr`. 
+        &quot;&quot;&quot;</span>
+        <span class="s3">return </span><span class="s1">self</span><span class="s4">.</span><span class="s1">_distro_release_info</span><span class="s4">.</span><span class="s1">get</span><span class="s4">(</span><span class="s1">attribute</span><span class="s4">, </span><span class="s5">&quot;&quot;</span><span class="s4">)</span>
+
+    <span class="s3">def </span><span class="s1">uname_attr</span><span class="s4">(</span><span class="s1">self</span><span class="s4">, </span><span class="s1">attribute</span><span class="s4">: </span><span class="s1">str</span><span class="s4">) </span><span class="s1">-&gt; str</span><span class="s4">:</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Return a single named information item from the uname command 
+        output data source of the OS distribution. 
+ 
+        For details, see :func:`distro.uname_attr`. 
+        &quot;&quot;&quot;</span>
+        <span class="s3">return </span><span class="s1">self</span><span class="s4">.</span><span class="s1">_uname_info</span><span class="s4">.</span><span class="s1">get</span><span class="s4">(</span><span class="s1">attribute</span><span class="s4">, </span><span class="s5">&quot;&quot;</span><span class="s4">)</span>
+
+    <span class="s4">@</span><span class="s1">cached_property</span>
+    <span class="s3">def </span><span class="s1">_os_release_info</span><span class="s4">(</span><span class="s1">self</span><span class="s4">) </span><span class="s1">-&gt; Dict</span><span class="s4">[</span><span class="s1">str</span><span class="s4">, </span><span class="s1">str</span><span class="s4">]:</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Get the information items from the specified os-release file. 
+ 
+        Returns: 
+            A dictionary containing all information items. 
+        &quot;&quot;&quot;</span>
+        <span class="s3">if </span><span class="s1">os</span><span class="s4">.</span><span class="s1">path</span><span class="s4">.</span><span class="s1">isfile</span><span class="s4">(</span><span class="s1">self</span><span class="s4">.</span><span class="s1">os_release_file</span><span class="s4">):</span>
+            <span class="s3">with </span><span class="s1">open</span><span class="s4">(</span><span class="s1">self</span><span class="s4">.</span><span class="s1">os_release_file</span><span class="s4">, </span><span class="s1">encoding</span><span class="s4">=</span><span class="s5">&quot;utf-8&quot;</span><span class="s4">) </span><span class="s3">as </span><span class="s1">release_file</span><span class="s4">:</span>
+                <span class="s3">return </span><span class="s1">self</span><span class="s4">.</span><span class="s1">_parse_os_release_content</span><span class="s4">(</span><span class="s1">release_file</span><span class="s4">)</span>
+        <span class="s3">return </span><span class="s4">{}</span>
+
+    <span class="s4">@</span><span class="s1">staticmethod</span>
+    <span class="s3">def </span><span class="s1">_parse_os_release_content</span><span class="s4">(</span><span class="s1">lines</span><span class="s4">: </span><span class="s1">TextIO</span><span class="s4">) </span><span class="s1">-&gt; Dict</span><span class="s4">[</span><span class="s1">str</span><span class="s4">, </span><span class="s1">str</span><span class="s4">]:</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Parse the lines of an os-release file. 
+ 
+        Parameters: 
+ 
+        * lines: Iterable through the lines in the os-release file. 
+                 Each line must be a unicode string or a UTF-8 encoded byte 
+                 string. 
+ 
+        Returns: 
+            A dictionary containing all information items. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">props </span><span class="s4">= {}</span>
+        <span class="s1">lexer </span><span class="s4">= </span><span class="s1">shlex</span><span class="s4">.</span><span class="s1">shlex</span><span class="s4">(</span><span class="s1">lines</span><span class="s4">, </span><span class="s1">posix</span><span class="s4">=</span><span class="s3">True</span><span class="s4">)</span>
+        <span class="s1">lexer</span><span class="s4">.</span><span class="s1">whitespace_split </span><span class="s4">= </span><span class="s3">True</span>
+
+        <span class="s1">tokens </span><span class="s4">= </span><span class="s1">list</span><span class="s4">(</span><span class="s1">lexer</span><span class="s4">)</span>
+        <span class="s3">for </span><span class="s1">token </span><span class="s3">in </span><span class="s1">tokens</span><span class="s4">:</span>
+            <span class="s0"># At this point, all shell-like parsing has been done (i.e.</span>
+            <span class="s0"># comments processed, quotes and backslash escape sequences</span>
+            <span class="s0"># processed, multi-line values assembled, trailing newlines</span>
+            <span class="s0"># stripped, etc.), so the tokens are now either:</span>
+            <span class="s0"># * variable assignments: var=value</span>
+            <span class="s0"># * commands or their arguments (not allowed in os-release)</span>
+            <span class="s0"># Ignore any tokens that are not variable assignments</span>
+            <span class="s3">if </span><span class="s5">&quot;=&quot; </span><span class="s3">in </span><span class="s1">token</span><span class="s4">:</span>
+                <span class="s1">k</span><span class="s4">, </span><span class="s1">v </span><span class="s4">= </span><span class="s1">token</span><span class="s4">.</span><span class="s1">split</span><span class="s4">(</span><span class="s5">&quot;=&quot;</span><span class="s4">, </span><span class="s6">1</span><span class="s4">)</span>
+                <span class="s1">props</span><span class="s4">[</span><span class="s1">k</span><span class="s4">.</span><span class="s1">lower</span><span class="s4">()] = </span><span class="s1">v</span>
+
+        <span class="s3">if </span><span class="s5">&quot;version&quot; </span><span class="s3">in </span><span class="s1">props</span><span class="s4">:</span>
+            <span class="s0"># extract release codename (if any) from version attribute</span>
+            <span class="s1">match </span><span class="s4">= </span><span class="s1">re</span><span class="s4">.</span><span class="s1">search</span><span class="s4">(</span><span class="s5">r&quot;\((\D+)\)|,\s*(\D+)&quot;</span><span class="s4">, </span><span class="s1">props</span><span class="s4">[</span><span class="s5">&quot;version&quot;</span><span class="s4">])</span>
+            <span class="s3">if </span><span class="s1">match</span><span class="s4">:</span>
+                <span class="s1">release_codename </span><span class="s4">= </span><span class="s1">match</span><span class="s4">.</span><span class="s1">group</span><span class="s4">(</span><span class="s6">1</span><span class="s4">) </span><span class="s3">or </span><span class="s1">match</span><span class="s4">.</span><span class="s1">group</span><span class="s4">(</span><span class="s6">2</span><span class="s4">)</span>
+                <span class="s1">props</span><span class="s4">[</span><span class="s5">&quot;codename&quot;</span><span class="s4">] = </span><span class="s1">props</span><span class="s4">[</span><span class="s5">&quot;release_codename&quot;</span><span class="s4">] = </span><span class="s1">release_codename</span>
+
+        <span class="s3">if </span><span class="s5">&quot;version_codename&quot; </span><span class="s3">in </span><span class="s1">props</span><span class="s4">:</span>
+            <span class="s0"># os-release added a version_codename field.  Use that in</span>
+            <span class="s0"># preference to anything else Note that some distros purposefully</span>
+            <span class="s0"># do not have code names.  They should be setting</span>
+            <span class="s0"># version_codename=&quot;&quot;</span>
+            <span class="s1">props</span><span class="s4">[</span><span class="s5">&quot;codename&quot;</span><span class="s4">] = </span><span class="s1">props</span><span class="s4">[</span><span class="s5">&quot;version_codename&quot;</span><span class="s4">]</span>
+        <span class="s3">elif </span><span class="s5">&quot;ubuntu_codename&quot; </span><span class="s3">in </span><span class="s1">props</span><span class="s4">:</span>
+            <span class="s0"># Same as above but a non-standard field name used on older Ubuntus</span>
+            <span class="s1">props</span><span class="s4">[</span><span class="s5">&quot;codename&quot;</span><span class="s4">] = </span><span class="s1">props</span><span class="s4">[</span><span class="s5">&quot;ubuntu_codename&quot;</span><span class="s4">]</span>
+
+        <span class="s3">return </span><span class="s1">props</span>
+
+    <span class="s4">@</span><span class="s1">cached_property</span>
+    <span class="s3">def </span><span class="s1">_lsb_release_info</span><span class="s4">(</span><span class="s1">self</span><span class="s4">) </span><span class="s1">-&gt; Dict</span><span class="s4">[</span><span class="s1">str</span><span class="s4">, </span><span class="s1">str</span><span class="s4">]:</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Get the information items from the lsb_release command output. 
+ 
+        Returns: 
+            A dictionary containing all information items. 
+        &quot;&quot;&quot;</span>
+        <span class="s3">if not </span><span class="s1">self</span><span class="s4">.</span><span class="s1">include_lsb</span><span class="s4">:</span>
+            <span class="s3">return </span><span class="s4">{}</span>
+        <span class="s3">try</span><span class="s4">:</span>
+            <span class="s1">cmd </span><span class="s4">= (</span><span class="s5">&quot;lsb_release&quot;</span><span class="s4">, </span><span class="s5">&quot;-a&quot;</span><span class="s4">)</span>
+            <span class="s1">stdout </span><span class="s4">= </span><span class="s1">subprocess</span><span class="s4">.</span><span class="s1">check_output</span><span class="s4">(</span><span class="s1">cmd</span><span class="s4">, </span><span class="s1">stderr</span><span class="s4">=</span><span class="s1">subprocess</span><span class="s4">.</span><span class="s1">DEVNULL</span><span class="s4">)</span>
+        <span class="s0"># Command not found or lsb_release returned error</span>
+        <span class="s3">except </span><span class="s4">(</span><span class="s1">OSError</span><span class="s4">, </span><span class="s1">subprocess</span><span class="s4">.</span><span class="s1">CalledProcessError</span><span class="s4">):</span>
+            <span class="s3">return </span><span class="s4">{}</span>
+        <span class="s1">content </span><span class="s4">= </span><span class="s1">self</span><span class="s4">.</span><span class="s1">_to_str</span><span class="s4">(</span><span class="s1">stdout</span><span class="s4">).</span><span class="s1">splitlines</span><span class="s4">()</span>
+        <span class="s3">return </span><span class="s1">self</span><span class="s4">.</span><span class="s1">_parse_lsb_release_content</span><span class="s4">(</span><span class="s1">content</span><span class="s4">)</span>
+
+    <span class="s4">@</span><span class="s1">staticmethod</span>
+    <span class="s3">def </span><span class="s1">_parse_lsb_release_content</span><span class="s4">(</span><span class="s1">lines</span><span class="s4">: </span><span class="s1">Iterable</span><span class="s4">[</span><span class="s1">str</span><span class="s4">]) </span><span class="s1">-&gt; Dict</span><span class="s4">[</span><span class="s1">str</span><span class="s4">, </span><span class="s1">str</span><span class="s4">]:</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Parse the output of the lsb_release command. 
+ 
+        Parameters: 
+ 
+        * lines: Iterable through the lines of the lsb_release output. 
+                 Each line must be a unicode string or a UTF-8 encoded byte 
+                 string. 
+ 
+        Returns: 
+            A dictionary containing all information items. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">props </span><span class="s4">= {}</span>
+        <span class="s3">for </span><span class="s1">line </span><span class="s3">in </span><span class="s1">lines</span><span class="s4">:</span>
+            <span class="s1">kv </span><span class="s4">= </span><span class="s1">line</span><span class="s4">.</span><span class="s1">strip</span><span class="s4">(</span><span class="s5">&quot;</span><span class="s3">\n</span><span class="s5">&quot;</span><span class="s4">).</span><span class="s1">split</span><span class="s4">(</span><span class="s5">&quot;:&quot;</span><span class="s4">, </span><span class="s6">1</span><span class="s4">)</span>
+            <span class="s3">if </span><span class="s1">len</span><span class="s4">(</span><span class="s1">kv</span><span class="s4">) != </span><span class="s6">2</span><span class="s4">:</span>
+                <span class="s0"># Ignore lines without colon.</span>
+                <span class="s3">continue</span>
+            <span class="s1">k</span><span class="s4">, </span><span class="s1">v </span><span class="s4">= </span><span class="s1">kv</span>
+            <span class="s1">props</span><span class="s4">.</span><span class="s1">update</span><span class="s4">({</span><span class="s1">k</span><span class="s4">.</span><span class="s1">replace</span><span class="s4">(</span><span class="s5">&quot; &quot;</span><span class="s4">, </span><span class="s5">&quot;_&quot;</span><span class="s4">).</span><span class="s1">lower</span><span class="s4">(): </span><span class="s1">v</span><span class="s4">.</span><span class="s1">strip</span><span class="s4">()})</span>
+        <span class="s3">return </span><span class="s1">props</span>
+
+    <span class="s4">@</span><span class="s1">cached_property</span>
+    <span class="s3">def </span><span class="s1">_uname_info</span><span class="s4">(</span><span class="s1">self</span><span class="s4">) </span><span class="s1">-&gt; Dict</span><span class="s4">[</span><span class="s1">str</span><span class="s4">, </span><span class="s1">str</span><span class="s4">]:</span>
+        <span class="s3">if not </span><span class="s1">self</span><span class="s4">.</span><span class="s1">include_uname</span><span class="s4">:</span>
+            <span class="s3">return </span><span class="s4">{}</span>
+        <span class="s3">try</span><span class="s4">:</span>
+            <span class="s1">cmd </span><span class="s4">= (</span><span class="s5">&quot;uname&quot;</span><span class="s4">, </span><span class="s5">&quot;-rs&quot;</span><span class="s4">)</span>
+            <span class="s1">stdout </span><span class="s4">= </span><span class="s1">subprocess</span><span class="s4">.</span><span class="s1">check_output</span><span class="s4">(</span><span class="s1">cmd</span><span class="s4">, </span><span class="s1">stderr</span><span class="s4">=</span><span class="s1">subprocess</span><span class="s4">.</span><span class="s1">DEVNULL</span><span class="s4">)</span>
+        <span class="s3">except </span><span class="s1">OSError</span><span class="s4">:</span>
+            <span class="s3">return </span><span class="s4">{}</span>
+        <span class="s1">content </span><span class="s4">= </span><span class="s1">self</span><span class="s4">.</span><span class="s1">_to_str</span><span class="s4">(</span><span class="s1">stdout</span><span class="s4">).</span><span class="s1">splitlines</span><span class="s4">()</span>
+        <span class="s3">return </span><span class="s1">self</span><span class="s4">.</span><span class="s1">_parse_uname_content</span><span class="s4">(</span><span class="s1">content</span><span class="s4">)</span>
+
+    <span class="s4">@</span><span class="s1">cached_property</span>
+    <span class="s3">def </span><span class="s1">_oslevel_info</span><span class="s4">(</span><span class="s1">self</span><span class="s4">) </span><span class="s1">-&gt; str</span><span class="s4">:</span>
+        <span class="s3">if not </span><span class="s1">self</span><span class="s4">.</span><span class="s1">include_oslevel</span><span class="s4">:</span>
+            <span class="s3">return </span><span class="s5">&quot;&quot;</span>
+        <span class="s3">try</span><span class="s4">:</span>
+            <span class="s1">stdout </span><span class="s4">= </span><span class="s1">subprocess</span><span class="s4">.</span><span class="s1">check_output</span><span class="s4">(</span><span class="s5">&quot;oslevel&quot;</span><span class="s4">, </span><span class="s1">stderr</span><span class="s4">=</span><span class="s1">subprocess</span><span class="s4">.</span><span class="s1">DEVNULL</span><span class="s4">)</span>
+        <span class="s3">except </span><span class="s4">(</span><span class="s1">OSError</span><span class="s4">, </span><span class="s1">subprocess</span><span class="s4">.</span><span class="s1">CalledProcessError</span><span class="s4">):</span>
+            <span class="s3">return </span><span class="s5">&quot;&quot;</span>
+        <span class="s3">return </span><span class="s1">self</span><span class="s4">.</span><span class="s1">_to_str</span><span class="s4">(</span><span class="s1">stdout</span><span class="s4">).</span><span class="s1">strip</span><span class="s4">()</span>
+
+    <span class="s4">@</span><span class="s1">cached_property</span>
+    <span class="s3">def </span><span class="s1">_debian_version</span><span class="s4">(</span><span class="s1">self</span><span class="s4">) </span><span class="s1">-&gt; str</span><span class="s4">:</span>
+        <span class="s3">try</span><span class="s4">:</span>
+            <span class="s3">with </span><span class="s1">open</span><span class="s4">(</span>
+                <span class="s1">os</span><span class="s4">.</span><span class="s1">path</span><span class="s4">.</span><span class="s1">join</span><span class="s4">(</span><span class="s1">self</span><span class="s4">.</span><span class="s1">etc_dir</span><span class="s4">, </span><span class="s5">&quot;debian_version&quot;</span><span class="s4">), </span><span class="s1">encoding</span><span class="s4">=</span><span class="s5">&quot;ascii&quot;</span>
+            <span class="s4">) </span><span class="s3">as </span><span class="s1">fp</span><span class="s4">:</span>
+                <span class="s3">return </span><span class="s1">fp</span><span class="s4">.</span><span class="s1">readline</span><span class="s4">().</span><span class="s1">rstrip</span><span class="s4">()</span>
+        <span class="s3">except </span><span class="s1">FileNotFoundError</span><span class="s4">:</span>
+            <span class="s3">return </span><span class="s5">&quot;&quot;</span>
+
+    <span class="s4">@</span><span class="s1">staticmethod</span>
+    <span class="s3">def </span><span class="s1">_parse_uname_content</span><span class="s4">(</span><span class="s1">lines</span><span class="s4">: </span><span class="s1">Sequence</span><span class="s4">[</span><span class="s1">str</span><span class="s4">]) </span><span class="s1">-&gt; Dict</span><span class="s4">[</span><span class="s1">str</span><span class="s4">, </span><span class="s1">str</span><span class="s4">]:</span>
+        <span class="s3">if not </span><span class="s1">lines</span><span class="s4">:</span>
+            <span class="s3">return </span><span class="s4">{}</span>
+        <span class="s1">props </span><span class="s4">= {}</span>
+        <span class="s1">match </span><span class="s4">= </span><span class="s1">re</span><span class="s4">.</span><span class="s1">search</span><span class="s4">(</span><span class="s5">r&quot;^([^\s]+)\s+([\d\.]+)&quot;</span><span class="s4">, </span><span class="s1">lines</span><span class="s4">[</span><span class="s6">0</span><span class="s4">].</span><span class="s1">strip</span><span class="s4">())</span>
+        <span class="s3">if </span><span class="s1">match</span><span class="s4">:</span>
+            <span class="s1">name</span><span class="s4">, </span><span class="s1">version </span><span class="s4">= </span><span class="s1">match</span><span class="s4">.</span><span class="s1">groups</span><span class="s4">()</span>
+
+            <span class="s0"># This is to prevent the Linux kernel version from</span>
+            <span class="s0"># appearing as the 'best' version on otherwise</span>
+            <span class="s0"># identifiable distributions.</span>
+            <span class="s3">if </span><span class="s1">name </span><span class="s4">== </span><span class="s5">&quot;Linux&quot;</span><span class="s4">:</span>
+                <span class="s3">return </span><span class="s4">{}</span>
+            <span class="s1">props</span><span class="s4">[</span><span class="s5">&quot;id&quot;</span><span class="s4">] = </span><span class="s1">name</span><span class="s4">.</span><span class="s1">lower</span><span class="s4">()</span>
+            <span class="s1">props</span><span class="s4">[</span><span class="s5">&quot;name&quot;</span><span class="s4">] = </span><span class="s1">name</span>
+            <span class="s1">props</span><span class="s4">[</span><span class="s5">&quot;release&quot;</span><span class="s4">] = </span><span class="s1">version</span>
+        <span class="s3">return </span><span class="s1">props</span>
+
+    <span class="s4">@</span><span class="s1">staticmethod</span>
+    <span class="s3">def </span><span class="s1">_to_str</span><span class="s4">(</span><span class="s1">bytestring</span><span class="s4">: </span><span class="s1">bytes</span><span class="s4">) </span><span class="s1">-&gt; str</span><span class="s4">:</span>
+        <span class="s1">encoding </span><span class="s4">= </span><span class="s1">sys</span><span class="s4">.</span><span class="s1">getfilesystemencoding</span><span class="s4">()</span>
+        <span class="s3">return </span><span class="s1">bytestring</span><span class="s4">.</span><span class="s1">decode</span><span class="s4">(</span><span class="s1">encoding</span><span class="s4">)</span>
+
+    <span class="s4">@</span><span class="s1">cached_property</span>
+    <span class="s3">def </span><span class="s1">_distro_release_info</span><span class="s4">(</span><span class="s1">self</span><span class="s4">) </span><span class="s1">-&gt; Dict</span><span class="s4">[</span><span class="s1">str</span><span class="s4">, </span><span class="s1">str</span><span class="s4">]:</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Get the information items from the specified distro release file. 
+ 
+        Returns: 
+            A dictionary containing all information items. 
+        &quot;&quot;&quot;</span>
+        <span class="s3">if </span><span class="s1">self</span><span class="s4">.</span><span class="s1">distro_release_file</span><span class="s4">:</span>
+            <span class="s0"># If it was specified, we use it and parse what we can, even if</span>
+            <span class="s0"># its file name or content does not match the expected pattern.</span>
+            <span class="s1">distro_info </span><span class="s4">= </span><span class="s1">self</span><span class="s4">.</span><span class="s1">_parse_distro_release_file</span><span class="s4">(</span><span class="s1">self</span><span class="s4">.</span><span class="s1">distro_release_file</span><span class="s4">)</span>
+            <span class="s1">basename </span><span class="s4">= </span><span class="s1">os</span><span class="s4">.</span><span class="s1">path</span><span class="s4">.</span><span class="s1">basename</span><span class="s4">(</span><span class="s1">self</span><span class="s4">.</span><span class="s1">distro_release_file</span><span class="s4">)</span>
+            <span class="s0"># The file name pattern for user-specified distro release files</span>
+            <span class="s0"># is somewhat more tolerant (compared to when searching for the</span>
+            <span class="s0"># file), because we want to use what was specified as best as</span>
+            <span class="s0"># possible.</span>
+            <span class="s1">match </span><span class="s4">= </span><span class="s1">_DISTRO_RELEASE_BASENAME_PATTERN</span><span class="s4">.</span><span class="s1">match</span><span class="s4">(</span><span class="s1">basename</span><span class="s4">)</span>
+        <span class="s3">else</span><span class="s4">:</span>
+            <span class="s3">try</span><span class="s4">:</span>
+                <span class="s1">basenames </span><span class="s4">= [</span>
+                    <span class="s1">basename</span>
+                    <span class="s3">for </span><span class="s1">basename </span><span class="s3">in </span><span class="s1">os</span><span class="s4">.</span><span class="s1">listdir</span><span class="s4">(</span><span class="s1">self</span><span class="s4">.</span><span class="s1">etc_dir</span><span class="s4">)</span>
+                    <span class="s3">if </span><span class="s1">basename </span><span class="s3">not in </span><span class="s1">_DISTRO_RELEASE_IGNORE_BASENAMES</span>
+                    <span class="s3">and </span><span class="s1">os</span><span class="s4">.</span><span class="s1">path</span><span class="s4">.</span><span class="s1">isfile</span><span class="s4">(</span><span class="s1">os</span><span class="s4">.</span><span class="s1">path</span><span class="s4">.</span><span class="s1">join</span><span class="s4">(</span><span class="s1">self</span><span class="s4">.</span><span class="s1">etc_dir</span><span class="s4">, </span><span class="s1">basename</span><span class="s4">))</span>
+                <span class="s4">]</span>
+                <span class="s0"># We sort for repeatability in cases where there are multiple</span>
+                <span class="s0"># distro specific files; e.g. CentOS, Oracle, Enterprise all</span>
+                <span class="s0"># containing `redhat-release` on top of their own.</span>
+                <span class="s1">basenames</span><span class="s4">.</span><span class="s1">sort</span><span class="s4">()</span>
+            <span class="s3">except </span><span class="s1">OSError</span><span class="s4">:</span>
+                <span class="s0"># This may occur when /etc is not readable but we can't be</span>
+                <span class="s0"># sure about the *-release files. Check common entries of</span>
+                <span class="s0"># /etc for information. If they turn out to not be there the</span>
+                <span class="s0"># error is handled in `_parse_distro_release_file()`.</span>
+                <span class="s1">basenames </span><span class="s4">= </span><span class="s1">_DISTRO_RELEASE_BASENAMES</span>
+            <span class="s3">for </span><span class="s1">basename </span><span class="s3">in </span><span class="s1">basenames</span><span class="s4">:</span>
+                <span class="s1">match </span><span class="s4">= </span><span class="s1">_DISTRO_RELEASE_BASENAME_PATTERN</span><span class="s4">.</span><span class="s1">match</span><span class="s4">(</span><span class="s1">basename</span><span class="s4">)</span>
+                <span class="s3">if </span><span class="s1">match </span><span class="s3">is None</span><span class="s4">:</span>
+                    <span class="s3">continue</span>
+                <span class="s1">filepath </span><span class="s4">= </span><span class="s1">os</span><span class="s4">.</span><span class="s1">path</span><span class="s4">.</span><span class="s1">join</span><span class="s4">(</span><span class="s1">self</span><span class="s4">.</span><span class="s1">etc_dir</span><span class="s4">, </span><span class="s1">basename</span><span class="s4">)</span>
+                <span class="s1">distro_info </span><span class="s4">= </span><span class="s1">self</span><span class="s4">.</span><span class="s1">_parse_distro_release_file</span><span class="s4">(</span><span class="s1">filepath</span><span class="s4">)</span>
+                <span class="s0"># The name is always present if the pattern matches.</span>
+                <span class="s3">if </span><span class="s5">&quot;name&quot; </span><span class="s3">not in </span><span class="s1">distro_info</span><span class="s4">:</span>
+                    <span class="s3">continue</span>
+                <span class="s1">self</span><span class="s4">.</span><span class="s1">distro_release_file </span><span class="s4">= </span><span class="s1">filepath</span>
+                <span class="s3">break</span>
+            <span class="s3">else</span><span class="s4">:  </span><span class="s0"># the loop didn't &quot;break&quot;: no candidate.</span>
+                <span class="s3">return </span><span class="s4">{}</span>
+
+        <span class="s3">if </span><span class="s1">match </span><span class="s3">is not None</span><span class="s4">:</span>
+            <span class="s1">distro_info</span><span class="s4">[</span><span class="s5">&quot;id&quot;</span><span class="s4">] = </span><span class="s1">match</span><span class="s4">.</span><span class="s1">group</span><span class="s4">(</span><span class="s6">1</span><span class="s4">)</span>
+
+        <span class="s0"># CloudLinux &lt; 7: manually enrich info with proper id.</span>
+        <span class="s3">if </span><span class="s5">&quot;cloudlinux&quot; </span><span class="s3">in </span><span class="s1">distro_info</span><span class="s4">.</span><span class="s1">get</span><span class="s4">(</span><span class="s5">&quot;name&quot;</span><span class="s4">, </span><span class="s5">&quot;&quot;</span><span class="s4">).</span><span class="s1">lower</span><span class="s4">():</span>
+            <span class="s1">distro_info</span><span class="s4">[</span><span class="s5">&quot;id&quot;</span><span class="s4">] = </span><span class="s5">&quot;cloudlinux&quot;</span>
+
+        <span class="s3">return </span><span class="s1">distro_info</span>
+
+    <span class="s3">def </span><span class="s1">_parse_distro_release_file</span><span class="s4">(</span><span class="s1">self</span><span class="s4">, </span><span class="s1">filepath</span><span class="s4">: </span><span class="s1">str</span><span class="s4">) </span><span class="s1">-&gt; Dict</span><span class="s4">[</span><span class="s1">str</span><span class="s4">, </span><span class="s1">str</span><span class="s4">]:</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Parse a distro release file. 
+ 
+        Parameters: 
+ 
+        * filepath: Path name of the distro release file. 
+ 
+        Returns: 
+            A dictionary containing all information items. 
+        &quot;&quot;&quot;</span>
+        <span class="s3">try</span><span class="s4">:</span>
+            <span class="s3">with </span><span class="s1">open</span><span class="s4">(</span><span class="s1">filepath</span><span class="s4">, </span><span class="s1">encoding</span><span class="s4">=</span><span class="s5">&quot;utf-8&quot;</span><span class="s4">) </span><span class="s3">as </span><span class="s1">fp</span><span class="s4">:</span>
+                <span class="s0"># Only parse the first line. For instance, on SLES there</span>
+                <span class="s0"># are multiple lines. We don't want them...</span>
+                <span class="s3">return </span><span class="s1">self</span><span class="s4">.</span><span class="s1">_parse_distro_release_content</span><span class="s4">(</span><span class="s1">fp</span><span class="s4">.</span><span class="s1">readline</span><span class="s4">())</span>
+        <span class="s3">except </span><span class="s1">OSError</span><span class="s4">:</span>
+            <span class="s0"># Ignore not being able to read a specific, seemingly version</span>
+            <span class="s0"># related file.</span>
+            <span class="s0"># See https://github.com/python-distro/distro/issues/162</span>
+            <span class="s3">return </span><span class="s4">{}</span>
+
+    <span class="s4">@</span><span class="s1">staticmethod</span>
+    <span class="s3">def </span><span class="s1">_parse_distro_release_content</span><span class="s4">(</span><span class="s1">line</span><span class="s4">: </span><span class="s1">str</span><span class="s4">) </span><span class="s1">-&gt; Dict</span><span class="s4">[</span><span class="s1">str</span><span class="s4">, </span><span class="s1">str</span><span class="s4">]:</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Parse a line from a distro release file. 
+ 
+        Parameters: 
+        * line: Line from the distro release file. Must be a unicode string 
+                or a UTF-8 encoded byte string. 
+ 
+        Returns: 
+            A dictionary containing all information items. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">matches </span><span class="s4">= </span><span class="s1">_DISTRO_RELEASE_CONTENT_REVERSED_PATTERN</span><span class="s4">.</span><span class="s1">match</span><span class="s4">(</span><span class="s1">line</span><span class="s4">.</span><span class="s1">strip</span><span class="s4">()[::-</span><span class="s6">1</span><span class="s4">])</span>
+        <span class="s1">distro_info </span><span class="s4">= {}</span>
+        <span class="s3">if </span><span class="s1">matches</span><span class="s4">:</span>
+            <span class="s0"># regexp ensures non-None</span>
+            <span class="s1">distro_info</span><span class="s4">[</span><span class="s5">&quot;name&quot;</span><span class="s4">] = </span><span class="s1">matches</span><span class="s4">.</span><span class="s1">group</span><span class="s4">(</span><span class="s6">3</span><span class="s4">)[::-</span><span class="s6">1</span><span class="s4">]</span>
+            <span class="s3">if </span><span class="s1">matches</span><span class="s4">.</span><span class="s1">group</span><span class="s4">(</span><span class="s6">2</span><span class="s4">):</span>
+                <span class="s1">distro_info</span><span class="s4">[</span><span class="s5">&quot;version_id&quot;</span><span class="s4">] = </span><span class="s1">matches</span><span class="s4">.</span><span class="s1">group</span><span class="s4">(</span><span class="s6">2</span><span class="s4">)[::-</span><span class="s6">1</span><span class="s4">]</span>
+            <span class="s3">if </span><span class="s1">matches</span><span class="s4">.</span><span class="s1">group</span><span class="s4">(</span><span class="s6">1</span><span class="s4">):</span>
+                <span class="s1">distro_info</span><span class="s4">[</span><span class="s5">&quot;codename&quot;</span><span class="s4">] = </span><span class="s1">matches</span><span class="s4">.</span><span class="s1">group</span><span class="s4">(</span><span class="s6">1</span><span class="s4">)[::-</span><span class="s6">1</span><span class="s4">]</span>
+        <span class="s3">elif </span><span class="s1">line</span><span class="s4">:</span>
+            <span class="s1">distro_info</span><span class="s4">[</span><span class="s5">&quot;name&quot;</span><span class="s4">] = </span><span class="s1">line</span><span class="s4">.</span><span class="s1">strip</span><span class="s4">()</span>
+        <span class="s3">return </span><span class="s1">distro_info</span>
+
+
+<span class="s1">_distro </span><span class="s4">= </span><span class="s1">LinuxDistribution</span><span class="s4">()</span>
+
+
+<span class="s3">def </span><span class="s1">main</span><span class="s4">() </span><span class="s1">-&gt; </span><span class="s3">None</span><span class="s4">:</span>
+    <span class="s1">logger </span><span class="s4">= </span><span class="s1">logging</span><span class="s4">.</span><span class="s1">getLogger</span><span class="s4">(</span><span class="s1">__name__</span><span class="s4">)</span>
+    <span class="s1">logger</span><span class="s4">.</span><span class="s1">setLevel</span><span class="s4">(</span><span class="s1">logging</span><span class="s4">.</span><span class="s1">DEBUG</span><span class="s4">)</span>
+    <span class="s1">logger</span><span class="s4">.</span><span class="s1">addHandler</span><span class="s4">(</span><span class="s1">logging</span><span class="s4">.</span><span class="s1">StreamHandler</span><span class="s4">(</span><span class="s1">sys</span><span class="s4">.</span><span class="s1">stdout</span><span class="s4">))</span>
+
+    <span class="s1">parser </span><span class="s4">= </span><span class="s1">argparse</span><span class="s4">.</span><span class="s1">ArgumentParser</span><span class="s4">(</span><span class="s1">description</span><span class="s4">=</span><span class="s5">&quot;OS distro info tool&quot;</span><span class="s4">)</span>
+    <span class="s1">parser</span><span class="s4">.</span><span class="s1">add_argument</span><span class="s4">(</span>
+        <span class="s5">&quot;--json&quot;</span><span class="s4">, </span><span class="s5">&quot;-j&quot;</span><span class="s4">, </span><span class="s1">help</span><span class="s4">=</span><span class="s5">&quot;Output in machine readable format&quot;</span><span class="s4">, </span><span class="s1">action</span><span class="s4">=</span><span class="s5">&quot;store_true&quot;</span>
+    <span class="s4">)</span>
+
+    <span class="s1">parser</span><span class="s4">.</span><span class="s1">add_argument</span><span class="s4">(</span>
+        <span class="s5">&quot;--root-dir&quot;</span><span class="s4">,</span>
+        <span class="s5">&quot;-r&quot;</span><span class="s4">,</span>
+        <span class="s1">type</span><span class="s4">=</span><span class="s1">str</span><span class="s4">,</span>
+        <span class="s1">dest</span><span class="s4">=</span><span class="s5">&quot;root_dir&quot;</span><span class="s4">,</span>
+        <span class="s1">help</span><span class="s4">=</span><span class="s5">&quot;Path to the root filesystem directory (defaults to /)&quot;</span><span class="s4">,</span>
+    <span class="s4">)</span>
+
+    <span class="s1">args </span><span class="s4">= </span><span class="s1">parser</span><span class="s4">.</span><span class="s1">parse_args</span><span class="s4">()</span>
+
+    <span class="s3">if </span><span class="s1">args</span><span class="s4">.</span><span class="s1">root_dir</span><span class="s4">:</span>
+        <span class="s1">dist </span><span class="s4">= </span><span class="s1">LinuxDistribution</span><span class="s4">(</span>
+            <span class="s1">include_lsb</span><span class="s4">=</span><span class="s3">False</span><span class="s4">,</span>
+            <span class="s1">include_uname</span><span class="s4">=</span><span class="s3">False</span><span class="s4">,</span>
+            <span class="s1">include_oslevel</span><span class="s4">=</span><span class="s3">False</span><span class="s4">,</span>
+            <span class="s1">root_dir</span><span class="s4">=</span><span class="s1">args</span><span class="s4">.</span><span class="s1">root_dir</span><span class="s4">,</span>
+        <span class="s4">)</span>
+    <span class="s3">else</span><span class="s4">:</span>
+        <span class="s1">dist </span><span class="s4">= </span><span class="s1">_distro</span>
+
+    <span class="s3">if </span><span class="s1">args</span><span class="s4">.</span><span class="s1">json</span><span class="s4">:</span>
+        <span class="s1">logger</span><span class="s4">.</span><span class="s1">info</span><span class="s4">(</span><span class="s1">json</span><span class="s4">.</span><span class="s1">dumps</span><span class="s4">(</span><span class="s1">dist</span><span class="s4">.</span><span class="s1">info</span><span class="s4">(), </span><span class="s1">indent</span><span class="s4">=</span><span class="s6">4</span><span class="s4">, </span><span class="s1">sort_keys</span><span class="s4">=</span><span class="s3">True</span><span class="s4">))</span>
+    <span class="s3">else</span><span class="s4">:</span>
+        <span class="s1">logger</span><span class="s4">.</span><span class="s1">info</span><span class="s4">(</span><span class="s5">&quot;Name: %s&quot;</span><span class="s4">, </span><span class="s1">dist</span><span class="s4">.</span><span class="s1">name</span><span class="s4">(</span><span class="s1">pretty</span><span class="s4">=</span><span class="s3">True</span><span class="s4">))</span>
+        <span class="s1">distribution_version </span><span class="s4">= </span><span class="s1">dist</span><span class="s4">.</span><span class="s1">version</span><span class="s4">(</span><span class="s1">pretty</span><span class="s4">=</span><span class="s3">True</span><span class="s4">)</span>
+        <span class="s1">logger</span><span class="s4">.</span><span class="s1">info</span><span class="s4">(</span><span class="s5">&quot;Version: %s&quot;</span><span class="s4">, </span><span class="s1">distribution_version</span><span class="s4">)</span>
+        <span class="s1">distribution_codename </span><span class="s4">= </span><span class="s1">dist</span><span class="s4">.</span><span class="s1">codename</span><span class="s4">()</span>
+        <span class="s1">logger</span><span class="s4">.</span><span class="s1">info</span><span class="s4">(</span><span class="s5">&quot;Codename: %s&quot;</span><span class="s4">, </span><span class="s1">distribution_codename</span><span class="s4">)</span>
+
+
+<span class="s3">if </span><span class="s1">__name__ </span><span class="s4">== </span><span class="s5">&quot;__main__&quot;</span><span class="s4">:</span>
+    <span class="s1">main</span><span class="s4">()</span>
+</pre>
+</body>
+</html>

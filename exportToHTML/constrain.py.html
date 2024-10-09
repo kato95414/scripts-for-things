@@ -1,0 +1,59 @@
+<html>
+<head>
+<title>constrain.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cf8e6d;}
+.s1 { color: #bcbec4;}
+.s2 { color: #bcbec4;}
+.s3 { color: #5f826b; font-style: italic;}
+.s4 { color: #6aab73;}
+.s5 { color: #2aacb8;}
+</style>
+</head>
+<body bgcolor="#1e1f22">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+constrain.py</font>
+</center></td></tr></table>
+<pre><span class="s0">from </span><span class="s1">typing </span><span class="s0">import </span><span class="s1">Optional</span><span class="s2">, </span><span class="s1">TYPE_CHECKING</span>
+
+<span class="s0">from </span><span class="s2">.</span><span class="s1">jupyter </span><span class="s0">import </span><span class="s1">JupyterMixin</span>
+<span class="s0">from </span><span class="s2">.</span><span class="s1">measure </span><span class="s0">import </span><span class="s1">Measurement</span>
+
+<span class="s0">if </span><span class="s1">TYPE_CHECKING</span><span class="s2">:</span>
+    <span class="s0">from </span><span class="s2">.</span><span class="s1">console </span><span class="s0">import </span><span class="s1">Console</span><span class="s2">, </span><span class="s1">ConsoleOptions</span><span class="s2">, </span><span class="s1">RenderableType</span><span class="s2">, </span><span class="s1">RenderResult</span>
+
+
+<span class="s0">class </span><span class="s1">Constrain</span><span class="s2">(</span><span class="s1">JupyterMixin</span><span class="s2">):</span>
+    <span class="s3">&quot;&quot;&quot;Constrain the width of a renderable to a given number of characters. 
+ 
+    Args: 
+        renderable (RenderableType): A renderable object. 
+        width (int, optional): The maximum width (in characters) to render. Defaults to 80. 
+    &quot;&quot;&quot;</span>
+
+    <span class="s0">def </span><span class="s1">__init__</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">renderable</span><span class="s2">: </span><span class="s4">&quot;RenderableType&quot;</span><span class="s2">, </span><span class="s1">width</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">int</span><span class="s2">] = </span><span class="s5">80</span><span class="s2">) </span><span class="s1">-&gt; </span><span class="s0">None</span><span class="s2">:</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">renderable </span><span class="s2">= </span><span class="s1">renderable</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">width </span><span class="s2">= </span><span class="s1">width</span>
+
+    <span class="s0">def </span><span class="s1">__rich_console__</span><span class="s2">(</span>
+        <span class="s1">self</span><span class="s2">, </span><span class="s1">console</span><span class="s2">: </span><span class="s4">&quot;Console&quot;</span><span class="s2">, </span><span class="s1">options</span><span class="s2">: </span><span class="s4">&quot;ConsoleOptions&quot;</span>
+    <span class="s2">) </span><span class="s1">-&gt; </span><span class="s4">&quot;RenderResult&quot;</span><span class="s2">:</span>
+        <span class="s0">if </span><span class="s1">self</span><span class="s2">.</span><span class="s1">width </span><span class="s0">is None</span><span class="s2">:</span>
+            <span class="s0">yield </span><span class="s1">self</span><span class="s2">.</span><span class="s1">renderable</span>
+        <span class="s0">else</span><span class="s2">:</span>
+            <span class="s1">child_options </span><span class="s2">= </span><span class="s1">options</span><span class="s2">.</span><span class="s1">update_width</span><span class="s2">(</span><span class="s1">min</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">width</span><span class="s2">, </span><span class="s1">options</span><span class="s2">.</span><span class="s1">max_width</span><span class="s2">))</span>
+            <span class="s0">yield from </span><span class="s1">console</span><span class="s2">.</span><span class="s1">render</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">renderable</span><span class="s2">, </span><span class="s1">child_options</span><span class="s2">)</span>
+
+    <span class="s0">def </span><span class="s1">__rich_measure__</span><span class="s2">(</span>
+        <span class="s1">self</span><span class="s2">, </span><span class="s1">console</span><span class="s2">: </span><span class="s4">&quot;Console&quot;</span><span class="s2">, </span><span class="s1">options</span><span class="s2">: </span><span class="s4">&quot;ConsoleOptions&quot;</span>
+    <span class="s2">) </span><span class="s1">-&gt; </span><span class="s4">&quot;Measurement&quot;</span><span class="s2">:</span>
+        <span class="s0">if </span><span class="s1">self</span><span class="s2">.</span><span class="s1">width </span><span class="s0">is not None</span><span class="s2">:</span>
+            <span class="s1">options </span><span class="s2">= </span><span class="s1">options</span><span class="s2">.</span><span class="s1">update_width</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">width</span><span class="s2">)</span>
+        <span class="s1">measurement </span><span class="s2">= </span><span class="s1">Measurement</span><span class="s2">.</span><span class="s1">get</span><span class="s2">(</span><span class="s1">console</span><span class="s2">, </span><span class="s1">options</span><span class="s2">, </span><span class="s1">self</span><span class="s2">.</span><span class="s1">renderable</span><span class="s2">)</span>
+        <span class="s0">return </span><span class="s1">measurement</span>
+</pre>
+</body>
+</html>

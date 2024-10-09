@@ -1,0 +1,119 @@
+<html>
+<head>
+<title>mbcharsetprober.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #7a7e85;}
+.s1 { color: #bcbec4;}
+.s2 { color: #cf8e6d;}
+.s3 { color: #bcbec4;}
+.s4 { color: #5f826b; font-style: italic;}
+.s5 { color: #a5c261;}
+.s6 { color: #6aab73;}
+.s7 { color: #2aacb8;}
+</style>
+</head>
+<body bgcolor="#1e1f22">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+mbcharsetprober.py</font>
+</center></td></tr></table>
+<pre><span class="s0">######################## BEGIN LICENSE BLOCK ########################</span>
+<span class="s0"># The Original Code is Mozilla Universal charset detector code.</span>
+<span class="s0">#</span>
+<span class="s0"># The Initial Developer of the Original Code is</span>
+<span class="s0"># Netscape Communications Corporation.</span>
+<span class="s0"># Portions created by the Initial Developer are Copyright (C) 2001</span>
+<span class="s0"># the Initial Developer. All Rights Reserved.</span>
+<span class="s0">#</span>
+<span class="s0"># Contributor(s):</span>
+<span class="s0">#   Mark Pilgrim - port to Python</span>
+<span class="s0">#   Shy Shalom - original C code</span>
+<span class="s0">#   Proofpoint, Inc.</span>
+<span class="s0">#</span>
+<span class="s0"># This library is free software; you can redistribute it and/or</span>
+<span class="s0"># modify it under the terms of the GNU Lesser General Public</span>
+<span class="s0"># License as published by the Free Software Foundation; either</span>
+<span class="s0"># version 2.1 of the License, or (at your option) any later version.</span>
+<span class="s0">#</span>
+<span class="s0"># This library is distributed in the hope that it will be useful,</span>
+<span class="s0"># but WITHOUT ANY WARRANTY; without even the implied warranty of</span>
+<span class="s0"># MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU</span>
+<span class="s0"># Lesser General Public License for more details.</span>
+<span class="s0">#</span>
+<span class="s0"># You should have received a copy of the GNU Lesser General Public</span>
+<span class="s0"># License along with this library; if not, write to the Free Software</span>
+<span class="s0"># Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA</span>
+<span class="s0"># 02110-1301  USA</span>
+<span class="s0">######################### END LICENSE BLOCK #########################</span>
+
+<span class="s2">from </span><span class="s1">typing </span><span class="s2">import </span><span class="s1">Optional</span><span class="s3">, </span><span class="s1">Union</span>
+
+<span class="s2">from </span><span class="s3">.</span><span class="s1">chardistribution </span><span class="s2">import </span><span class="s1">CharDistributionAnalysis</span>
+<span class="s2">from </span><span class="s3">.</span><span class="s1">charsetprober </span><span class="s2">import </span><span class="s1">CharSetProber</span>
+<span class="s2">from </span><span class="s3">.</span><span class="s1">codingstatemachine </span><span class="s2">import </span><span class="s1">CodingStateMachine</span>
+<span class="s2">from </span><span class="s3">.</span><span class="s1">enums </span><span class="s2">import </span><span class="s1">LanguageFilter</span><span class="s3">, </span><span class="s1">MachineState</span><span class="s3">, </span><span class="s1">ProbingState</span>
+
+
+<span class="s2">class </span><span class="s1">MultiByteCharSetProber</span><span class="s3">(</span><span class="s1">CharSetProber</span><span class="s3">):</span>
+    <span class="s4">&quot;&quot;&quot; 
+    MultiByteCharSetProber 
+    &quot;&quot;&quot;</span>
+
+    <span class="s2">def </span><span class="s1">__init__</span><span class="s3">(</span><span class="s1">self</span><span class="s3">, </span><span class="s1">lang_filter</span><span class="s3">: </span><span class="s1">LanguageFilter </span><span class="s3">= </span><span class="s1">LanguageFilter</span><span class="s3">.</span><span class="s1">NONE</span><span class="s3">) </span><span class="s1">-&gt; </span><span class="s2">None</span><span class="s3">:</span>
+        <span class="s1">super</span><span class="s3">().</span><span class="s1">__init__</span><span class="s3">(</span><span class="s1">lang_filter</span><span class="s3">=</span><span class="s1">lang_filter</span><span class="s3">)</span>
+        <span class="s1">self</span><span class="s3">.</span><span class="s1">distribution_analyzer</span><span class="s3">: </span><span class="s1">Optional</span><span class="s3">[</span><span class="s1">CharDistributionAnalysis</span><span class="s3">] = </span><span class="s2">None</span>
+        <span class="s1">self</span><span class="s3">.</span><span class="s1">coding_sm</span><span class="s3">: </span><span class="s1">Optional</span><span class="s3">[</span><span class="s1">CodingStateMachine</span><span class="s3">] = </span><span class="s2">None</span>
+        <span class="s1">self</span><span class="s3">.</span><span class="s1">_last_char </span><span class="s3">= </span><span class="s1">bytearray</span><span class="s3">(</span><span class="s5">b&quot;</span><span class="s2">\0\0</span><span class="s5">&quot;</span><span class="s3">)</span>
+
+    <span class="s2">def </span><span class="s1">reset</span><span class="s3">(</span><span class="s1">self</span><span class="s3">) </span><span class="s1">-&gt; </span><span class="s2">None</span><span class="s3">:</span>
+        <span class="s1">super</span><span class="s3">().</span><span class="s1">reset</span><span class="s3">()</span>
+        <span class="s2">if </span><span class="s1">self</span><span class="s3">.</span><span class="s1">coding_sm</span><span class="s3">:</span>
+            <span class="s1">self</span><span class="s3">.</span><span class="s1">coding_sm</span><span class="s3">.</span><span class="s1">reset</span><span class="s3">()</span>
+        <span class="s2">if </span><span class="s1">self</span><span class="s3">.</span><span class="s1">distribution_analyzer</span><span class="s3">:</span>
+            <span class="s1">self</span><span class="s3">.</span><span class="s1">distribution_analyzer</span><span class="s3">.</span><span class="s1">reset</span><span class="s3">()</span>
+        <span class="s1">self</span><span class="s3">.</span><span class="s1">_last_char </span><span class="s3">= </span><span class="s1">bytearray</span><span class="s3">(</span><span class="s5">b&quot;</span><span class="s2">\0\0</span><span class="s5">&quot;</span><span class="s3">)</span>
+
+    <span class="s2">def </span><span class="s1">feed</span><span class="s3">(</span><span class="s1">self</span><span class="s3">, </span><span class="s1">byte_str</span><span class="s3">: </span><span class="s1">Union</span><span class="s3">[</span><span class="s1">bytes</span><span class="s3">, </span><span class="s1">bytearray</span><span class="s3">]) </span><span class="s1">-&gt; ProbingState</span><span class="s3">:</span>
+        <span class="s2">assert </span><span class="s1">self</span><span class="s3">.</span><span class="s1">coding_sm </span><span class="s2">is not None</span>
+        <span class="s2">assert </span><span class="s1">self</span><span class="s3">.</span><span class="s1">distribution_analyzer </span><span class="s2">is not None</span>
+
+        <span class="s2">for </span><span class="s1">i</span><span class="s3">, </span><span class="s1">byte </span><span class="s2">in </span><span class="s1">enumerate</span><span class="s3">(</span><span class="s1">byte_str</span><span class="s3">):</span>
+            <span class="s1">coding_state </span><span class="s3">= </span><span class="s1">self</span><span class="s3">.</span><span class="s1">coding_sm</span><span class="s3">.</span><span class="s1">next_state</span><span class="s3">(</span><span class="s1">byte</span><span class="s3">)</span>
+            <span class="s2">if </span><span class="s1">coding_state </span><span class="s3">== </span><span class="s1">MachineState</span><span class="s3">.</span><span class="s1">ERROR</span><span class="s3">:</span>
+                <span class="s1">self</span><span class="s3">.</span><span class="s1">logger</span><span class="s3">.</span><span class="s1">debug</span><span class="s3">(</span>
+                    <span class="s6">&quot;%s %s prober hit error at byte %s&quot;</span><span class="s3">,</span>
+                    <span class="s1">self</span><span class="s3">.</span><span class="s1">charset_name</span><span class="s3">,</span>
+                    <span class="s1">self</span><span class="s3">.</span><span class="s1">language</span><span class="s3">,</span>
+                    <span class="s1">i</span><span class="s3">,</span>
+                <span class="s3">)</span>
+                <span class="s1">self</span><span class="s3">.</span><span class="s1">_state </span><span class="s3">= </span><span class="s1">ProbingState</span><span class="s3">.</span><span class="s1">NOT_ME</span>
+                <span class="s2">break</span>
+            <span class="s2">if </span><span class="s1">coding_state </span><span class="s3">== </span><span class="s1">MachineState</span><span class="s3">.</span><span class="s1">ITS_ME</span><span class="s3">:</span>
+                <span class="s1">self</span><span class="s3">.</span><span class="s1">_state </span><span class="s3">= </span><span class="s1">ProbingState</span><span class="s3">.</span><span class="s1">FOUND_IT</span>
+                <span class="s2">break</span>
+            <span class="s2">if </span><span class="s1">coding_state </span><span class="s3">== </span><span class="s1">MachineState</span><span class="s3">.</span><span class="s1">START</span><span class="s3">:</span>
+                <span class="s1">char_len </span><span class="s3">= </span><span class="s1">self</span><span class="s3">.</span><span class="s1">coding_sm</span><span class="s3">.</span><span class="s1">get_current_charlen</span><span class="s3">()</span>
+                <span class="s2">if </span><span class="s1">i </span><span class="s3">== </span><span class="s7">0</span><span class="s3">:</span>
+                    <span class="s1">self</span><span class="s3">.</span><span class="s1">_last_char</span><span class="s3">[</span><span class="s7">1</span><span class="s3">] = </span><span class="s1">byte</span>
+                    <span class="s1">self</span><span class="s3">.</span><span class="s1">distribution_analyzer</span><span class="s3">.</span><span class="s1">feed</span><span class="s3">(</span><span class="s1">self</span><span class="s3">.</span><span class="s1">_last_char</span><span class="s3">, </span><span class="s1">char_len</span><span class="s3">)</span>
+                <span class="s2">else</span><span class="s3">:</span>
+                    <span class="s1">self</span><span class="s3">.</span><span class="s1">distribution_analyzer</span><span class="s3">.</span><span class="s1">feed</span><span class="s3">(</span><span class="s1">byte_str</span><span class="s3">[</span><span class="s1">i </span><span class="s3">- </span><span class="s7">1 </span><span class="s3">: </span><span class="s1">i </span><span class="s3">+ </span><span class="s7">1</span><span class="s3">], </span><span class="s1">char_len</span><span class="s3">)</span>
+
+        <span class="s1">self</span><span class="s3">.</span><span class="s1">_last_char</span><span class="s3">[</span><span class="s7">0</span><span class="s3">] = </span><span class="s1">byte_str</span><span class="s3">[-</span><span class="s7">1</span><span class="s3">]</span>
+
+        <span class="s2">if </span><span class="s1">self</span><span class="s3">.</span><span class="s1">state </span><span class="s3">== </span><span class="s1">ProbingState</span><span class="s3">.</span><span class="s1">DETECTING</span><span class="s3">:</span>
+            <span class="s2">if </span><span class="s1">self</span><span class="s3">.</span><span class="s1">distribution_analyzer</span><span class="s3">.</span><span class="s1">got_enough_data</span><span class="s3">() </span><span class="s2">and </span><span class="s3">(</span>
+                <span class="s1">self</span><span class="s3">.</span><span class="s1">get_confidence</span><span class="s3">() &gt; </span><span class="s1">self</span><span class="s3">.</span><span class="s1">SHORTCUT_THRESHOLD</span>
+            <span class="s3">):</span>
+                <span class="s1">self</span><span class="s3">.</span><span class="s1">_state </span><span class="s3">= </span><span class="s1">ProbingState</span><span class="s3">.</span><span class="s1">FOUND_IT</span>
+
+        <span class="s2">return </span><span class="s1">self</span><span class="s3">.</span><span class="s1">state</span>
+
+    <span class="s2">def </span><span class="s1">get_confidence</span><span class="s3">(</span><span class="s1">self</span><span class="s3">) </span><span class="s1">-&gt; float</span><span class="s3">:</span>
+        <span class="s2">assert </span><span class="s1">self</span><span class="s3">.</span><span class="s1">distribution_analyzer </span><span class="s2">is not None</span>
+        <span class="s2">return </span><span class="s1">self</span><span class="s3">.</span><span class="s1">distribution_analyzer</span><span class="s3">.</span><span class="s1">get_confidence</span><span class="s3">()</span>
+</pre>
+</body>
+</html>

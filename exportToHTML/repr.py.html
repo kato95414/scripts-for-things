@@ -1,0 +1,172 @@
+<html>
+<head>
+<title>repr.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cf8e6d;}
+.s1 { color: #bcbec4;}
+.s2 { color: #bcbec4;}
+.s3 { color: #6aab73;}
+.s4 { color: #5f826b; font-style: italic;}
+.s5 { color: #7a7e85;}
+.s6 { color: #2aacb8;}
+</style>
+</head>
+<body bgcolor="#1e1f22">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+repr.py</font>
+</center></td></tr></table>
+<pre><span class="s0">import </span><span class="s1">inspect</span>
+<span class="s0">from </span><span class="s1">functools </span><span class="s0">import </span><span class="s1">partial</span>
+<span class="s0">from </span><span class="s1">typing </span><span class="s0">import </span><span class="s2">(</span>
+    <span class="s1">Any</span><span class="s2">,</span>
+    <span class="s1">Callable</span><span class="s2">,</span>
+    <span class="s1">Iterable</span><span class="s2">,</span>
+    <span class="s1">List</span><span class="s2">,</span>
+    <span class="s1">Optional</span><span class="s2">,</span>
+    <span class="s1">Tuple</span><span class="s2">,</span>
+    <span class="s1">Type</span><span class="s2">,</span>
+    <span class="s1">TypeVar</span><span class="s2">,</span>
+    <span class="s1">Union</span><span class="s2">,</span>
+    <span class="s1">overload</span><span class="s2">,</span>
+<span class="s2">)</span>
+
+<span class="s1">T </span><span class="s2">= </span><span class="s1">TypeVar</span><span class="s2">(</span><span class="s3">&quot;T&quot;</span><span class="s2">)</span>
+
+
+<span class="s1">Result </span><span class="s2">= </span><span class="s1">Iterable</span><span class="s2">[</span><span class="s1">Union</span><span class="s2">[</span><span class="s1">Any</span><span class="s2">, </span><span class="s1">Tuple</span><span class="s2">[</span><span class="s1">Any</span><span class="s2">], </span><span class="s1">Tuple</span><span class="s2">[</span><span class="s1">str</span><span class="s2">, </span><span class="s1">Any</span><span class="s2">], </span><span class="s1">Tuple</span><span class="s2">[</span><span class="s1">str</span><span class="s2">, </span><span class="s1">Any</span><span class="s2">, </span><span class="s1">Any</span><span class="s2">]]]</span>
+<span class="s1">RichReprResult </span><span class="s2">= </span><span class="s1">Result</span>
+
+
+<span class="s0">class </span><span class="s1">ReprError</span><span class="s2">(</span><span class="s1">Exception</span><span class="s2">):</span>
+    <span class="s4">&quot;&quot;&quot;An error occurred when attempting to build a repr.&quot;&quot;&quot;</span>
+
+
+<span class="s2">@</span><span class="s1">overload</span>
+<span class="s0">def </span><span class="s1">auto</span><span class="s2">(</span><span class="s1">cls</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">Type</span><span class="s2">[</span><span class="s1">T</span><span class="s2">]]) </span><span class="s1">-&gt; Type</span><span class="s2">[</span><span class="s1">T</span><span class="s2">]:</span>
+    <span class="s2">...</span>
+
+
+<span class="s2">@</span><span class="s1">overload</span>
+<span class="s0">def </span><span class="s1">auto</span><span class="s2">(*, </span><span class="s1">angular</span><span class="s2">: </span><span class="s1">bool </span><span class="s2">= </span><span class="s0">False</span><span class="s2">) </span><span class="s1">-&gt; Callable</span><span class="s2">[[</span><span class="s1">Type</span><span class="s2">[</span><span class="s1">T</span><span class="s2">]], </span><span class="s1">Type</span><span class="s2">[</span><span class="s1">T</span><span class="s2">]]:</span>
+    <span class="s2">...</span>
+
+
+<span class="s0">def </span><span class="s1">auto</span><span class="s2">(</span>
+    <span class="s1">cls</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">Type</span><span class="s2">[</span><span class="s1">T</span><span class="s2">]] = </span><span class="s0">None</span><span class="s2">, *, </span><span class="s1">angular</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">bool</span><span class="s2">] = </span><span class="s0">None</span>
+<span class="s2">) </span><span class="s1">-&gt; Union</span><span class="s2">[</span><span class="s1">Type</span><span class="s2">[</span><span class="s1">T</span><span class="s2">], </span><span class="s1">Callable</span><span class="s2">[[</span><span class="s1">Type</span><span class="s2">[</span><span class="s1">T</span><span class="s2">]], </span><span class="s1">Type</span><span class="s2">[</span><span class="s1">T</span><span class="s2">]]]:</span>
+    <span class="s4">&quot;&quot;&quot;Class decorator to create __repr__ from __rich_repr__&quot;&quot;&quot;</span>
+
+    <span class="s0">def </span><span class="s1">do_replace</span><span class="s2">(</span><span class="s1">cls</span><span class="s2">: </span><span class="s1">Type</span><span class="s2">[</span><span class="s1">T</span><span class="s2">], </span><span class="s1">angular</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">bool</span><span class="s2">] = </span><span class="s0">None</span><span class="s2">) </span><span class="s1">-&gt; Type</span><span class="s2">[</span><span class="s1">T</span><span class="s2">]:</span>
+        <span class="s0">def </span><span class="s1">auto_repr</span><span class="s2">(</span><span class="s1">self</span><span class="s2">: </span><span class="s1">T</span><span class="s2">) </span><span class="s1">-&gt; str</span><span class="s2">:</span>
+            <span class="s4">&quot;&quot;&quot;Create repr string from __rich_repr__&quot;&quot;&quot;</span>
+            <span class="s1">repr_str</span><span class="s2">: </span><span class="s1">List</span><span class="s2">[</span><span class="s1">str</span><span class="s2">] = []</span>
+            <span class="s1">append </span><span class="s2">= </span><span class="s1">repr_str</span><span class="s2">.</span><span class="s1">append</span>
+
+            <span class="s1">angular</span><span class="s2">: </span><span class="s1">bool </span><span class="s2">= </span><span class="s1">getattr</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">__rich_repr__</span><span class="s2">, </span><span class="s3">&quot;angular&quot;</span><span class="s2">, </span><span class="s0">False</span><span class="s2">)  </span><span class="s5"># type: ignore[attr-defined]</span>
+            <span class="s0">for </span><span class="s1">arg </span><span class="s0">in </span><span class="s1">self</span><span class="s2">.</span><span class="s1">__rich_repr__</span><span class="s2">():  </span><span class="s5"># type: ignore[attr-defined]</span>
+                <span class="s0">if </span><span class="s1">isinstance</span><span class="s2">(</span><span class="s1">arg</span><span class="s2">, </span><span class="s1">tuple</span><span class="s2">):</span>
+                    <span class="s0">if </span><span class="s1">len</span><span class="s2">(</span><span class="s1">arg</span><span class="s2">) == </span><span class="s6">1</span><span class="s2">:</span>
+                        <span class="s1">append</span><span class="s2">(</span><span class="s1">repr</span><span class="s2">(</span><span class="s1">arg</span><span class="s2">[</span><span class="s6">0</span><span class="s2">]))</span>
+                    <span class="s0">else</span><span class="s2">:</span>
+                        <span class="s1">key</span><span class="s2">, </span><span class="s1">value</span><span class="s2">, *</span><span class="s1">default </span><span class="s2">= </span><span class="s1">arg</span>
+                        <span class="s0">if </span><span class="s1">key </span><span class="s0">is None</span><span class="s2">:</span>
+                            <span class="s1">append</span><span class="s2">(</span><span class="s1">repr</span><span class="s2">(</span><span class="s1">value</span><span class="s2">))</span>
+                        <span class="s0">else</span><span class="s2">:</span>
+                            <span class="s0">if </span><span class="s1">default </span><span class="s0">and </span><span class="s1">default</span><span class="s2">[</span><span class="s6">0</span><span class="s2">] == </span><span class="s1">value</span><span class="s2">:</span>
+                                <span class="s0">continue</span>
+                            <span class="s1">append</span><span class="s2">(</span><span class="s3">f&quot;</span><span class="s0">{</span><span class="s1">key</span><span class="s0">}</span><span class="s3">=</span><span class="s0">{</span><span class="s1">value</span><span class="s0">!r}</span><span class="s3">&quot;</span><span class="s2">)</span>
+                <span class="s0">else</span><span class="s2">:</span>
+                    <span class="s1">append</span><span class="s2">(</span><span class="s1">repr</span><span class="s2">(</span><span class="s1">arg</span><span class="s2">))</span>
+            <span class="s0">if </span><span class="s1">angular</span><span class="s2">:</span>
+                <span class="s0">return </span><span class="s3">f&quot;&lt;</span><span class="s0">{</span><span class="s1">self</span><span class="s2">.</span><span class="s1">__class__</span><span class="s2">.</span><span class="s1">__name__</span><span class="s0">} {</span><span class="s3">' '</span><span class="s2">.</span><span class="s1">join</span><span class="s2">(</span><span class="s1">repr_str</span><span class="s2">)</span><span class="s0">}</span><span class="s3">&gt;&quot;</span>
+            <span class="s0">else</span><span class="s2">:</span>
+                <span class="s0">return </span><span class="s3">f&quot;</span><span class="s0">{</span><span class="s1">self</span><span class="s2">.</span><span class="s1">__class__</span><span class="s2">.</span><span class="s1">__name__</span><span class="s0">}</span><span class="s3">(</span><span class="s0">{</span><span class="s3">', '</span><span class="s2">.</span><span class="s1">join</span><span class="s2">(</span><span class="s1">repr_str</span><span class="s2">)</span><span class="s0">}</span><span class="s3">)&quot;</span>
+
+        <span class="s0">def </span><span class="s1">auto_rich_repr</span><span class="s2">(</span><span class="s1">self</span><span class="s2">: </span><span class="s1">Type</span><span class="s2">[</span><span class="s1">T</span><span class="s2">]) </span><span class="s1">-&gt; Result</span><span class="s2">:</span>
+            <span class="s4">&quot;&quot;&quot;Auto generate __rich_rep__ from signature of __init__&quot;&quot;&quot;</span>
+            <span class="s0">try</span><span class="s2">:</span>
+                <span class="s1">signature </span><span class="s2">= </span><span class="s1">inspect</span><span class="s2">.</span><span class="s1">signature</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">__init__</span><span class="s2">)</span>
+                <span class="s0">for </span><span class="s1">name</span><span class="s2">, </span><span class="s1">param </span><span class="s0">in </span><span class="s1">signature</span><span class="s2">.</span><span class="s1">parameters</span><span class="s2">.</span><span class="s1">items</span><span class="s2">():</span>
+                    <span class="s0">if </span><span class="s1">param</span><span class="s2">.</span><span class="s1">kind </span><span class="s2">== </span><span class="s1">param</span><span class="s2">.</span><span class="s1">POSITIONAL_ONLY</span><span class="s2">:</span>
+                        <span class="s0">yield </span><span class="s1">getattr</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">name</span><span class="s2">)</span>
+                    <span class="s0">elif </span><span class="s1">param</span><span class="s2">.</span><span class="s1">kind </span><span class="s0">in </span><span class="s2">(</span>
+                        <span class="s1">param</span><span class="s2">.</span><span class="s1">POSITIONAL_OR_KEYWORD</span><span class="s2">,</span>
+                        <span class="s1">param</span><span class="s2">.</span><span class="s1">KEYWORD_ONLY</span><span class="s2">,</span>
+                    <span class="s2">):</span>
+                        <span class="s0">if </span><span class="s1">param</span><span class="s2">.</span><span class="s1">default </span><span class="s2">== </span><span class="s1">param</span><span class="s2">.</span><span class="s1">empty</span><span class="s2">:</span>
+                            <span class="s0">yield </span><span class="s1">getattr</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">param</span><span class="s2">.</span><span class="s1">name</span><span class="s2">)</span>
+                        <span class="s0">else</span><span class="s2">:</span>
+                            <span class="s0">yield </span><span class="s1">param</span><span class="s2">.</span><span class="s1">name</span><span class="s2">, </span><span class="s1">getattr</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">param</span><span class="s2">.</span><span class="s1">name</span><span class="s2">), </span><span class="s1">param</span><span class="s2">.</span><span class="s1">default</span>
+            <span class="s0">except </span><span class="s1">Exception </span><span class="s0">as </span><span class="s1">error</span><span class="s2">:</span>
+                <span class="s0">raise </span><span class="s1">ReprError</span><span class="s2">(</span>
+                    <span class="s3">f&quot;Failed to auto generate __rich_repr__; </span><span class="s0">{</span><span class="s1">error</span><span class="s0">}</span><span class="s3">&quot;</span>
+                <span class="s2">) </span><span class="s0">from None</span>
+
+        <span class="s0">if not </span><span class="s1">hasattr</span><span class="s2">(</span><span class="s1">cls</span><span class="s2">, </span><span class="s3">&quot;__rich_repr__&quot;</span><span class="s2">):</span>
+            <span class="s1">auto_rich_repr</span><span class="s2">.</span><span class="s1">__doc__ </span><span class="s2">= </span><span class="s3">&quot;Build a rich repr&quot;</span>
+            <span class="s1">cls</span><span class="s2">.</span><span class="s1">__rich_repr__ </span><span class="s2">= </span><span class="s1">auto_rich_repr  </span><span class="s5"># type: ignore[attr-defined]</span>
+
+        <span class="s1">auto_repr</span><span class="s2">.</span><span class="s1">__doc__ </span><span class="s2">= </span><span class="s3">&quot;Return repr(self)&quot;</span>
+        <span class="s1">cls</span><span class="s2">.</span><span class="s1">__repr__ </span><span class="s2">= </span><span class="s1">auto_repr  </span><span class="s5"># type: ignore[assignment]</span>
+        <span class="s0">if </span><span class="s1">angular </span><span class="s0">is not None</span><span class="s2">:</span>
+            <span class="s1">cls</span><span class="s2">.</span><span class="s1">__rich_repr__</span><span class="s2">.</span><span class="s1">angular </span><span class="s2">= </span><span class="s1">angular  </span><span class="s5"># type: ignore[attr-defined]</span>
+        <span class="s0">return </span><span class="s1">cls</span>
+
+    <span class="s0">if </span><span class="s1">cls </span><span class="s0">is None</span><span class="s2">:</span>
+        <span class="s0">return </span><span class="s1">partial</span><span class="s2">(</span><span class="s1">do_replace</span><span class="s2">, </span><span class="s1">angular</span><span class="s2">=</span><span class="s1">angular</span><span class="s2">)</span>
+    <span class="s0">else</span><span class="s2">:</span>
+        <span class="s0">return </span><span class="s1">do_replace</span><span class="s2">(</span><span class="s1">cls</span><span class="s2">, </span><span class="s1">angular</span><span class="s2">=</span><span class="s1">angular</span><span class="s2">)</span>
+
+
+<span class="s2">@</span><span class="s1">overload</span>
+<span class="s0">def </span><span class="s1">rich_repr</span><span class="s2">(</span><span class="s1">cls</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">Type</span><span class="s2">[</span><span class="s1">T</span><span class="s2">]]) </span><span class="s1">-&gt; Type</span><span class="s2">[</span><span class="s1">T</span><span class="s2">]:</span>
+    <span class="s2">...</span>
+
+
+<span class="s2">@</span><span class="s1">overload</span>
+<span class="s0">def </span><span class="s1">rich_repr</span><span class="s2">(*, </span><span class="s1">angular</span><span class="s2">: </span><span class="s1">bool </span><span class="s2">= </span><span class="s0">False</span><span class="s2">) </span><span class="s1">-&gt; Callable</span><span class="s2">[[</span><span class="s1">Type</span><span class="s2">[</span><span class="s1">T</span><span class="s2">]], </span><span class="s1">Type</span><span class="s2">[</span><span class="s1">T</span><span class="s2">]]:</span>
+    <span class="s2">...</span>
+
+
+<span class="s0">def </span><span class="s1">rich_repr</span><span class="s2">(</span>
+    <span class="s1">cls</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">Type</span><span class="s2">[</span><span class="s1">T</span><span class="s2">]] = </span><span class="s0">None</span><span class="s2">, *, </span><span class="s1">angular</span><span class="s2">: </span><span class="s1">bool </span><span class="s2">= </span><span class="s0">False</span>
+<span class="s2">) </span><span class="s1">-&gt; Union</span><span class="s2">[</span><span class="s1">Type</span><span class="s2">[</span><span class="s1">T</span><span class="s2">], </span><span class="s1">Callable</span><span class="s2">[[</span><span class="s1">Type</span><span class="s2">[</span><span class="s1">T</span><span class="s2">]], </span><span class="s1">Type</span><span class="s2">[</span><span class="s1">T</span><span class="s2">]]]:</span>
+    <span class="s0">if </span><span class="s1">cls </span><span class="s0">is None</span><span class="s2">:</span>
+        <span class="s0">return </span><span class="s1">auto</span><span class="s2">(</span><span class="s1">angular</span><span class="s2">=</span><span class="s1">angular</span><span class="s2">)</span>
+    <span class="s0">else</span><span class="s2">:</span>
+        <span class="s0">return </span><span class="s1">auto</span><span class="s2">(</span><span class="s1">cls</span><span class="s2">)</span>
+
+
+<span class="s0">if </span><span class="s1">__name__ </span><span class="s2">== </span><span class="s3">&quot;__main__&quot;</span><span class="s2">:</span>
+
+    <span class="s2">@</span><span class="s1">auto</span>
+    <span class="s0">class </span><span class="s1">Foo</span><span class="s2">:</span>
+        <span class="s0">def </span><span class="s1">__rich_repr__</span><span class="s2">(</span><span class="s1">self</span><span class="s2">) </span><span class="s1">-&gt; Result</span><span class="s2">:</span>
+            <span class="s0">yield </span><span class="s3">&quot;foo&quot;</span>
+            <span class="s0">yield </span><span class="s3">&quot;bar&quot;</span><span class="s2">, {</span><span class="s3">&quot;shopping&quot;</span><span class="s2">: [</span><span class="s3">&quot;eggs&quot;</span><span class="s2">, </span><span class="s3">&quot;ham&quot;</span><span class="s2">, </span><span class="s3">&quot;pineapple&quot;</span><span class="s2">]}</span>
+            <span class="s0">yield </span><span class="s3">&quot;buy&quot;</span><span class="s2">, </span><span class="s3">&quot;hand sanitizer&quot;</span>
+
+    <span class="s1">foo </span><span class="s2">= </span><span class="s1">Foo</span><span class="s2">()</span>
+    <span class="s0">from </span><span class="s1">pip</span><span class="s2">.</span><span class="s1">_vendor</span><span class="s2">.</span><span class="s1">rich</span><span class="s2">.</span><span class="s1">console </span><span class="s0">import </span><span class="s1">Console</span>
+
+    <span class="s1">console </span><span class="s2">= </span><span class="s1">Console</span><span class="s2">()</span>
+
+    <span class="s1">console</span><span class="s2">.</span><span class="s1">rule</span><span class="s2">(</span><span class="s3">&quot;Standard repr&quot;</span><span class="s2">)</span>
+    <span class="s1">console</span><span class="s2">.</span><span class="s1">print</span><span class="s2">(</span><span class="s1">foo</span><span class="s2">)</span>
+
+    <span class="s1">console</span><span class="s2">.</span><span class="s1">print</span><span class="s2">(</span><span class="s1">foo</span><span class="s2">, </span><span class="s1">width</span><span class="s2">=</span><span class="s6">60</span><span class="s2">)</span>
+    <span class="s1">console</span><span class="s2">.</span><span class="s1">print</span><span class="s2">(</span><span class="s1">foo</span><span class="s2">, </span><span class="s1">width</span><span class="s2">=</span><span class="s6">30</span><span class="s2">)</span>
+
+    <span class="s1">console</span><span class="s2">.</span><span class="s1">rule</span><span class="s2">(</span><span class="s3">&quot;Angular repr&quot;</span><span class="s2">)</span>
+    <span class="s1">Foo</span><span class="s2">.</span><span class="s1">__rich_repr__</span><span class="s2">.</span><span class="s1">angular </span><span class="s2">= </span><span class="s0">True  </span><span class="s5"># type: ignore[attr-defined]</span>
+
+    <span class="s1">console</span><span class="s2">.</span><span class="s1">print</span><span class="s2">(</span><span class="s1">foo</span><span class="s2">)</span>
+
+    <span class="s1">console</span><span class="s2">.</span><span class="s1">print</span><span class="s2">(</span><span class="s1">foo</span><span class="s2">, </span><span class="s1">width</span><span class="s2">=</span><span class="s6">60</span><span class="s2">)</span>
+    <span class="s1">console</span><span class="s2">.</span><span class="s1">print</span><span class="s2">(</span><span class="s1">foo</span><span class="s2">, </span><span class="s1">width</span><span class="s2">=</span><span class="s6">30</span><span class="s2">)</span>
+</pre>
+</body>
+</html>

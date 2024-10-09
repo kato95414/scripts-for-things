@@ -1,0 +1,331 @@
+<html>
+<head>
+<title>panel.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cf8e6d;}
+.s1 { color: #bcbec4;}
+.s2 { color: #bcbec4;}
+.s3 { color: #5f826b; font-style: italic;}
+.s4 { color: #6aab73;}
+.s5 { color: #2aacb8;}
+.s6 { color: #7a7e85;}
+</style>
+</head>
+<body bgcolor="#1e1f22">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+panel.py</font>
+</center></td></tr></table>
+<pre><span class="s0">from </span><span class="s1">typing </span><span class="s0">import </span><span class="s1">TYPE_CHECKING</span><span class="s2">, </span><span class="s1">Optional</span>
+
+<span class="s0">from </span><span class="s2">.</span><span class="s1">align </span><span class="s0">import </span><span class="s1">AlignMethod</span>
+<span class="s0">from </span><span class="s2">.</span><span class="s1">box </span><span class="s0">import </span><span class="s1">ROUNDED</span><span class="s2">, </span><span class="s1">Box</span>
+<span class="s0">from </span><span class="s2">.</span><span class="s1">cells </span><span class="s0">import </span><span class="s1">cell_len</span>
+<span class="s0">from </span><span class="s2">.</span><span class="s1">jupyter </span><span class="s0">import </span><span class="s1">JupyterMixin</span>
+<span class="s0">from </span><span class="s2">.</span><span class="s1">measure </span><span class="s0">import </span><span class="s1">Measurement</span><span class="s2">, </span><span class="s1">measure_renderables</span>
+<span class="s0">from </span><span class="s2">.</span><span class="s1">padding </span><span class="s0">import </span><span class="s1">Padding</span><span class="s2">, </span><span class="s1">PaddingDimensions</span>
+<span class="s0">from </span><span class="s2">.</span><span class="s1">segment </span><span class="s0">import </span><span class="s1">Segment</span>
+<span class="s0">from </span><span class="s2">.</span><span class="s1">style </span><span class="s0">import </span><span class="s1">Style</span><span class="s2">, </span><span class="s1">StyleType</span>
+<span class="s0">from </span><span class="s2">.</span><span class="s1">text </span><span class="s0">import </span><span class="s1">Text</span><span class="s2">, </span><span class="s1">TextType</span>
+
+<span class="s0">if </span><span class="s1">TYPE_CHECKING</span><span class="s2">:</span>
+    <span class="s0">from </span><span class="s2">.</span><span class="s1">console </span><span class="s0">import </span><span class="s1">Console</span><span class="s2">, </span><span class="s1">ConsoleOptions</span><span class="s2">, </span><span class="s1">RenderableType</span><span class="s2">, </span><span class="s1">RenderResult</span>
+
+
+<span class="s0">class </span><span class="s1">Panel</span><span class="s2">(</span><span class="s1">JupyterMixin</span><span class="s2">):</span>
+    <span class="s3">&quot;&quot;&quot;A console renderable that draws a border around its contents. 
+ 
+    Example: 
+        &gt;&gt;&gt; console.print(Panel(&quot;Hello, World!&quot;)) 
+ 
+    Args: 
+        renderable (RenderableType): A console renderable object. 
+        box (Box, optional): A Box instance that defines the look of the border (see :ref:`appendix_box`. 
+            Defaults to box.ROUNDED. 
+        safe_box (bool, optional): Disable box characters that don't display on windows legacy terminal with *raster* fonts. Defaults to True. 
+        expand (bool, optional): If True the panel will stretch to fill the console 
+            width, otherwise it will be sized to fit the contents. Defaults to True. 
+        style (str, optional): The style of the panel (border and contents). Defaults to &quot;none&quot;. 
+        border_style (str, optional): The style of the border. Defaults to &quot;none&quot;. 
+        width (Optional[int], optional): Optional width of panel. Defaults to None to auto-detect. 
+        height (Optional[int], optional): Optional height of panel. Defaults to None to auto-detect. 
+        padding (Optional[PaddingDimensions]): Optional padding around renderable. Defaults to 0. 
+        highlight (bool, optional): Enable automatic highlighting of panel title (if str). Defaults to False. 
+    &quot;&quot;&quot;</span>
+
+    <span class="s0">def </span><span class="s1">__init__</span><span class="s2">(</span>
+        <span class="s1">self</span><span class="s2">,</span>
+        <span class="s1">renderable</span><span class="s2">: </span><span class="s4">&quot;RenderableType&quot;</span><span class="s2">,</span>
+        <span class="s1">box</span><span class="s2">: </span><span class="s1">Box </span><span class="s2">= </span><span class="s1">ROUNDED</span><span class="s2">,</span>
+        <span class="s2">*,</span>
+        <span class="s1">title</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">TextType</span><span class="s2">] = </span><span class="s0">None</span><span class="s2">,</span>
+        <span class="s1">title_align</span><span class="s2">: </span><span class="s1">AlignMethod </span><span class="s2">= </span><span class="s4">&quot;center&quot;</span><span class="s2">,</span>
+        <span class="s1">subtitle</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">TextType</span><span class="s2">] = </span><span class="s0">None</span><span class="s2">,</span>
+        <span class="s1">subtitle_align</span><span class="s2">: </span><span class="s1">AlignMethod </span><span class="s2">= </span><span class="s4">&quot;center&quot;</span><span class="s2">,</span>
+        <span class="s1">safe_box</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">bool</span><span class="s2">] = </span><span class="s0">None</span><span class="s2">,</span>
+        <span class="s1">expand</span><span class="s2">: </span><span class="s1">bool </span><span class="s2">= </span><span class="s0">True</span><span class="s2">,</span>
+        <span class="s1">style</span><span class="s2">: </span><span class="s1">StyleType </span><span class="s2">= </span><span class="s4">&quot;none&quot;</span><span class="s2">,</span>
+        <span class="s1">border_style</span><span class="s2">: </span><span class="s1">StyleType </span><span class="s2">= </span><span class="s4">&quot;none&quot;</span><span class="s2">,</span>
+        <span class="s1">width</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">int</span><span class="s2">] = </span><span class="s0">None</span><span class="s2">,</span>
+        <span class="s1">height</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">int</span><span class="s2">] = </span><span class="s0">None</span><span class="s2">,</span>
+        <span class="s1">padding</span><span class="s2">: </span><span class="s1">PaddingDimensions </span><span class="s2">= (</span><span class="s5">0</span><span class="s2">, </span><span class="s5">1</span><span class="s2">),</span>
+        <span class="s1">highlight</span><span class="s2">: </span><span class="s1">bool </span><span class="s2">= </span><span class="s0">False</span><span class="s2">,</span>
+    <span class="s2">) </span><span class="s1">-&gt; </span><span class="s0">None</span><span class="s2">:</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">renderable </span><span class="s2">= </span><span class="s1">renderable</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">box </span><span class="s2">= </span><span class="s1">box</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">title </span><span class="s2">= </span><span class="s1">title</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">title_align</span><span class="s2">: </span><span class="s1">AlignMethod </span><span class="s2">= </span><span class="s1">title_align</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">subtitle </span><span class="s2">= </span><span class="s1">subtitle</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">subtitle_align </span><span class="s2">= </span><span class="s1">subtitle_align</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">safe_box </span><span class="s2">= </span><span class="s1">safe_box</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">expand </span><span class="s2">= </span><span class="s1">expand</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">style </span><span class="s2">= </span><span class="s1">style</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">border_style </span><span class="s2">= </span><span class="s1">border_style</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">width </span><span class="s2">= </span><span class="s1">width</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">height </span><span class="s2">= </span><span class="s1">height</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">padding </span><span class="s2">= </span><span class="s1">padding</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">highlight </span><span class="s2">= </span><span class="s1">highlight</span>
+
+    <span class="s2">@</span><span class="s1">classmethod</span>
+    <span class="s0">def </span><span class="s1">fit</span><span class="s2">(</span>
+        <span class="s1">cls</span><span class="s2">,</span>
+        <span class="s1">renderable</span><span class="s2">: </span><span class="s4">&quot;RenderableType&quot;</span><span class="s2">,</span>
+        <span class="s1">box</span><span class="s2">: </span><span class="s1">Box </span><span class="s2">= </span><span class="s1">ROUNDED</span><span class="s2">,</span>
+        <span class="s2">*,</span>
+        <span class="s1">title</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">TextType</span><span class="s2">] = </span><span class="s0">None</span><span class="s2">,</span>
+        <span class="s1">title_align</span><span class="s2">: </span><span class="s1">AlignMethod </span><span class="s2">= </span><span class="s4">&quot;center&quot;</span><span class="s2">,</span>
+        <span class="s1">subtitle</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">TextType</span><span class="s2">] = </span><span class="s0">None</span><span class="s2">,</span>
+        <span class="s1">subtitle_align</span><span class="s2">: </span><span class="s1">AlignMethod </span><span class="s2">= </span><span class="s4">&quot;center&quot;</span><span class="s2">,</span>
+        <span class="s1">safe_box</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">bool</span><span class="s2">] = </span><span class="s0">None</span><span class="s2">,</span>
+        <span class="s1">style</span><span class="s2">: </span><span class="s1">StyleType </span><span class="s2">= </span><span class="s4">&quot;none&quot;</span><span class="s2">,</span>
+        <span class="s1">border_style</span><span class="s2">: </span><span class="s1">StyleType </span><span class="s2">= </span><span class="s4">&quot;none&quot;</span><span class="s2">,</span>
+        <span class="s1">width</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">int</span><span class="s2">] = </span><span class="s0">None</span><span class="s2">,</span>
+        <span class="s1">padding</span><span class="s2">: </span><span class="s1">PaddingDimensions </span><span class="s2">= (</span><span class="s5">0</span><span class="s2">, </span><span class="s5">1</span><span class="s2">),</span>
+    <span class="s2">) </span><span class="s1">-&gt; </span><span class="s4">&quot;Panel&quot;</span><span class="s2">:</span>
+        <span class="s3">&quot;&quot;&quot;An alternative constructor that sets expand=False.&quot;&quot;&quot;</span>
+        <span class="s0">return </span><span class="s1">cls</span><span class="s2">(</span>
+            <span class="s1">renderable</span><span class="s2">,</span>
+            <span class="s1">box</span><span class="s2">,</span>
+            <span class="s1">title</span><span class="s2">=</span><span class="s1">title</span><span class="s2">,</span>
+            <span class="s1">title_align</span><span class="s2">=</span><span class="s1">title_align</span><span class="s2">,</span>
+            <span class="s1">subtitle</span><span class="s2">=</span><span class="s1">subtitle</span><span class="s2">,</span>
+            <span class="s1">subtitle_align</span><span class="s2">=</span><span class="s1">subtitle_align</span><span class="s2">,</span>
+            <span class="s1">safe_box</span><span class="s2">=</span><span class="s1">safe_box</span><span class="s2">,</span>
+            <span class="s1">style</span><span class="s2">=</span><span class="s1">style</span><span class="s2">,</span>
+            <span class="s1">border_style</span><span class="s2">=</span><span class="s1">border_style</span><span class="s2">,</span>
+            <span class="s1">width</span><span class="s2">=</span><span class="s1">width</span><span class="s2">,</span>
+            <span class="s1">padding</span><span class="s2">=</span><span class="s1">padding</span><span class="s2">,</span>
+            <span class="s1">expand</span><span class="s2">=</span><span class="s0">False</span><span class="s2">,</span>
+        <span class="s2">)</span>
+
+    <span class="s2">@</span><span class="s1">property</span>
+    <span class="s0">def </span><span class="s1">_title</span><span class="s2">(</span><span class="s1">self</span><span class="s2">) </span><span class="s1">-&gt; Optional</span><span class="s2">[</span><span class="s1">Text</span><span class="s2">]:</span>
+        <span class="s0">if </span><span class="s1">self</span><span class="s2">.</span><span class="s1">title</span><span class="s2">:</span>
+            <span class="s1">title_text </span><span class="s2">= (</span>
+                <span class="s1">Text</span><span class="s2">.</span><span class="s1">from_markup</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">title</span><span class="s2">)</span>
+                <span class="s0">if </span><span class="s1">isinstance</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">title</span><span class="s2">, </span><span class="s1">str</span><span class="s2">)</span>
+                <span class="s0">else </span><span class="s1">self</span><span class="s2">.</span><span class="s1">title</span><span class="s2">.</span><span class="s1">copy</span><span class="s2">()</span>
+            <span class="s2">)</span>
+            <span class="s1">title_text</span><span class="s2">.</span><span class="s1">end </span><span class="s2">= </span><span class="s4">&quot;&quot;</span>
+            <span class="s1">title_text</span><span class="s2">.</span><span class="s1">plain </span><span class="s2">= </span><span class="s1">title_text</span><span class="s2">.</span><span class="s1">plain</span><span class="s2">.</span><span class="s1">replace</span><span class="s2">(</span><span class="s4">&quot;</span><span class="s0">\n</span><span class="s4">&quot;</span><span class="s2">, </span><span class="s4">&quot; &quot;</span><span class="s2">)</span>
+            <span class="s1">title_text</span><span class="s2">.</span><span class="s1">no_wrap </span><span class="s2">= </span><span class="s0">True</span>
+            <span class="s1">title_text</span><span class="s2">.</span><span class="s1">expand_tabs</span><span class="s2">()</span>
+            <span class="s1">title_text</span><span class="s2">.</span><span class="s1">pad</span><span class="s2">(</span><span class="s5">1</span><span class="s2">)</span>
+            <span class="s0">return </span><span class="s1">title_text</span>
+        <span class="s0">return None</span>
+
+    <span class="s2">@</span><span class="s1">property</span>
+    <span class="s0">def </span><span class="s1">_subtitle</span><span class="s2">(</span><span class="s1">self</span><span class="s2">) </span><span class="s1">-&gt; Optional</span><span class="s2">[</span><span class="s1">Text</span><span class="s2">]:</span>
+        <span class="s0">if </span><span class="s1">self</span><span class="s2">.</span><span class="s1">subtitle</span><span class="s2">:</span>
+            <span class="s1">subtitle_text </span><span class="s2">= (</span>
+                <span class="s1">Text</span><span class="s2">.</span><span class="s1">from_markup</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">subtitle</span><span class="s2">)</span>
+                <span class="s0">if </span><span class="s1">isinstance</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">subtitle</span><span class="s2">, </span><span class="s1">str</span><span class="s2">)</span>
+                <span class="s0">else </span><span class="s1">self</span><span class="s2">.</span><span class="s1">subtitle</span><span class="s2">.</span><span class="s1">copy</span><span class="s2">()</span>
+            <span class="s2">)</span>
+            <span class="s1">subtitle_text</span><span class="s2">.</span><span class="s1">end </span><span class="s2">= </span><span class="s4">&quot;&quot;</span>
+            <span class="s1">subtitle_text</span><span class="s2">.</span><span class="s1">plain </span><span class="s2">= </span><span class="s1">subtitle_text</span><span class="s2">.</span><span class="s1">plain</span><span class="s2">.</span><span class="s1">replace</span><span class="s2">(</span><span class="s4">&quot;</span><span class="s0">\n</span><span class="s4">&quot;</span><span class="s2">, </span><span class="s4">&quot; &quot;</span><span class="s2">)</span>
+            <span class="s1">subtitle_text</span><span class="s2">.</span><span class="s1">no_wrap </span><span class="s2">= </span><span class="s0">True</span>
+            <span class="s1">subtitle_text</span><span class="s2">.</span><span class="s1">expand_tabs</span><span class="s2">()</span>
+            <span class="s1">subtitle_text</span><span class="s2">.</span><span class="s1">pad</span><span class="s2">(</span><span class="s5">1</span><span class="s2">)</span>
+            <span class="s0">return </span><span class="s1">subtitle_text</span>
+        <span class="s0">return None</span>
+
+    <span class="s0">def </span><span class="s1">__rich_console__</span><span class="s2">(</span>
+        <span class="s1">self</span><span class="s2">, </span><span class="s1">console</span><span class="s2">: </span><span class="s4">&quot;Console&quot;</span><span class="s2">, </span><span class="s1">options</span><span class="s2">: </span><span class="s4">&quot;ConsoleOptions&quot;</span>
+    <span class="s2">) </span><span class="s1">-&gt; </span><span class="s4">&quot;RenderResult&quot;</span><span class="s2">:</span>
+        <span class="s1">_padding </span><span class="s2">= </span><span class="s1">Padding</span><span class="s2">.</span><span class="s1">unpack</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">padding</span><span class="s2">)</span>
+        <span class="s1">renderable </span><span class="s2">= (</span>
+            <span class="s1">Padding</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">renderable</span><span class="s2">, </span><span class="s1">_padding</span><span class="s2">) </span><span class="s0">if </span><span class="s1">any</span><span class="s2">(</span><span class="s1">_padding</span><span class="s2">) </span><span class="s0">else </span><span class="s1">self</span><span class="s2">.</span><span class="s1">renderable</span>
+        <span class="s2">)</span>
+        <span class="s1">style </span><span class="s2">= </span><span class="s1">console</span><span class="s2">.</span><span class="s1">get_style</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">style</span><span class="s2">)</span>
+        <span class="s1">border_style </span><span class="s2">= </span><span class="s1">style </span><span class="s2">+ </span><span class="s1">console</span><span class="s2">.</span><span class="s1">get_style</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">border_style</span><span class="s2">)</span>
+        <span class="s1">width </span><span class="s2">= (</span>
+            <span class="s1">options</span><span class="s2">.</span><span class="s1">max_width</span>
+            <span class="s0">if </span><span class="s1">self</span><span class="s2">.</span><span class="s1">width </span><span class="s0">is None</span>
+            <span class="s0">else </span><span class="s1">min</span><span class="s2">(</span><span class="s1">options</span><span class="s2">.</span><span class="s1">max_width</span><span class="s2">, </span><span class="s1">self</span><span class="s2">.</span><span class="s1">width</span><span class="s2">)</span>
+        <span class="s2">)</span>
+
+        <span class="s1">safe_box</span><span class="s2">: </span><span class="s1">bool </span><span class="s2">= </span><span class="s1">console</span><span class="s2">.</span><span class="s1">safe_box </span><span class="s0">if </span><span class="s1">self</span><span class="s2">.</span><span class="s1">safe_box </span><span class="s0">is None else </span><span class="s1">self</span><span class="s2">.</span><span class="s1">safe_box</span>
+        <span class="s1">box </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">box</span><span class="s2">.</span><span class="s1">substitute</span><span class="s2">(</span><span class="s1">options</span><span class="s2">, </span><span class="s1">safe</span><span class="s2">=</span><span class="s1">safe_box</span><span class="s2">)</span>
+
+        <span class="s0">def </span><span class="s1">align_text</span><span class="s2">(</span>
+            <span class="s1">text</span><span class="s2">: </span><span class="s1">Text</span><span class="s2">, </span><span class="s1">width</span><span class="s2">: </span><span class="s1">int</span><span class="s2">, </span><span class="s1">align</span><span class="s2">: </span><span class="s1">str</span><span class="s2">, </span><span class="s1">character</span><span class="s2">: </span><span class="s1">str</span><span class="s2">, </span><span class="s1">style</span><span class="s2">: </span><span class="s1">Style</span>
+        <span class="s2">) </span><span class="s1">-&gt; Text</span><span class="s2">:</span>
+            <span class="s3">&quot;&quot;&quot;Gets new aligned text. 
+ 
+            Args: 
+                text (Text): Title or subtitle text. 
+                width (int): Desired width. 
+                align (str): Alignment. 
+                character (str): Character for alignment. 
+                style (Style): Border style 
+ 
+            Returns: 
+                Text: New text instance 
+            &quot;&quot;&quot;</span>
+            <span class="s1">text </span><span class="s2">= </span><span class="s1">text</span><span class="s2">.</span><span class="s1">copy</span><span class="s2">()</span>
+            <span class="s1">text</span><span class="s2">.</span><span class="s1">truncate</span><span class="s2">(</span><span class="s1">width</span><span class="s2">)</span>
+            <span class="s1">excess_space </span><span class="s2">= </span><span class="s1">width </span><span class="s2">- </span><span class="s1">cell_len</span><span class="s2">(</span><span class="s1">text</span><span class="s2">.</span><span class="s1">plain</span><span class="s2">)</span>
+            <span class="s0">if </span><span class="s1">excess_space</span><span class="s2">:</span>
+                <span class="s0">if </span><span class="s1">align </span><span class="s2">== </span><span class="s4">&quot;left&quot;</span><span class="s2">:</span>
+                    <span class="s0">return </span><span class="s1">Text</span><span class="s2">.</span><span class="s1">assemble</span><span class="s2">(</span>
+                        <span class="s1">text</span><span class="s2">,</span>
+                        <span class="s2">(</span><span class="s1">character </span><span class="s2">* </span><span class="s1">excess_space</span><span class="s2">, </span><span class="s1">style</span><span class="s2">),</span>
+                        <span class="s1">no_wrap</span><span class="s2">=</span><span class="s0">True</span><span class="s2">,</span>
+                        <span class="s1">end</span><span class="s2">=</span><span class="s4">&quot;&quot;</span><span class="s2">,</span>
+                    <span class="s2">)</span>
+                <span class="s0">elif </span><span class="s1">align </span><span class="s2">== </span><span class="s4">&quot;center&quot;</span><span class="s2">:</span>
+                    <span class="s1">left </span><span class="s2">= </span><span class="s1">excess_space </span><span class="s2">// </span><span class="s5">2</span>
+                    <span class="s0">return </span><span class="s1">Text</span><span class="s2">.</span><span class="s1">assemble</span><span class="s2">(</span>
+                        <span class="s2">(</span><span class="s1">character </span><span class="s2">* </span><span class="s1">left</span><span class="s2">, </span><span class="s1">style</span><span class="s2">),</span>
+                        <span class="s1">text</span><span class="s2">,</span>
+                        <span class="s2">(</span><span class="s1">character </span><span class="s2">* (</span><span class="s1">excess_space </span><span class="s2">- </span><span class="s1">left</span><span class="s2">), </span><span class="s1">style</span><span class="s2">),</span>
+                        <span class="s1">no_wrap</span><span class="s2">=</span><span class="s0">True</span><span class="s2">,</span>
+                        <span class="s1">end</span><span class="s2">=</span><span class="s4">&quot;&quot;</span><span class="s2">,</span>
+                    <span class="s2">)</span>
+                <span class="s0">else</span><span class="s2">:</span>
+                    <span class="s0">return </span><span class="s1">Text</span><span class="s2">.</span><span class="s1">assemble</span><span class="s2">(</span>
+                        <span class="s2">(</span><span class="s1">character </span><span class="s2">* </span><span class="s1">excess_space</span><span class="s2">, </span><span class="s1">style</span><span class="s2">),</span>
+                        <span class="s1">text</span><span class="s2">,</span>
+                        <span class="s1">no_wrap</span><span class="s2">=</span><span class="s0">True</span><span class="s2">,</span>
+                        <span class="s1">end</span><span class="s2">=</span><span class="s4">&quot;&quot;</span><span class="s2">,</span>
+                    <span class="s2">)</span>
+            <span class="s0">return </span><span class="s1">text</span>
+
+        <span class="s1">title_text </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">_title</span>
+        <span class="s0">if </span><span class="s1">title_text </span><span class="s0">is not None</span><span class="s2">:</span>
+            <span class="s1">title_text</span><span class="s2">.</span><span class="s1">stylize_before</span><span class="s2">(</span><span class="s1">border_style</span><span class="s2">)</span>
+
+        <span class="s1">child_width </span><span class="s2">= (</span>
+            <span class="s1">width </span><span class="s2">- </span><span class="s5">2</span>
+            <span class="s0">if </span><span class="s1">self</span><span class="s2">.</span><span class="s1">expand</span>
+            <span class="s0">else </span><span class="s1">console</span><span class="s2">.</span><span class="s1">measure</span><span class="s2">(</span>
+                <span class="s1">renderable</span><span class="s2">, </span><span class="s1">options</span><span class="s2">=</span><span class="s1">options</span><span class="s2">.</span><span class="s1">update_width</span><span class="s2">(</span><span class="s1">width </span><span class="s2">- </span><span class="s5">2</span><span class="s2">)</span>
+            <span class="s2">).</span><span class="s1">maximum</span>
+        <span class="s2">)</span>
+        <span class="s1">child_height </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">height </span><span class="s0">or </span><span class="s1">options</span><span class="s2">.</span><span class="s1">height </span><span class="s0">or None</span>
+        <span class="s0">if </span><span class="s1">child_height</span><span class="s2">:</span>
+            <span class="s1">child_height </span><span class="s2">-= </span><span class="s5">2</span>
+        <span class="s0">if </span><span class="s1">title_text </span><span class="s0">is not None</span><span class="s2">:</span>
+            <span class="s1">child_width </span><span class="s2">= </span><span class="s1">min</span><span class="s2">(</span>
+                <span class="s1">options</span><span class="s2">.</span><span class="s1">max_width </span><span class="s2">- </span><span class="s5">2</span><span class="s2">, </span><span class="s1">max</span><span class="s2">(</span><span class="s1">child_width</span><span class="s2">, </span><span class="s1">title_text</span><span class="s2">.</span><span class="s1">cell_len </span><span class="s2">+ </span><span class="s5">2</span><span class="s2">)</span>
+            <span class="s2">)</span>
+
+        <span class="s1">width </span><span class="s2">= </span><span class="s1">child_width </span><span class="s2">+ </span><span class="s5">2</span>
+        <span class="s1">child_options </span><span class="s2">= </span><span class="s1">options</span><span class="s2">.</span><span class="s1">update</span><span class="s2">(</span>
+            <span class="s1">width</span><span class="s2">=</span><span class="s1">child_width</span><span class="s2">, </span><span class="s1">height</span><span class="s2">=</span><span class="s1">child_height</span><span class="s2">, </span><span class="s1">highlight</span><span class="s2">=</span><span class="s1">self</span><span class="s2">.</span><span class="s1">highlight</span>
+        <span class="s2">)</span>
+        <span class="s1">lines </span><span class="s2">= </span><span class="s1">console</span><span class="s2">.</span><span class="s1">render_lines</span><span class="s2">(</span><span class="s1">renderable</span><span class="s2">, </span><span class="s1">child_options</span><span class="s2">, </span><span class="s1">style</span><span class="s2">=</span><span class="s1">style</span><span class="s2">)</span>
+
+        <span class="s1">line_start </span><span class="s2">= </span><span class="s1">Segment</span><span class="s2">(</span><span class="s1">box</span><span class="s2">.</span><span class="s1">mid_left</span><span class="s2">, </span><span class="s1">border_style</span><span class="s2">)</span>
+        <span class="s1">line_end </span><span class="s2">= </span><span class="s1">Segment</span><span class="s2">(</span><span class="s4">f&quot;</span><span class="s0">{</span><span class="s1">box</span><span class="s2">.</span><span class="s1">mid_right</span><span class="s0">}</span><span class="s4">&quot;</span><span class="s2">, </span><span class="s1">border_style</span><span class="s2">)</span>
+        <span class="s1">new_line </span><span class="s2">= </span><span class="s1">Segment</span><span class="s2">.</span><span class="s1">line</span><span class="s2">()</span>
+        <span class="s0">if </span><span class="s1">title_text </span><span class="s0">is None or </span><span class="s1">width </span><span class="s2">&lt;= </span><span class="s5">4</span><span class="s2">:</span>
+            <span class="s0">yield </span><span class="s1">Segment</span><span class="s2">(</span><span class="s1">box</span><span class="s2">.</span><span class="s1">get_top</span><span class="s2">([</span><span class="s1">width </span><span class="s2">- </span><span class="s5">2</span><span class="s2">]), </span><span class="s1">border_style</span><span class="s2">)</span>
+        <span class="s0">else</span><span class="s2">:</span>
+            <span class="s1">title_text </span><span class="s2">= </span><span class="s1">align_text</span><span class="s2">(</span>
+                <span class="s1">title_text</span><span class="s2">,</span>
+                <span class="s1">width </span><span class="s2">- </span><span class="s5">4</span><span class="s2">,</span>
+                <span class="s1">self</span><span class="s2">.</span><span class="s1">title_align</span><span class="s2">,</span>
+                <span class="s1">box</span><span class="s2">.</span><span class="s1">top</span><span class="s2">,</span>
+                <span class="s1">border_style</span><span class="s2">,</span>
+            <span class="s2">)</span>
+            <span class="s0">yield </span><span class="s1">Segment</span><span class="s2">(</span><span class="s1">box</span><span class="s2">.</span><span class="s1">top_left </span><span class="s2">+ </span><span class="s1">box</span><span class="s2">.</span><span class="s1">top</span><span class="s2">, </span><span class="s1">border_style</span><span class="s2">)</span>
+            <span class="s0">yield from </span><span class="s1">console</span><span class="s2">.</span><span class="s1">render</span><span class="s2">(</span><span class="s1">title_text</span><span class="s2">, </span><span class="s1">child_options</span><span class="s2">.</span><span class="s1">update_width</span><span class="s2">(</span><span class="s1">width </span><span class="s2">- </span><span class="s5">4</span><span class="s2">))</span>
+            <span class="s0">yield </span><span class="s1">Segment</span><span class="s2">(</span><span class="s1">box</span><span class="s2">.</span><span class="s1">top </span><span class="s2">+ </span><span class="s1">box</span><span class="s2">.</span><span class="s1">top_right</span><span class="s2">, </span><span class="s1">border_style</span><span class="s2">)</span>
+
+        <span class="s0">yield </span><span class="s1">new_line</span>
+        <span class="s0">for </span><span class="s1">line </span><span class="s0">in </span><span class="s1">lines</span><span class="s2">:</span>
+            <span class="s0">yield </span><span class="s1">line_start</span>
+            <span class="s0">yield from </span><span class="s1">line</span>
+            <span class="s0">yield </span><span class="s1">line_end</span>
+            <span class="s0">yield </span><span class="s1">new_line</span>
+
+        <span class="s1">subtitle_text </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">_subtitle</span>
+        <span class="s0">if </span><span class="s1">subtitle_text </span><span class="s0">is not None</span><span class="s2">:</span>
+            <span class="s1">subtitle_text</span><span class="s2">.</span><span class="s1">stylize_before</span><span class="s2">(</span><span class="s1">border_style</span><span class="s2">)</span>
+
+        <span class="s0">if </span><span class="s1">subtitle_text </span><span class="s0">is None or </span><span class="s1">width </span><span class="s2">&lt;= </span><span class="s5">4</span><span class="s2">:</span>
+            <span class="s0">yield </span><span class="s1">Segment</span><span class="s2">(</span><span class="s1">box</span><span class="s2">.</span><span class="s1">get_bottom</span><span class="s2">([</span><span class="s1">width </span><span class="s2">- </span><span class="s5">2</span><span class="s2">]), </span><span class="s1">border_style</span><span class="s2">)</span>
+        <span class="s0">else</span><span class="s2">:</span>
+            <span class="s1">subtitle_text </span><span class="s2">= </span><span class="s1">align_text</span><span class="s2">(</span>
+                <span class="s1">subtitle_text</span><span class="s2">,</span>
+                <span class="s1">width </span><span class="s2">- </span><span class="s5">4</span><span class="s2">,</span>
+                <span class="s1">self</span><span class="s2">.</span><span class="s1">subtitle_align</span><span class="s2">,</span>
+                <span class="s1">box</span><span class="s2">.</span><span class="s1">bottom</span><span class="s2">,</span>
+                <span class="s1">border_style</span><span class="s2">,</span>
+            <span class="s2">)</span>
+            <span class="s0">yield </span><span class="s1">Segment</span><span class="s2">(</span><span class="s1">box</span><span class="s2">.</span><span class="s1">bottom_left </span><span class="s2">+ </span><span class="s1">box</span><span class="s2">.</span><span class="s1">bottom</span><span class="s2">, </span><span class="s1">border_style</span><span class="s2">)</span>
+            <span class="s0">yield from </span><span class="s1">console</span><span class="s2">.</span><span class="s1">render</span><span class="s2">(</span>
+                <span class="s1">subtitle_text</span><span class="s2">, </span><span class="s1">child_options</span><span class="s2">.</span><span class="s1">update_width</span><span class="s2">(</span><span class="s1">width </span><span class="s2">- </span><span class="s5">4</span><span class="s2">)</span>
+            <span class="s2">)</span>
+            <span class="s0">yield </span><span class="s1">Segment</span><span class="s2">(</span><span class="s1">box</span><span class="s2">.</span><span class="s1">bottom </span><span class="s2">+ </span><span class="s1">box</span><span class="s2">.</span><span class="s1">bottom_right</span><span class="s2">, </span><span class="s1">border_style</span><span class="s2">)</span>
+
+        <span class="s0">yield </span><span class="s1">new_line</span>
+
+    <span class="s0">def </span><span class="s1">__rich_measure__</span><span class="s2">(</span>
+        <span class="s1">self</span><span class="s2">, </span><span class="s1">console</span><span class="s2">: </span><span class="s4">&quot;Console&quot;</span><span class="s2">, </span><span class="s1">options</span><span class="s2">: </span><span class="s4">&quot;ConsoleOptions&quot;</span>
+    <span class="s2">) </span><span class="s1">-&gt; </span><span class="s4">&quot;Measurement&quot;</span><span class="s2">:</span>
+        <span class="s1">_title </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">_title</span>
+        <span class="s1">_</span><span class="s2">, </span><span class="s1">right</span><span class="s2">, </span><span class="s1">_</span><span class="s2">, </span><span class="s1">left </span><span class="s2">= </span><span class="s1">Padding</span><span class="s2">.</span><span class="s1">unpack</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">padding</span><span class="s2">)</span>
+        <span class="s1">padding </span><span class="s2">= </span><span class="s1">left </span><span class="s2">+ </span><span class="s1">right</span>
+        <span class="s1">renderables </span><span class="s2">= [</span><span class="s1">self</span><span class="s2">.</span><span class="s1">renderable</span><span class="s2">, </span><span class="s1">_title</span><span class="s2">] </span><span class="s0">if </span><span class="s1">_title </span><span class="s0">else </span><span class="s2">[</span><span class="s1">self</span><span class="s2">.</span><span class="s1">renderable</span><span class="s2">]</span>
+
+        <span class="s0">if </span><span class="s1">self</span><span class="s2">.</span><span class="s1">width </span><span class="s0">is None</span><span class="s2">:</span>
+            <span class="s1">width </span><span class="s2">= (</span>
+                <span class="s1">measure_renderables</span><span class="s2">(</span>
+                    <span class="s1">console</span><span class="s2">,</span>
+                    <span class="s1">options</span><span class="s2">.</span><span class="s1">update_width</span><span class="s2">(</span><span class="s1">options</span><span class="s2">.</span><span class="s1">max_width </span><span class="s2">- </span><span class="s1">padding </span><span class="s2">- </span><span class="s5">2</span><span class="s2">),</span>
+                    <span class="s1">renderables</span><span class="s2">,</span>
+                <span class="s2">).</span><span class="s1">maximum</span>
+                <span class="s2">+ </span><span class="s1">padding</span>
+                <span class="s2">+ </span><span class="s5">2</span>
+            <span class="s2">)</span>
+        <span class="s0">else</span><span class="s2">:</span>
+            <span class="s1">width </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">width</span>
+        <span class="s0">return </span><span class="s1">Measurement</span><span class="s2">(</span><span class="s1">width</span><span class="s2">, </span><span class="s1">width</span><span class="s2">)</span>
+
+
+<span class="s0">if </span><span class="s1">__name__ </span><span class="s2">== </span><span class="s4">&quot;__main__&quot;</span><span class="s2">:  </span><span class="s6"># pragma: no cover</span>
+    <span class="s0">from </span><span class="s2">.</span><span class="s1">console </span><span class="s0">import </span><span class="s1">Console</span>
+
+    <span class="s1">c </span><span class="s2">= </span><span class="s1">Console</span><span class="s2">()</span>
+
+    <span class="s0">from </span><span class="s2">.</span><span class="s1">box </span><span class="s0">import </span><span class="s1">DOUBLE</span><span class="s2">, </span><span class="s1">ROUNDED</span>
+    <span class="s0">from </span><span class="s2">.</span><span class="s1">padding </span><span class="s0">import </span><span class="s1">Padding</span>
+
+    <span class="s1">p </span><span class="s2">= </span><span class="s1">Panel</span><span class="s2">(</span>
+        <span class="s4">&quot;Hello, World!&quot;</span><span class="s2">,</span>
+        <span class="s1">title</span><span class="s2">=</span><span class="s4">&quot;rich.Panel&quot;</span><span class="s2">,</span>
+        <span class="s1">style</span><span class="s2">=</span><span class="s4">&quot;white on blue&quot;</span><span class="s2">,</span>
+        <span class="s1">box</span><span class="s2">=</span><span class="s1">DOUBLE</span><span class="s2">,</span>
+        <span class="s1">padding</span><span class="s2">=</span><span class="s5">1</span><span class="s2">,</span>
+    <span class="s2">)</span>
+
+    <span class="s1">c</span><span class="s2">.</span><span class="s1">print</span><span class="s2">()</span>
+    <span class="s1">c</span><span class="s2">.</span><span class="s1">print</span><span class="s2">(</span><span class="s1">p</span><span class="s2">)</span>
+</pre>
+</body>
+</html>

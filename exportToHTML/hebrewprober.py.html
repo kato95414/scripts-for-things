@@ -1,0 +1,338 @@
+<html>
+<head>
+<title>hebrewprober.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #7a7e85;}
+.s1 { color: #bcbec4;}
+.s2 { color: #cf8e6d;}
+.s3 { color: #bcbec4;}
+.s4 { color: #2aacb8;}
+.s5 { color: #6aab73;}
+</style>
+</head>
+<body bgcolor="#1e1f22">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+hebrewprober.py</font>
+</center></td></tr></table>
+<pre><span class="s0">######################## BEGIN LICENSE BLOCK ########################</span>
+<span class="s0"># The Original Code is Mozilla Universal charset detector code.</span>
+<span class="s0">#</span>
+<span class="s0"># The Initial Developer of the Original Code is</span>
+<span class="s0">#          Shy Shalom</span>
+<span class="s0"># Portions created by the Initial Developer are Copyright (C) 2005</span>
+<span class="s0"># the Initial Developer. All Rights Reserved.</span>
+<span class="s0">#</span>
+<span class="s0"># Contributor(s):</span>
+<span class="s0">#   Mark Pilgrim - port to Python</span>
+<span class="s0">#</span>
+<span class="s0"># This library is free software; you can redistribute it and/or</span>
+<span class="s0"># modify it under the terms of the GNU Lesser General Public</span>
+<span class="s0"># License as published by the Free Software Foundation; either</span>
+<span class="s0"># version 2.1 of the License, or (at your option) any later version.</span>
+<span class="s0">#</span>
+<span class="s0"># This library is distributed in the hope that it will be useful,</span>
+<span class="s0"># but WITHOUT ANY WARRANTY; without even the implied warranty of</span>
+<span class="s0"># MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU</span>
+<span class="s0"># Lesser General Public License for more details.</span>
+<span class="s0">#</span>
+<span class="s0"># You should have received a copy of the GNU Lesser General Public</span>
+<span class="s0"># License along with this library; if not, write to the Free Software</span>
+<span class="s0"># Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA</span>
+<span class="s0"># 02110-1301  USA</span>
+<span class="s0">######################### END LICENSE BLOCK #########################</span>
+
+<span class="s2">from </span><span class="s1">typing </span><span class="s2">import </span><span class="s1">Optional</span><span class="s3">, </span><span class="s1">Union</span>
+
+<span class="s2">from </span><span class="s3">.</span><span class="s1">charsetprober </span><span class="s2">import </span><span class="s1">CharSetProber</span>
+<span class="s2">from </span><span class="s3">.</span><span class="s1">enums </span><span class="s2">import </span><span class="s1">ProbingState</span>
+<span class="s2">from </span><span class="s3">.</span><span class="s1">sbcharsetprober </span><span class="s2">import </span><span class="s1">SingleByteCharSetProber</span>
+
+<span class="s0"># This prober doesn't actually recognize a language or a charset.</span>
+<span class="s0"># It is a helper prober for the use of the Hebrew model probers</span>
+
+<span class="s0">### General ideas of the Hebrew charset recognition ###</span>
+<span class="s0">#</span>
+<span class="s0"># Four main charsets exist in Hebrew:</span>
+<span class="s0"># &quot;ISO-8859-8&quot; - Visual Hebrew</span>
+<span class="s0"># &quot;windows-1255&quot; - Logical Hebrew</span>
+<span class="s0"># &quot;ISO-8859-8-I&quot; - Logical Hebrew</span>
+<span class="s0"># &quot;x-mac-hebrew&quot; - ?? Logical Hebrew ??</span>
+<span class="s0">#</span>
+<span class="s0"># Both &quot;ISO&quot; charsets use a completely identical set of code points, whereas</span>
+<span class="s0"># &quot;windows-1255&quot; and &quot;x-mac-hebrew&quot; are two different proper supersets of</span>
+<span class="s0"># these code points. windows-1255 defines additional characters in the range</span>
+<span class="s0"># 0x80-0x9F as some misc punctuation marks as well as some Hebrew-specific</span>
+<span class="s0"># diacritics and additional 'Yiddish' ligature letters in the range 0xc0-0xd6.</span>
+<span class="s0"># x-mac-hebrew defines similar additional code points but with a different</span>
+<span class="s0"># mapping.</span>
+<span class="s0">#</span>
+<span class="s0"># As far as an average Hebrew text with no diacritics is concerned, all four</span>
+<span class="s0"># charsets are identical with respect to code points. Meaning that for the</span>
+<span class="s0"># main Hebrew alphabet, all four map the same values to all 27 Hebrew letters</span>
+<span class="s0"># (including final letters).</span>
+<span class="s0">#</span>
+<span class="s0"># The dominant difference between these charsets is their directionality.</span>
+<span class="s0"># &quot;Visual&quot; directionality means that the text is ordered as if the renderer is</span>
+<span class="s0"># not aware of a BIDI rendering algorithm. The renderer sees the text and</span>
+<span class="s0"># draws it from left to right. The text itself when ordered naturally is read</span>
+<span class="s0"># backwards. A buffer of Visual Hebrew generally looks like so:</span>
+<span class="s0"># &quot;[last word of first line spelled backwards] [whole line ordered backwards</span>
+<span class="s0"># and spelled backwards] [first word of first line spelled backwards]</span>
+<span class="s0"># [end of line] [last word of second line] ... etc' &quot;</span>
+<span class="s0"># adding punctuation marks, numbers and English text to visual text is</span>
+<span class="s0"># naturally also &quot;visual&quot; and from left to right.</span>
+<span class="s0">#</span>
+<span class="s0"># &quot;Logical&quot; directionality means the text is ordered &quot;naturally&quot; according to</span>
+<span class="s0"># the order it is read. It is the responsibility of the renderer to display</span>
+<span class="s0"># the text from right to left. A BIDI algorithm is used to place general</span>
+<span class="s0"># punctuation marks, numbers and English text in the text.</span>
+<span class="s0">#</span>
+<span class="s0"># Texts in x-mac-hebrew are almost impossible to find on the Internet. From</span>
+<span class="s0"># what little evidence I could find, it seems that its general directionality</span>
+<span class="s0"># is Logical.</span>
+<span class="s0">#</span>
+<span class="s0"># To sum up all of the above, the Hebrew probing mechanism knows about two</span>
+<span class="s0"># charsets:</span>
+<span class="s0"># Visual Hebrew - &quot;ISO-8859-8&quot; - backwards text - Words and sentences are</span>
+<span class="s0">#    backwards while line order is natural. For charset recognition purposes</span>
+<span class="s0">#    the line order is unimportant (In fact, for this implementation, even</span>
+<span class="s0">#    word order is unimportant).</span>
+<span class="s0"># Logical Hebrew - &quot;windows-1255&quot; - normal, naturally ordered text.</span>
+<span class="s0">#</span>
+<span class="s0"># &quot;ISO-8859-8-I&quot; is a subset of windows-1255 and doesn't need to be</span>
+<span class="s0">#    specifically identified.</span>
+<span class="s0"># &quot;x-mac-hebrew&quot; is also identified as windows-1255. A text in x-mac-hebrew</span>
+<span class="s0">#    that contain special punctuation marks or diacritics is displayed with</span>
+<span class="s0">#    some unconverted characters showing as question marks. This problem might</span>
+<span class="s0">#    be corrected using another model prober for x-mac-hebrew. Due to the fact</span>
+<span class="s0">#    that x-mac-hebrew texts are so rare, writing another model prober isn't</span>
+<span class="s0">#    worth the effort and performance hit.</span>
+<span class="s0">#</span>
+<span class="s0">#### The Prober ####</span>
+<span class="s0">#</span>
+<span class="s0"># The prober is divided between two SBCharSetProbers and a HebrewProber,</span>
+<span class="s0"># all of which are managed, created, fed data, inquired and deleted by the</span>
+<span class="s0"># SBCSGroupProber. The two SBCharSetProbers identify that the text is in</span>
+<span class="s0"># fact some kind of Hebrew, Logical or Visual. The final decision about which</span>
+<span class="s0"># one is it is made by the HebrewProber by combining final-letter scores</span>
+<span class="s0"># with the scores of the two SBCharSetProbers to produce a final answer.</span>
+<span class="s0">#</span>
+<span class="s0"># The SBCSGroupProber is responsible for stripping the original text of HTML</span>
+<span class="s0"># tags, English characters, numbers, low-ASCII punctuation characters, spaces</span>
+<span class="s0"># and new lines. It reduces any sequence of such characters to a single space.</span>
+<span class="s0"># The buffer fed to each prober in the SBCS group prober is pure text in</span>
+<span class="s0"># high-ASCII.</span>
+<span class="s0"># The two SBCharSetProbers (model probers) share the same language model:</span>
+<span class="s0"># Win1255Model.</span>
+<span class="s0"># The first SBCharSetProber uses the model normally as any other</span>
+<span class="s0"># SBCharSetProber does, to recognize windows-1255, upon which this model was</span>
+<span class="s0"># built. The second SBCharSetProber is told to make the pair-of-letter</span>
+<span class="s0"># lookup in the language model backwards. This in practice exactly simulates</span>
+<span class="s0"># a visual Hebrew model using the windows-1255 logical Hebrew model.</span>
+<span class="s0">#</span>
+<span class="s0"># The HebrewProber is not using any language model. All it does is look for</span>
+<span class="s0"># final-letter evidence suggesting the text is either logical Hebrew or visual</span>
+<span class="s0"># Hebrew. Disjointed from the model probers, the results of the HebrewProber</span>
+<span class="s0"># alone are meaningless. HebrewProber always returns 0.00 as confidence</span>
+<span class="s0"># since it never identifies a charset by itself. Instead, the pointer to the</span>
+<span class="s0"># HebrewProber is passed to the model probers as a helper &quot;Name Prober&quot;.</span>
+<span class="s0"># When the Group prober receives a positive identification from any prober,</span>
+<span class="s0"># it asks for the name of the charset identified. If the prober queried is a</span>
+<span class="s0"># Hebrew model prober, the model prober forwards the call to the</span>
+<span class="s0"># HebrewProber to make the final decision. In the HebrewProber, the</span>
+<span class="s0"># decision is made according to the final-letters scores maintained and Both</span>
+<span class="s0"># model probers scores. The answer is returned in the form of the name of the</span>
+<span class="s0"># charset identified, either &quot;windows-1255&quot; or &quot;ISO-8859-8&quot;.</span>
+
+
+<span class="s2">class </span><span class="s1">HebrewProber</span><span class="s3">(</span><span class="s1">CharSetProber</span><span class="s3">):</span>
+    <span class="s1">SPACE </span><span class="s3">= </span><span class="s4">0x20</span>
+    <span class="s0"># windows-1255 / ISO-8859-8 code points of interest</span>
+    <span class="s1">FINAL_KAF </span><span class="s3">= </span><span class="s4">0xEA</span>
+    <span class="s1">NORMAL_KAF </span><span class="s3">= </span><span class="s4">0xEB</span>
+    <span class="s1">FINAL_MEM </span><span class="s3">= </span><span class="s4">0xED</span>
+    <span class="s1">NORMAL_MEM </span><span class="s3">= </span><span class="s4">0xEE</span>
+    <span class="s1">FINAL_NUN </span><span class="s3">= </span><span class="s4">0xEF</span>
+    <span class="s1">NORMAL_NUN </span><span class="s3">= </span><span class="s4">0xF0</span>
+    <span class="s1">FINAL_PE </span><span class="s3">= </span><span class="s4">0xF3</span>
+    <span class="s1">NORMAL_PE </span><span class="s3">= </span><span class="s4">0xF4</span>
+    <span class="s1">FINAL_TSADI </span><span class="s3">= </span><span class="s4">0xF5</span>
+    <span class="s1">NORMAL_TSADI </span><span class="s3">= </span><span class="s4">0xF6</span>
+
+    <span class="s0"># Minimum Visual vs Logical final letter score difference.</span>
+    <span class="s0"># If the difference is below this, don't rely solely on the final letter score</span>
+    <span class="s0"># distance.</span>
+    <span class="s1">MIN_FINAL_CHAR_DISTANCE </span><span class="s3">= </span><span class="s4">5</span>
+
+    <span class="s0"># Minimum Visual vs Logical model score difference.</span>
+    <span class="s0"># If the difference is below this, don't rely at all on the model score</span>
+    <span class="s0"># distance.</span>
+    <span class="s1">MIN_MODEL_DISTANCE </span><span class="s3">= </span><span class="s4">0.01</span>
+
+    <span class="s1">VISUAL_HEBREW_NAME </span><span class="s3">= </span><span class="s5">&quot;ISO-8859-8&quot;</span>
+    <span class="s1">LOGICAL_HEBREW_NAME </span><span class="s3">= </span><span class="s5">&quot;windows-1255&quot;</span>
+
+    <span class="s2">def </span><span class="s1">__init__</span><span class="s3">(</span><span class="s1">self</span><span class="s3">) </span><span class="s1">-&gt; </span><span class="s2">None</span><span class="s3">:</span>
+        <span class="s1">super</span><span class="s3">().</span><span class="s1">__init__</span><span class="s3">()</span>
+        <span class="s1">self</span><span class="s3">.</span><span class="s1">_final_char_logical_score </span><span class="s3">= </span><span class="s4">0</span>
+        <span class="s1">self</span><span class="s3">.</span><span class="s1">_final_char_visual_score </span><span class="s3">= </span><span class="s4">0</span>
+        <span class="s1">self</span><span class="s3">.</span><span class="s1">_prev </span><span class="s3">= </span><span class="s1">self</span><span class="s3">.</span><span class="s1">SPACE</span>
+        <span class="s1">self</span><span class="s3">.</span><span class="s1">_before_prev </span><span class="s3">= </span><span class="s1">self</span><span class="s3">.</span><span class="s1">SPACE</span>
+        <span class="s1">self</span><span class="s3">.</span><span class="s1">_logical_prober</span><span class="s3">: </span><span class="s1">Optional</span><span class="s3">[</span><span class="s1">SingleByteCharSetProber</span><span class="s3">] = </span><span class="s2">None</span>
+        <span class="s1">self</span><span class="s3">.</span><span class="s1">_visual_prober</span><span class="s3">: </span><span class="s1">Optional</span><span class="s3">[</span><span class="s1">SingleByteCharSetProber</span><span class="s3">] = </span><span class="s2">None</span>
+        <span class="s1">self</span><span class="s3">.</span><span class="s1">reset</span><span class="s3">()</span>
+
+    <span class="s2">def </span><span class="s1">reset</span><span class="s3">(</span><span class="s1">self</span><span class="s3">) </span><span class="s1">-&gt; </span><span class="s2">None</span><span class="s3">:</span>
+        <span class="s1">self</span><span class="s3">.</span><span class="s1">_final_char_logical_score </span><span class="s3">= </span><span class="s4">0</span>
+        <span class="s1">self</span><span class="s3">.</span><span class="s1">_final_char_visual_score </span><span class="s3">= </span><span class="s4">0</span>
+        <span class="s0"># The two last characters seen in the previous buffer,</span>
+        <span class="s0"># mPrev and mBeforePrev are initialized to space in order to simulate</span>
+        <span class="s0"># a word delimiter at the beginning of the data</span>
+        <span class="s1">self</span><span class="s3">.</span><span class="s1">_prev </span><span class="s3">= </span><span class="s1">self</span><span class="s3">.</span><span class="s1">SPACE</span>
+        <span class="s1">self</span><span class="s3">.</span><span class="s1">_before_prev </span><span class="s3">= </span><span class="s1">self</span><span class="s3">.</span><span class="s1">SPACE</span>
+        <span class="s0"># These probers are owned by the group prober.</span>
+
+    <span class="s2">def </span><span class="s1">set_model_probers</span><span class="s3">(</span>
+        <span class="s1">self</span><span class="s3">,</span>
+        <span class="s1">logical_prober</span><span class="s3">: </span><span class="s1">SingleByteCharSetProber</span><span class="s3">,</span>
+        <span class="s1">visual_prober</span><span class="s3">: </span><span class="s1">SingleByteCharSetProber</span><span class="s3">,</span>
+    <span class="s3">) </span><span class="s1">-&gt; </span><span class="s2">None</span><span class="s3">:</span>
+        <span class="s1">self</span><span class="s3">.</span><span class="s1">_logical_prober </span><span class="s3">= </span><span class="s1">logical_prober</span>
+        <span class="s1">self</span><span class="s3">.</span><span class="s1">_visual_prober </span><span class="s3">= </span><span class="s1">visual_prober</span>
+
+    <span class="s2">def </span><span class="s1">is_final</span><span class="s3">(</span><span class="s1">self</span><span class="s3">, </span><span class="s1">c</span><span class="s3">: </span><span class="s1">int</span><span class="s3">) </span><span class="s1">-&gt; bool</span><span class="s3">:</span>
+        <span class="s2">return </span><span class="s1">c </span><span class="s2">in </span><span class="s3">[</span>
+            <span class="s1">self</span><span class="s3">.</span><span class="s1">FINAL_KAF</span><span class="s3">,</span>
+            <span class="s1">self</span><span class="s3">.</span><span class="s1">FINAL_MEM</span><span class="s3">,</span>
+            <span class="s1">self</span><span class="s3">.</span><span class="s1">FINAL_NUN</span><span class="s3">,</span>
+            <span class="s1">self</span><span class="s3">.</span><span class="s1">FINAL_PE</span><span class="s3">,</span>
+            <span class="s1">self</span><span class="s3">.</span><span class="s1">FINAL_TSADI</span><span class="s3">,</span>
+        <span class="s3">]</span>
+
+    <span class="s2">def </span><span class="s1">is_non_final</span><span class="s3">(</span><span class="s1">self</span><span class="s3">, </span><span class="s1">c</span><span class="s3">: </span><span class="s1">int</span><span class="s3">) </span><span class="s1">-&gt; bool</span><span class="s3">:</span>
+        <span class="s0"># The normal Tsadi is not a good Non-Final letter due to words like</span>
+        <span class="s0"># 'lechotet' (to chat) containing an apostrophe after the tsadi. This</span>
+        <span class="s0"># apostrophe is converted to a space in FilterWithoutEnglishLetters</span>
+        <span class="s0"># causing the Non-Final tsadi to appear at an end of a word even</span>
+        <span class="s0"># though this is not the case in the original text.</span>
+        <span class="s0"># The letters Pe and Kaf rarely display a related behavior of not being</span>
+        <span class="s0"># a good Non-Final letter. Words like 'Pop', 'Winamp' and 'Mubarak'</span>
+        <span class="s0"># for example legally end with a Non-Final Pe or Kaf. However, the</span>
+        <span class="s0"># benefit of these letters as Non-Final letters outweighs the damage</span>
+        <span class="s0"># since these words are quite rare.</span>
+        <span class="s2">return </span><span class="s1">c </span><span class="s2">in </span><span class="s3">[</span><span class="s1">self</span><span class="s3">.</span><span class="s1">NORMAL_KAF</span><span class="s3">, </span><span class="s1">self</span><span class="s3">.</span><span class="s1">NORMAL_MEM</span><span class="s3">, </span><span class="s1">self</span><span class="s3">.</span><span class="s1">NORMAL_NUN</span><span class="s3">, </span><span class="s1">self</span><span class="s3">.</span><span class="s1">NORMAL_PE</span><span class="s3">]</span>
+
+    <span class="s2">def </span><span class="s1">feed</span><span class="s3">(</span><span class="s1">self</span><span class="s3">, </span><span class="s1">byte_str</span><span class="s3">: </span><span class="s1">Union</span><span class="s3">[</span><span class="s1">bytes</span><span class="s3">, </span><span class="s1">bytearray</span><span class="s3">]) </span><span class="s1">-&gt; ProbingState</span><span class="s3">:</span>
+        <span class="s0"># Final letter analysis for logical-visual decision.</span>
+        <span class="s0"># Look for evidence that the received buffer is either logical Hebrew</span>
+        <span class="s0"># or visual Hebrew.</span>
+        <span class="s0"># The following cases are checked:</span>
+        <span class="s0"># 1) A word longer than 1 letter, ending with a final letter. This is</span>
+        <span class="s0">#    an indication that the text is laid out &quot;naturally&quot; since the</span>
+        <span class="s0">#    final letter really appears at the end. +1 for logical score.</span>
+        <span class="s0"># 2) A word longer than 1 letter, ending with a Non-Final letter. In</span>
+        <span class="s0">#    normal Hebrew, words ending with Kaf, Mem, Nun, Pe or Tsadi,</span>
+        <span class="s0">#    should not end with the Non-Final form of that letter. Exceptions</span>
+        <span class="s0">#    to this rule are mentioned above in isNonFinal(). This is an</span>
+        <span class="s0">#    indication that the text is laid out backwards. +1 for visual</span>
+        <span class="s0">#    score</span>
+        <span class="s0"># 3) A word longer than 1 letter, starting with a final letter. Final</span>
+        <span class="s0">#    letters should not appear at the beginning of a word. This is an</span>
+        <span class="s0">#    indication that the text is laid out backwards. +1 for visual</span>
+        <span class="s0">#    score.</span>
+        <span class="s0">#</span>
+        <span class="s0"># The visual score and logical score are accumulated throughout the</span>
+        <span class="s0"># text and are finally checked against each other in GetCharSetName().</span>
+        <span class="s0"># No checking for final letters in the middle of words is done since</span>
+        <span class="s0"># that case is not an indication for either Logical or Visual text.</span>
+        <span class="s0">#</span>
+        <span class="s0"># We automatically filter out all 7-bit characters (replace them with</span>
+        <span class="s0"># spaces) so the word boundary detection works properly. [MAP]</span>
+
+        <span class="s2">if </span><span class="s1">self</span><span class="s3">.</span><span class="s1">state </span><span class="s3">== </span><span class="s1">ProbingState</span><span class="s3">.</span><span class="s1">NOT_ME</span><span class="s3">:</span>
+            <span class="s0"># Both model probers say it's not them. No reason to continue.</span>
+            <span class="s2">return </span><span class="s1">ProbingState</span><span class="s3">.</span><span class="s1">NOT_ME</span>
+
+        <span class="s1">byte_str </span><span class="s3">= </span><span class="s1">self</span><span class="s3">.</span><span class="s1">filter_high_byte_only</span><span class="s3">(</span><span class="s1">byte_str</span><span class="s3">)</span>
+
+        <span class="s2">for </span><span class="s1">cur </span><span class="s2">in </span><span class="s1">byte_str</span><span class="s3">:</span>
+            <span class="s2">if </span><span class="s1">cur </span><span class="s3">== </span><span class="s1">self</span><span class="s3">.</span><span class="s1">SPACE</span><span class="s3">:</span>
+                <span class="s0"># We stand on a space - a word just ended</span>
+                <span class="s2">if </span><span class="s1">self</span><span class="s3">.</span><span class="s1">_before_prev </span><span class="s3">!= </span><span class="s1">self</span><span class="s3">.</span><span class="s1">SPACE</span><span class="s3">:</span>
+                    <span class="s0"># next-to-last char was not a space so self._prev is not a</span>
+                    <span class="s0"># 1 letter word</span>
+                    <span class="s2">if </span><span class="s1">self</span><span class="s3">.</span><span class="s1">is_final</span><span class="s3">(</span><span class="s1">self</span><span class="s3">.</span><span class="s1">_prev</span><span class="s3">):</span>
+                        <span class="s0"># case (1) [-2:not space][-1:final letter][cur:space]</span>
+                        <span class="s1">self</span><span class="s3">.</span><span class="s1">_final_char_logical_score </span><span class="s3">+= </span><span class="s4">1</span>
+                    <span class="s2">elif </span><span class="s1">self</span><span class="s3">.</span><span class="s1">is_non_final</span><span class="s3">(</span><span class="s1">self</span><span class="s3">.</span><span class="s1">_prev</span><span class="s3">):</span>
+                        <span class="s0"># case (2) [-2:not space][-1:Non-Final letter][</span>
+                        <span class="s0">#  cur:space]</span>
+                        <span class="s1">self</span><span class="s3">.</span><span class="s1">_final_char_visual_score </span><span class="s3">+= </span><span class="s4">1</span>
+            <span class="s2">else</span><span class="s3">:</span>
+                <span class="s0"># Not standing on a space</span>
+                <span class="s2">if </span><span class="s3">(</span>
+                    <span class="s3">(</span><span class="s1">self</span><span class="s3">.</span><span class="s1">_before_prev </span><span class="s3">== </span><span class="s1">self</span><span class="s3">.</span><span class="s1">SPACE</span><span class="s3">)</span>
+                    <span class="s2">and </span><span class="s3">(</span><span class="s1">self</span><span class="s3">.</span><span class="s1">is_final</span><span class="s3">(</span><span class="s1">self</span><span class="s3">.</span><span class="s1">_prev</span><span class="s3">))</span>
+                    <span class="s2">and </span><span class="s3">(</span><span class="s1">cur </span><span class="s3">!= </span><span class="s1">self</span><span class="s3">.</span><span class="s1">SPACE</span><span class="s3">)</span>
+                <span class="s3">):</span>
+                    <span class="s0"># case (3) [-2:space][-1:final letter][cur:not space]</span>
+                    <span class="s1">self</span><span class="s3">.</span><span class="s1">_final_char_visual_score </span><span class="s3">+= </span><span class="s4">1</span>
+            <span class="s1">self</span><span class="s3">.</span><span class="s1">_before_prev </span><span class="s3">= </span><span class="s1">self</span><span class="s3">.</span><span class="s1">_prev</span>
+            <span class="s1">self</span><span class="s3">.</span><span class="s1">_prev </span><span class="s3">= </span><span class="s1">cur</span>
+
+        <span class="s0"># Forever detecting, till the end or until both model probers return</span>
+        <span class="s0"># ProbingState.NOT_ME (handled above)</span>
+        <span class="s2">return </span><span class="s1">ProbingState</span><span class="s3">.</span><span class="s1">DETECTING</span>
+
+    <span class="s3">@</span><span class="s1">property</span>
+    <span class="s2">def </span><span class="s1">charset_name</span><span class="s3">(</span><span class="s1">self</span><span class="s3">) </span><span class="s1">-&gt; str</span><span class="s3">:</span>
+        <span class="s2">assert </span><span class="s1">self</span><span class="s3">.</span><span class="s1">_logical_prober </span><span class="s2">is not None</span>
+        <span class="s2">assert </span><span class="s1">self</span><span class="s3">.</span><span class="s1">_visual_prober </span><span class="s2">is not None</span>
+
+        <span class="s0"># Make the decision: is it Logical or Visual?</span>
+        <span class="s0"># If the final letter score distance is dominant enough, rely on it.</span>
+        <span class="s1">finalsub </span><span class="s3">= </span><span class="s1">self</span><span class="s3">.</span><span class="s1">_final_char_logical_score </span><span class="s3">- </span><span class="s1">self</span><span class="s3">.</span><span class="s1">_final_char_visual_score</span>
+        <span class="s2">if </span><span class="s1">finalsub </span><span class="s3">&gt;= </span><span class="s1">self</span><span class="s3">.</span><span class="s1">MIN_FINAL_CHAR_DISTANCE</span><span class="s3">:</span>
+            <span class="s2">return </span><span class="s1">self</span><span class="s3">.</span><span class="s1">LOGICAL_HEBREW_NAME</span>
+        <span class="s2">if </span><span class="s1">finalsub </span><span class="s3">&lt;= -</span><span class="s1">self</span><span class="s3">.</span><span class="s1">MIN_FINAL_CHAR_DISTANCE</span><span class="s3">:</span>
+            <span class="s2">return </span><span class="s1">self</span><span class="s3">.</span><span class="s1">VISUAL_HEBREW_NAME</span>
+
+        <span class="s0"># It's not dominant enough, try to rely on the model scores instead.</span>
+        <span class="s1">modelsub </span><span class="s3">= (</span>
+            <span class="s1">self</span><span class="s3">.</span><span class="s1">_logical_prober</span><span class="s3">.</span><span class="s1">get_confidence</span><span class="s3">() - </span><span class="s1">self</span><span class="s3">.</span><span class="s1">_visual_prober</span><span class="s3">.</span><span class="s1">get_confidence</span><span class="s3">()</span>
+        <span class="s3">)</span>
+        <span class="s2">if </span><span class="s1">modelsub </span><span class="s3">&gt; </span><span class="s1">self</span><span class="s3">.</span><span class="s1">MIN_MODEL_DISTANCE</span><span class="s3">:</span>
+            <span class="s2">return </span><span class="s1">self</span><span class="s3">.</span><span class="s1">LOGICAL_HEBREW_NAME</span>
+        <span class="s2">if </span><span class="s1">modelsub </span><span class="s3">&lt; -</span><span class="s1">self</span><span class="s3">.</span><span class="s1">MIN_MODEL_DISTANCE</span><span class="s3">:</span>
+            <span class="s2">return </span><span class="s1">self</span><span class="s3">.</span><span class="s1">VISUAL_HEBREW_NAME</span>
+
+        <span class="s0"># Still no good, back to final letter distance, maybe it'll save the</span>
+        <span class="s0"># day.</span>
+        <span class="s2">if </span><span class="s1">finalsub </span><span class="s3">&lt; </span><span class="s4">0.0</span><span class="s3">:</span>
+            <span class="s2">return </span><span class="s1">self</span><span class="s3">.</span><span class="s1">VISUAL_HEBREW_NAME</span>
+
+        <span class="s0"># (finalsub &gt; 0 - Logical) or (don't know what to do) default to</span>
+        <span class="s0"># Logical.</span>
+        <span class="s2">return </span><span class="s1">self</span><span class="s3">.</span><span class="s1">LOGICAL_HEBREW_NAME</span>
+
+    <span class="s3">@</span><span class="s1">property</span>
+    <span class="s2">def </span><span class="s1">language</span><span class="s3">(</span><span class="s1">self</span><span class="s3">) </span><span class="s1">-&gt; str</span><span class="s3">:</span>
+        <span class="s2">return </span><span class="s5">&quot;Hebrew&quot;</span>
+
+    <span class="s3">@</span><span class="s1">property</span>
+    <span class="s2">def </span><span class="s1">state</span><span class="s3">(</span><span class="s1">self</span><span class="s3">) </span><span class="s1">-&gt; ProbingState</span><span class="s3">:</span>
+        <span class="s2">assert </span><span class="s1">self</span><span class="s3">.</span><span class="s1">_logical_prober </span><span class="s2">is not None</span>
+        <span class="s2">assert </span><span class="s1">self</span><span class="s3">.</span><span class="s1">_visual_prober </span><span class="s2">is not None</span>
+
+        <span class="s0"># Remain active as long as any of the model probers are active.</span>
+        <span class="s2">if </span><span class="s3">(</span><span class="s1">self</span><span class="s3">.</span><span class="s1">_logical_prober</span><span class="s3">.</span><span class="s1">state </span><span class="s3">== </span><span class="s1">ProbingState</span><span class="s3">.</span><span class="s1">NOT_ME</span><span class="s3">) </span><span class="s2">and </span><span class="s3">(</span>
+            <span class="s1">self</span><span class="s3">.</span><span class="s1">_visual_prober</span><span class="s3">.</span><span class="s1">state </span><span class="s3">== </span><span class="s1">ProbingState</span><span class="s3">.</span><span class="s1">NOT_ME</span>
+        <span class="s3">):</span>
+            <span class="s2">return </span><span class="s1">ProbingState</span><span class="s3">.</span><span class="s1">NOT_ME</span>
+        <span class="s2">return </span><span class="s1">ProbingState</span><span class="s3">.</span><span class="s1">DETECTING</span>
+</pre>
+</body>
+</html>

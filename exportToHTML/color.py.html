@@ -1,0 +1,645 @@
+<html>
+<head>
+<title>color.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cf8e6d;}
+.s1 { color: #bcbec4;}
+.s2 { color: #bcbec4;}
+.s3 { color: #7a7e85;}
+.s4 { color: #6aab73;}
+.s5 { color: #5f826b; font-style: italic;}
+.s6 { color: #2aacb8;}
+</style>
+</head>
+<body bgcolor="#1e1f22">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+color.py</font>
+</center></td></tr></table>
+<pre><span class="s0">import </span><span class="s1">platform</span>
+<span class="s0">import </span><span class="s1">re</span>
+<span class="s0">from </span><span class="s1">colorsys </span><span class="s0">import </span><span class="s1">rgb_to_hls</span>
+<span class="s0">from </span><span class="s1">enum </span><span class="s0">import </span><span class="s1">IntEnum</span>
+<span class="s0">from </span><span class="s1">functools </span><span class="s0">import </span><span class="s1">lru_cache</span>
+<span class="s0">from </span><span class="s1">typing </span><span class="s0">import </span><span class="s1">TYPE_CHECKING</span><span class="s2">, </span><span class="s1">NamedTuple</span><span class="s2">, </span><span class="s1">Optional</span><span class="s2">, </span><span class="s1">Tuple</span>
+
+<span class="s0">from </span><span class="s2">.</span><span class="s1">_palettes </span><span class="s0">import </span><span class="s1">EIGHT_BIT_PALETTE</span><span class="s2">, </span><span class="s1">STANDARD_PALETTE</span><span class="s2">, </span><span class="s1">WINDOWS_PALETTE</span>
+<span class="s0">from </span><span class="s2">.</span><span class="s1">color_triplet </span><span class="s0">import </span><span class="s1">ColorTriplet</span>
+<span class="s0">from </span><span class="s2">.</span><span class="s1">repr </span><span class="s0">import </span><span class="s1">Result</span><span class="s2">, </span><span class="s1">rich_repr</span>
+<span class="s0">from </span><span class="s2">.</span><span class="s1">terminal_theme </span><span class="s0">import </span><span class="s1">DEFAULT_TERMINAL_THEME</span>
+
+<span class="s0">if </span><span class="s1">TYPE_CHECKING</span><span class="s2">:  </span><span class="s3"># pragma: no cover</span>
+    <span class="s0">from </span><span class="s2">.</span><span class="s1">terminal_theme </span><span class="s0">import </span><span class="s1">TerminalTheme</span>
+    <span class="s0">from </span><span class="s2">.</span><span class="s1">text </span><span class="s0">import </span><span class="s1">Text</span>
+
+
+<span class="s1">WINDOWS </span><span class="s2">= </span><span class="s1">platform</span><span class="s2">.</span><span class="s1">system</span><span class="s2">() == </span><span class="s4">&quot;Windows&quot;</span>
+
+
+<span class="s0">class </span><span class="s1">ColorSystem</span><span class="s2">(</span><span class="s1">IntEnum</span><span class="s2">):</span>
+    <span class="s5">&quot;&quot;&quot;One of the 3 color system supported by terminals.&quot;&quot;&quot;</span>
+
+    <span class="s1">STANDARD </span><span class="s2">= </span><span class="s6">1</span>
+    <span class="s1">EIGHT_BIT </span><span class="s2">= </span><span class="s6">2</span>
+    <span class="s1">TRUECOLOR </span><span class="s2">= </span><span class="s6">3</span>
+    <span class="s1">WINDOWS </span><span class="s2">= </span><span class="s6">4</span>
+
+    <span class="s0">def </span><span class="s1">__repr__</span><span class="s2">(</span><span class="s1">self</span><span class="s2">) </span><span class="s1">-&gt; str</span><span class="s2">:</span>
+        <span class="s0">return </span><span class="s4">f&quot;ColorSystem.</span><span class="s0">{</span><span class="s1">self</span><span class="s2">.</span><span class="s1">name</span><span class="s0">}</span><span class="s4">&quot;</span>
+
+    <span class="s0">def </span><span class="s1">__str__</span><span class="s2">(</span><span class="s1">self</span><span class="s2">) </span><span class="s1">-&gt; str</span><span class="s2">:</span>
+        <span class="s0">return </span><span class="s1">repr</span><span class="s2">(</span><span class="s1">self</span><span class="s2">)</span>
+
+
+<span class="s0">class </span><span class="s1">ColorType</span><span class="s2">(</span><span class="s1">IntEnum</span><span class="s2">):</span>
+    <span class="s5">&quot;&quot;&quot;Type of color stored in Color class.&quot;&quot;&quot;</span>
+
+    <span class="s1">DEFAULT </span><span class="s2">= </span><span class="s6">0</span>
+    <span class="s1">STANDARD </span><span class="s2">= </span><span class="s6">1</span>
+    <span class="s1">EIGHT_BIT </span><span class="s2">= </span><span class="s6">2</span>
+    <span class="s1">TRUECOLOR </span><span class="s2">= </span><span class="s6">3</span>
+    <span class="s1">WINDOWS </span><span class="s2">= </span><span class="s6">4</span>
+
+    <span class="s0">def </span><span class="s1">__repr__</span><span class="s2">(</span><span class="s1">self</span><span class="s2">) </span><span class="s1">-&gt; str</span><span class="s2">:</span>
+        <span class="s0">return </span><span class="s4">f&quot;ColorType.</span><span class="s0">{</span><span class="s1">self</span><span class="s2">.</span><span class="s1">name</span><span class="s0">}</span><span class="s4">&quot;</span>
+
+
+<span class="s1">ANSI_COLOR_NAMES </span><span class="s2">= {</span>
+    <span class="s4">&quot;black&quot;</span><span class="s2">: </span><span class="s6">0</span><span class="s2">,</span>
+    <span class="s4">&quot;red&quot;</span><span class="s2">: </span><span class="s6">1</span><span class="s2">,</span>
+    <span class="s4">&quot;green&quot;</span><span class="s2">: </span><span class="s6">2</span><span class="s2">,</span>
+    <span class="s4">&quot;yellow&quot;</span><span class="s2">: </span><span class="s6">3</span><span class="s2">,</span>
+    <span class="s4">&quot;blue&quot;</span><span class="s2">: </span><span class="s6">4</span><span class="s2">,</span>
+    <span class="s4">&quot;magenta&quot;</span><span class="s2">: </span><span class="s6">5</span><span class="s2">,</span>
+    <span class="s4">&quot;cyan&quot;</span><span class="s2">: </span><span class="s6">6</span><span class="s2">,</span>
+    <span class="s4">&quot;white&quot;</span><span class="s2">: </span><span class="s6">7</span><span class="s2">,</span>
+    <span class="s4">&quot;bright_black&quot;</span><span class="s2">: </span><span class="s6">8</span><span class="s2">,</span>
+    <span class="s4">&quot;bright_red&quot;</span><span class="s2">: </span><span class="s6">9</span><span class="s2">,</span>
+    <span class="s4">&quot;bright_green&quot;</span><span class="s2">: </span><span class="s6">10</span><span class="s2">,</span>
+    <span class="s4">&quot;bright_yellow&quot;</span><span class="s2">: </span><span class="s6">11</span><span class="s2">,</span>
+    <span class="s4">&quot;bright_blue&quot;</span><span class="s2">: </span><span class="s6">12</span><span class="s2">,</span>
+    <span class="s4">&quot;bright_magenta&quot;</span><span class="s2">: </span><span class="s6">13</span><span class="s2">,</span>
+    <span class="s4">&quot;bright_cyan&quot;</span><span class="s2">: </span><span class="s6">14</span><span class="s2">,</span>
+    <span class="s4">&quot;bright_white&quot;</span><span class="s2">: </span><span class="s6">15</span><span class="s2">,</span>
+    <span class="s4">&quot;grey0&quot;</span><span class="s2">: </span><span class="s6">16</span><span class="s2">,</span>
+    <span class="s4">&quot;gray0&quot;</span><span class="s2">: </span><span class="s6">16</span><span class="s2">,</span>
+    <span class="s4">&quot;navy_blue&quot;</span><span class="s2">: </span><span class="s6">17</span><span class="s2">,</span>
+    <span class="s4">&quot;dark_blue&quot;</span><span class="s2">: </span><span class="s6">18</span><span class="s2">,</span>
+    <span class="s4">&quot;blue3&quot;</span><span class="s2">: </span><span class="s6">20</span><span class="s2">,</span>
+    <span class="s4">&quot;blue1&quot;</span><span class="s2">: </span><span class="s6">21</span><span class="s2">,</span>
+    <span class="s4">&quot;dark_green&quot;</span><span class="s2">: </span><span class="s6">22</span><span class="s2">,</span>
+    <span class="s4">&quot;deep_sky_blue4&quot;</span><span class="s2">: </span><span class="s6">25</span><span class="s2">,</span>
+    <span class="s4">&quot;dodger_blue3&quot;</span><span class="s2">: </span><span class="s6">26</span><span class="s2">,</span>
+    <span class="s4">&quot;dodger_blue2&quot;</span><span class="s2">: </span><span class="s6">27</span><span class="s2">,</span>
+    <span class="s4">&quot;green4&quot;</span><span class="s2">: </span><span class="s6">28</span><span class="s2">,</span>
+    <span class="s4">&quot;spring_green4&quot;</span><span class="s2">: </span><span class="s6">29</span><span class="s2">,</span>
+    <span class="s4">&quot;turquoise4&quot;</span><span class="s2">: </span><span class="s6">30</span><span class="s2">,</span>
+    <span class="s4">&quot;deep_sky_blue3&quot;</span><span class="s2">: </span><span class="s6">32</span><span class="s2">,</span>
+    <span class="s4">&quot;dodger_blue1&quot;</span><span class="s2">: </span><span class="s6">33</span><span class="s2">,</span>
+    <span class="s4">&quot;green3&quot;</span><span class="s2">: </span><span class="s6">40</span><span class="s2">,</span>
+    <span class="s4">&quot;spring_green3&quot;</span><span class="s2">: </span><span class="s6">41</span><span class="s2">,</span>
+    <span class="s4">&quot;dark_cyan&quot;</span><span class="s2">: </span><span class="s6">36</span><span class="s2">,</span>
+    <span class="s4">&quot;light_sea_green&quot;</span><span class="s2">: </span><span class="s6">37</span><span class="s2">,</span>
+    <span class="s4">&quot;deep_sky_blue2&quot;</span><span class="s2">: </span><span class="s6">38</span><span class="s2">,</span>
+    <span class="s4">&quot;deep_sky_blue1&quot;</span><span class="s2">: </span><span class="s6">39</span><span class="s2">,</span>
+    <span class="s4">&quot;spring_green2&quot;</span><span class="s2">: </span><span class="s6">47</span><span class="s2">,</span>
+    <span class="s4">&quot;cyan3&quot;</span><span class="s2">: </span><span class="s6">43</span><span class="s2">,</span>
+    <span class="s4">&quot;dark_turquoise&quot;</span><span class="s2">: </span><span class="s6">44</span><span class="s2">,</span>
+    <span class="s4">&quot;turquoise2&quot;</span><span class="s2">: </span><span class="s6">45</span><span class="s2">,</span>
+    <span class="s4">&quot;green1&quot;</span><span class="s2">: </span><span class="s6">46</span><span class="s2">,</span>
+    <span class="s4">&quot;spring_green1&quot;</span><span class="s2">: </span><span class="s6">48</span><span class="s2">,</span>
+    <span class="s4">&quot;medium_spring_green&quot;</span><span class="s2">: </span><span class="s6">49</span><span class="s2">,</span>
+    <span class="s4">&quot;cyan2&quot;</span><span class="s2">: </span><span class="s6">50</span><span class="s2">,</span>
+    <span class="s4">&quot;cyan1&quot;</span><span class="s2">: </span><span class="s6">51</span><span class="s2">,</span>
+    <span class="s4">&quot;dark_red&quot;</span><span class="s2">: </span><span class="s6">88</span><span class="s2">,</span>
+    <span class="s4">&quot;deep_pink4&quot;</span><span class="s2">: </span><span class="s6">125</span><span class="s2">,</span>
+    <span class="s4">&quot;purple4&quot;</span><span class="s2">: </span><span class="s6">55</span><span class="s2">,</span>
+    <span class="s4">&quot;purple3&quot;</span><span class="s2">: </span><span class="s6">56</span><span class="s2">,</span>
+    <span class="s4">&quot;blue_violet&quot;</span><span class="s2">: </span><span class="s6">57</span><span class="s2">,</span>
+    <span class="s4">&quot;orange4&quot;</span><span class="s2">: </span><span class="s6">94</span><span class="s2">,</span>
+    <span class="s4">&quot;grey37&quot;</span><span class="s2">: </span><span class="s6">59</span><span class="s2">,</span>
+    <span class="s4">&quot;gray37&quot;</span><span class="s2">: </span><span class="s6">59</span><span class="s2">,</span>
+    <span class="s4">&quot;medium_purple4&quot;</span><span class="s2">: </span><span class="s6">60</span><span class="s2">,</span>
+    <span class="s4">&quot;slate_blue3&quot;</span><span class="s2">: </span><span class="s6">62</span><span class="s2">,</span>
+    <span class="s4">&quot;royal_blue1&quot;</span><span class="s2">: </span><span class="s6">63</span><span class="s2">,</span>
+    <span class="s4">&quot;chartreuse4&quot;</span><span class="s2">: </span><span class="s6">64</span><span class="s2">,</span>
+    <span class="s4">&quot;dark_sea_green4&quot;</span><span class="s2">: </span><span class="s6">71</span><span class="s2">,</span>
+    <span class="s4">&quot;pale_turquoise4&quot;</span><span class="s2">: </span><span class="s6">66</span><span class="s2">,</span>
+    <span class="s4">&quot;steel_blue&quot;</span><span class="s2">: </span><span class="s6">67</span><span class="s2">,</span>
+    <span class="s4">&quot;steel_blue3&quot;</span><span class="s2">: </span><span class="s6">68</span><span class="s2">,</span>
+    <span class="s4">&quot;cornflower_blue&quot;</span><span class="s2">: </span><span class="s6">69</span><span class="s2">,</span>
+    <span class="s4">&quot;chartreuse3&quot;</span><span class="s2">: </span><span class="s6">76</span><span class="s2">,</span>
+    <span class="s4">&quot;cadet_blue&quot;</span><span class="s2">: </span><span class="s6">73</span><span class="s2">,</span>
+    <span class="s4">&quot;sky_blue3&quot;</span><span class="s2">: </span><span class="s6">74</span><span class="s2">,</span>
+    <span class="s4">&quot;steel_blue1&quot;</span><span class="s2">: </span><span class="s6">81</span><span class="s2">,</span>
+    <span class="s4">&quot;pale_green3&quot;</span><span class="s2">: </span><span class="s6">114</span><span class="s2">,</span>
+    <span class="s4">&quot;sea_green3&quot;</span><span class="s2">: </span><span class="s6">78</span><span class="s2">,</span>
+    <span class="s4">&quot;aquamarine3&quot;</span><span class="s2">: </span><span class="s6">79</span><span class="s2">,</span>
+    <span class="s4">&quot;medium_turquoise&quot;</span><span class="s2">: </span><span class="s6">80</span><span class="s2">,</span>
+    <span class="s4">&quot;chartreuse2&quot;</span><span class="s2">: </span><span class="s6">112</span><span class="s2">,</span>
+    <span class="s4">&quot;sea_green2&quot;</span><span class="s2">: </span><span class="s6">83</span><span class="s2">,</span>
+    <span class="s4">&quot;sea_green1&quot;</span><span class="s2">: </span><span class="s6">85</span><span class="s2">,</span>
+    <span class="s4">&quot;aquamarine1&quot;</span><span class="s2">: </span><span class="s6">122</span><span class="s2">,</span>
+    <span class="s4">&quot;dark_slate_gray2&quot;</span><span class="s2">: </span><span class="s6">87</span><span class="s2">,</span>
+    <span class="s4">&quot;dark_magenta&quot;</span><span class="s2">: </span><span class="s6">91</span><span class="s2">,</span>
+    <span class="s4">&quot;dark_violet&quot;</span><span class="s2">: </span><span class="s6">128</span><span class="s2">,</span>
+    <span class="s4">&quot;purple&quot;</span><span class="s2">: </span><span class="s6">129</span><span class="s2">,</span>
+    <span class="s4">&quot;light_pink4&quot;</span><span class="s2">: </span><span class="s6">95</span><span class="s2">,</span>
+    <span class="s4">&quot;plum4&quot;</span><span class="s2">: </span><span class="s6">96</span><span class="s2">,</span>
+    <span class="s4">&quot;medium_purple3&quot;</span><span class="s2">: </span><span class="s6">98</span><span class="s2">,</span>
+    <span class="s4">&quot;slate_blue1&quot;</span><span class="s2">: </span><span class="s6">99</span><span class="s2">,</span>
+    <span class="s4">&quot;yellow4&quot;</span><span class="s2">: </span><span class="s6">106</span><span class="s2">,</span>
+    <span class="s4">&quot;wheat4&quot;</span><span class="s2">: </span><span class="s6">101</span><span class="s2">,</span>
+    <span class="s4">&quot;grey53&quot;</span><span class="s2">: </span><span class="s6">102</span><span class="s2">,</span>
+    <span class="s4">&quot;gray53&quot;</span><span class="s2">: </span><span class="s6">102</span><span class="s2">,</span>
+    <span class="s4">&quot;light_slate_grey&quot;</span><span class="s2">: </span><span class="s6">103</span><span class="s2">,</span>
+    <span class="s4">&quot;light_slate_gray&quot;</span><span class="s2">: </span><span class="s6">103</span><span class="s2">,</span>
+    <span class="s4">&quot;medium_purple&quot;</span><span class="s2">: </span><span class="s6">104</span><span class="s2">,</span>
+    <span class="s4">&quot;light_slate_blue&quot;</span><span class="s2">: </span><span class="s6">105</span><span class="s2">,</span>
+    <span class="s4">&quot;dark_olive_green3&quot;</span><span class="s2">: </span><span class="s6">149</span><span class="s2">,</span>
+    <span class="s4">&quot;dark_sea_green&quot;</span><span class="s2">: </span><span class="s6">108</span><span class="s2">,</span>
+    <span class="s4">&quot;light_sky_blue3&quot;</span><span class="s2">: </span><span class="s6">110</span><span class="s2">,</span>
+    <span class="s4">&quot;sky_blue2&quot;</span><span class="s2">: </span><span class="s6">111</span><span class="s2">,</span>
+    <span class="s4">&quot;dark_sea_green3&quot;</span><span class="s2">: </span><span class="s6">150</span><span class="s2">,</span>
+    <span class="s4">&quot;dark_slate_gray3&quot;</span><span class="s2">: </span><span class="s6">116</span><span class="s2">,</span>
+    <span class="s4">&quot;sky_blue1&quot;</span><span class="s2">: </span><span class="s6">117</span><span class="s2">,</span>
+    <span class="s4">&quot;chartreuse1&quot;</span><span class="s2">: </span><span class="s6">118</span><span class="s2">,</span>
+    <span class="s4">&quot;light_green&quot;</span><span class="s2">: </span><span class="s6">120</span><span class="s2">,</span>
+    <span class="s4">&quot;pale_green1&quot;</span><span class="s2">: </span><span class="s6">156</span><span class="s2">,</span>
+    <span class="s4">&quot;dark_slate_gray1&quot;</span><span class="s2">: </span><span class="s6">123</span><span class="s2">,</span>
+    <span class="s4">&quot;red3&quot;</span><span class="s2">: </span><span class="s6">160</span><span class="s2">,</span>
+    <span class="s4">&quot;medium_violet_red&quot;</span><span class="s2">: </span><span class="s6">126</span><span class="s2">,</span>
+    <span class="s4">&quot;magenta3&quot;</span><span class="s2">: </span><span class="s6">164</span><span class="s2">,</span>
+    <span class="s4">&quot;dark_orange3&quot;</span><span class="s2">: </span><span class="s6">166</span><span class="s2">,</span>
+    <span class="s4">&quot;indian_red&quot;</span><span class="s2">: </span><span class="s6">167</span><span class="s2">,</span>
+    <span class="s4">&quot;hot_pink3&quot;</span><span class="s2">: </span><span class="s6">168</span><span class="s2">,</span>
+    <span class="s4">&quot;medium_orchid3&quot;</span><span class="s2">: </span><span class="s6">133</span><span class="s2">,</span>
+    <span class="s4">&quot;medium_orchid&quot;</span><span class="s2">: </span><span class="s6">134</span><span class="s2">,</span>
+    <span class="s4">&quot;medium_purple2&quot;</span><span class="s2">: </span><span class="s6">140</span><span class="s2">,</span>
+    <span class="s4">&quot;dark_goldenrod&quot;</span><span class="s2">: </span><span class="s6">136</span><span class="s2">,</span>
+    <span class="s4">&quot;light_salmon3&quot;</span><span class="s2">: </span><span class="s6">173</span><span class="s2">,</span>
+    <span class="s4">&quot;rosy_brown&quot;</span><span class="s2">: </span><span class="s6">138</span><span class="s2">,</span>
+    <span class="s4">&quot;grey63&quot;</span><span class="s2">: </span><span class="s6">139</span><span class="s2">,</span>
+    <span class="s4">&quot;gray63&quot;</span><span class="s2">: </span><span class="s6">139</span><span class="s2">,</span>
+    <span class="s4">&quot;medium_purple1&quot;</span><span class="s2">: </span><span class="s6">141</span><span class="s2">,</span>
+    <span class="s4">&quot;gold3&quot;</span><span class="s2">: </span><span class="s6">178</span><span class="s2">,</span>
+    <span class="s4">&quot;dark_khaki&quot;</span><span class="s2">: </span><span class="s6">143</span><span class="s2">,</span>
+    <span class="s4">&quot;navajo_white3&quot;</span><span class="s2">: </span><span class="s6">144</span><span class="s2">,</span>
+    <span class="s4">&quot;grey69&quot;</span><span class="s2">: </span><span class="s6">145</span><span class="s2">,</span>
+    <span class="s4">&quot;gray69&quot;</span><span class="s2">: </span><span class="s6">145</span><span class="s2">,</span>
+    <span class="s4">&quot;light_steel_blue3&quot;</span><span class="s2">: </span><span class="s6">146</span><span class="s2">,</span>
+    <span class="s4">&quot;light_steel_blue&quot;</span><span class="s2">: </span><span class="s6">147</span><span class="s2">,</span>
+    <span class="s4">&quot;yellow3&quot;</span><span class="s2">: </span><span class="s6">184</span><span class="s2">,</span>
+    <span class="s4">&quot;dark_sea_green2&quot;</span><span class="s2">: </span><span class="s6">157</span><span class="s2">,</span>
+    <span class="s4">&quot;light_cyan3&quot;</span><span class="s2">: </span><span class="s6">152</span><span class="s2">,</span>
+    <span class="s4">&quot;light_sky_blue1&quot;</span><span class="s2">: </span><span class="s6">153</span><span class="s2">,</span>
+    <span class="s4">&quot;green_yellow&quot;</span><span class="s2">: </span><span class="s6">154</span><span class="s2">,</span>
+    <span class="s4">&quot;dark_olive_green2&quot;</span><span class="s2">: </span><span class="s6">155</span><span class="s2">,</span>
+    <span class="s4">&quot;dark_sea_green1&quot;</span><span class="s2">: </span><span class="s6">193</span><span class="s2">,</span>
+    <span class="s4">&quot;pale_turquoise1&quot;</span><span class="s2">: </span><span class="s6">159</span><span class="s2">,</span>
+    <span class="s4">&quot;deep_pink3&quot;</span><span class="s2">: </span><span class="s6">162</span><span class="s2">,</span>
+    <span class="s4">&quot;magenta2&quot;</span><span class="s2">: </span><span class="s6">200</span><span class="s2">,</span>
+    <span class="s4">&quot;hot_pink2&quot;</span><span class="s2">: </span><span class="s6">169</span><span class="s2">,</span>
+    <span class="s4">&quot;orchid&quot;</span><span class="s2">: </span><span class="s6">170</span><span class="s2">,</span>
+    <span class="s4">&quot;medium_orchid1&quot;</span><span class="s2">: </span><span class="s6">207</span><span class="s2">,</span>
+    <span class="s4">&quot;orange3&quot;</span><span class="s2">: </span><span class="s6">172</span><span class="s2">,</span>
+    <span class="s4">&quot;light_pink3&quot;</span><span class="s2">: </span><span class="s6">174</span><span class="s2">,</span>
+    <span class="s4">&quot;pink3&quot;</span><span class="s2">: </span><span class="s6">175</span><span class="s2">,</span>
+    <span class="s4">&quot;plum3&quot;</span><span class="s2">: </span><span class="s6">176</span><span class="s2">,</span>
+    <span class="s4">&quot;violet&quot;</span><span class="s2">: </span><span class="s6">177</span><span class="s2">,</span>
+    <span class="s4">&quot;light_goldenrod3&quot;</span><span class="s2">: </span><span class="s6">179</span><span class="s2">,</span>
+    <span class="s4">&quot;tan&quot;</span><span class="s2">: </span><span class="s6">180</span><span class="s2">,</span>
+    <span class="s4">&quot;misty_rose3&quot;</span><span class="s2">: </span><span class="s6">181</span><span class="s2">,</span>
+    <span class="s4">&quot;thistle3&quot;</span><span class="s2">: </span><span class="s6">182</span><span class="s2">,</span>
+    <span class="s4">&quot;plum2&quot;</span><span class="s2">: </span><span class="s6">183</span><span class="s2">,</span>
+    <span class="s4">&quot;khaki3&quot;</span><span class="s2">: </span><span class="s6">185</span><span class="s2">,</span>
+    <span class="s4">&quot;light_goldenrod2&quot;</span><span class="s2">: </span><span class="s6">222</span><span class="s2">,</span>
+    <span class="s4">&quot;light_yellow3&quot;</span><span class="s2">: </span><span class="s6">187</span><span class="s2">,</span>
+    <span class="s4">&quot;grey84&quot;</span><span class="s2">: </span><span class="s6">188</span><span class="s2">,</span>
+    <span class="s4">&quot;gray84&quot;</span><span class="s2">: </span><span class="s6">188</span><span class="s2">,</span>
+    <span class="s4">&quot;light_steel_blue1&quot;</span><span class="s2">: </span><span class="s6">189</span><span class="s2">,</span>
+    <span class="s4">&quot;yellow2&quot;</span><span class="s2">: </span><span class="s6">190</span><span class="s2">,</span>
+    <span class="s4">&quot;dark_olive_green1&quot;</span><span class="s2">: </span><span class="s6">192</span><span class="s2">,</span>
+    <span class="s4">&quot;honeydew2&quot;</span><span class="s2">: </span><span class="s6">194</span><span class="s2">,</span>
+    <span class="s4">&quot;light_cyan1&quot;</span><span class="s2">: </span><span class="s6">195</span><span class="s2">,</span>
+    <span class="s4">&quot;red1&quot;</span><span class="s2">: </span><span class="s6">196</span><span class="s2">,</span>
+    <span class="s4">&quot;deep_pink2&quot;</span><span class="s2">: </span><span class="s6">197</span><span class="s2">,</span>
+    <span class="s4">&quot;deep_pink1&quot;</span><span class="s2">: </span><span class="s6">199</span><span class="s2">,</span>
+    <span class="s4">&quot;magenta1&quot;</span><span class="s2">: </span><span class="s6">201</span><span class="s2">,</span>
+    <span class="s4">&quot;orange_red1&quot;</span><span class="s2">: </span><span class="s6">202</span><span class="s2">,</span>
+    <span class="s4">&quot;indian_red1&quot;</span><span class="s2">: </span><span class="s6">204</span><span class="s2">,</span>
+    <span class="s4">&quot;hot_pink&quot;</span><span class="s2">: </span><span class="s6">206</span><span class="s2">,</span>
+    <span class="s4">&quot;dark_orange&quot;</span><span class="s2">: </span><span class="s6">208</span><span class="s2">,</span>
+    <span class="s4">&quot;salmon1&quot;</span><span class="s2">: </span><span class="s6">209</span><span class="s2">,</span>
+    <span class="s4">&quot;light_coral&quot;</span><span class="s2">: </span><span class="s6">210</span><span class="s2">,</span>
+    <span class="s4">&quot;pale_violet_red1&quot;</span><span class="s2">: </span><span class="s6">211</span><span class="s2">,</span>
+    <span class="s4">&quot;orchid2&quot;</span><span class="s2">: </span><span class="s6">212</span><span class="s2">,</span>
+    <span class="s4">&quot;orchid1&quot;</span><span class="s2">: </span><span class="s6">213</span><span class="s2">,</span>
+    <span class="s4">&quot;orange1&quot;</span><span class="s2">: </span><span class="s6">214</span><span class="s2">,</span>
+    <span class="s4">&quot;sandy_brown&quot;</span><span class="s2">: </span><span class="s6">215</span><span class="s2">,</span>
+    <span class="s4">&quot;light_salmon1&quot;</span><span class="s2">: </span><span class="s6">216</span><span class="s2">,</span>
+    <span class="s4">&quot;light_pink1&quot;</span><span class="s2">: </span><span class="s6">217</span><span class="s2">,</span>
+    <span class="s4">&quot;pink1&quot;</span><span class="s2">: </span><span class="s6">218</span><span class="s2">,</span>
+    <span class="s4">&quot;plum1&quot;</span><span class="s2">: </span><span class="s6">219</span><span class="s2">,</span>
+    <span class="s4">&quot;gold1&quot;</span><span class="s2">: </span><span class="s6">220</span><span class="s2">,</span>
+    <span class="s4">&quot;navajo_white1&quot;</span><span class="s2">: </span><span class="s6">223</span><span class="s2">,</span>
+    <span class="s4">&quot;misty_rose1&quot;</span><span class="s2">: </span><span class="s6">224</span><span class="s2">,</span>
+    <span class="s4">&quot;thistle1&quot;</span><span class="s2">: </span><span class="s6">225</span><span class="s2">,</span>
+    <span class="s4">&quot;yellow1&quot;</span><span class="s2">: </span><span class="s6">226</span><span class="s2">,</span>
+    <span class="s4">&quot;light_goldenrod1&quot;</span><span class="s2">: </span><span class="s6">227</span><span class="s2">,</span>
+    <span class="s4">&quot;khaki1&quot;</span><span class="s2">: </span><span class="s6">228</span><span class="s2">,</span>
+    <span class="s4">&quot;wheat1&quot;</span><span class="s2">: </span><span class="s6">229</span><span class="s2">,</span>
+    <span class="s4">&quot;cornsilk1&quot;</span><span class="s2">: </span><span class="s6">230</span><span class="s2">,</span>
+    <span class="s4">&quot;grey100&quot;</span><span class="s2">: </span><span class="s6">231</span><span class="s2">,</span>
+    <span class="s4">&quot;gray100&quot;</span><span class="s2">: </span><span class="s6">231</span><span class="s2">,</span>
+    <span class="s4">&quot;grey3&quot;</span><span class="s2">: </span><span class="s6">232</span><span class="s2">,</span>
+    <span class="s4">&quot;gray3&quot;</span><span class="s2">: </span><span class="s6">232</span><span class="s2">,</span>
+    <span class="s4">&quot;grey7&quot;</span><span class="s2">: </span><span class="s6">233</span><span class="s2">,</span>
+    <span class="s4">&quot;gray7&quot;</span><span class="s2">: </span><span class="s6">233</span><span class="s2">,</span>
+    <span class="s4">&quot;grey11&quot;</span><span class="s2">: </span><span class="s6">234</span><span class="s2">,</span>
+    <span class="s4">&quot;gray11&quot;</span><span class="s2">: </span><span class="s6">234</span><span class="s2">,</span>
+    <span class="s4">&quot;grey15&quot;</span><span class="s2">: </span><span class="s6">235</span><span class="s2">,</span>
+    <span class="s4">&quot;gray15&quot;</span><span class="s2">: </span><span class="s6">235</span><span class="s2">,</span>
+    <span class="s4">&quot;grey19&quot;</span><span class="s2">: </span><span class="s6">236</span><span class="s2">,</span>
+    <span class="s4">&quot;gray19&quot;</span><span class="s2">: </span><span class="s6">236</span><span class="s2">,</span>
+    <span class="s4">&quot;grey23&quot;</span><span class="s2">: </span><span class="s6">237</span><span class="s2">,</span>
+    <span class="s4">&quot;gray23&quot;</span><span class="s2">: </span><span class="s6">237</span><span class="s2">,</span>
+    <span class="s4">&quot;grey27&quot;</span><span class="s2">: </span><span class="s6">238</span><span class="s2">,</span>
+    <span class="s4">&quot;gray27&quot;</span><span class="s2">: </span><span class="s6">238</span><span class="s2">,</span>
+    <span class="s4">&quot;grey30&quot;</span><span class="s2">: </span><span class="s6">239</span><span class="s2">,</span>
+    <span class="s4">&quot;gray30&quot;</span><span class="s2">: </span><span class="s6">239</span><span class="s2">,</span>
+    <span class="s4">&quot;grey35&quot;</span><span class="s2">: </span><span class="s6">240</span><span class="s2">,</span>
+    <span class="s4">&quot;gray35&quot;</span><span class="s2">: </span><span class="s6">240</span><span class="s2">,</span>
+    <span class="s4">&quot;grey39&quot;</span><span class="s2">: </span><span class="s6">241</span><span class="s2">,</span>
+    <span class="s4">&quot;gray39&quot;</span><span class="s2">: </span><span class="s6">241</span><span class="s2">,</span>
+    <span class="s4">&quot;grey42&quot;</span><span class="s2">: </span><span class="s6">242</span><span class="s2">,</span>
+    <span class="s4">&quot;gray42&quot;</span><span class="s2">: </span><span class="s6">242</span><span class="s2">,</span>
+    <span class="s4">&quot;grey46&quot;</span><span class="s2">: </span><span class="s6">243</span><span class="s2">,</span>
+    <span class="s4">&quot;gray46&quot;</span><span class="s2">: </span><span class="s6">243</span><span class="s2">,</span>
+    <span class="s4">&quot;grey50&quot;</span><span class="s2">: </span><span class="s6">244</span><span class="s2">,</span>
+    <span class="s4">&quot;gray50&quot;</span><span class="s2">: </span><span class="s6">244</span><span class="s2">,</span>
+    <span class="s4">&quot;grey54&quot;</span><span class="s2">: </span><span class="s6">245</span><span class="s2">,</span>
+    <span class="s4">&quot;gray54&quot;</span><span class="s2">: </span><span class="s6">245</span><span class="s2">,</span>
+    <span class="s4">&quot;grey58&quot;</span><span class="s2">: </span><span class="s6">246</span><span class="s2">,</span>
+    <span class="s4">&quot;gray58&quot;</span><span class="s2">: </span><span class="s6">246</span><span class="s2">,</span>
+    <span class="s4">&quot;grey62&quot;</span><span class="s2">: </span><span class="s6">247</span><span class="s2">,</span>
+    <span class="s4">&quot;gray62&quot;</span><span class="s2">: </span><span class="s6">247</span><span class="s2">,</span>
+    <span class="s4">&quot;grey66&quot;</span><span class="s2">: </span><span class="s6">248</span><span class="s2">,</span>
+    <span class="s4">&quot;gray66&quot;</span><span class="s2">: </span><span class="s6">248</span><span class="s2">,</span>
+    <span class="s4">&quot;grey70&quot;</span><span class="s2">: </span><span class="s6">249</span><span class="s2">,</span>
+    <span class="s4">&quot;gray70&quot;</span><span class="s2">: </span><span class="s6">249</span><span class="s2">,</span>
+    <span class="s4">&quot;grey74&quot;</span><span class="s2">: </span><span class="s6">250</span><span class="s2">,</span>
+    <span class="s4">&quot;gray74&quot;</span><span class="s2">: </span><span class="s6">250</span><span class="s2">,</span>
+    <span class="s4">&quot;grey78&quot;</span><span class="s2">: </span><span class="s6">251</span><span class="s2">,</span>
+    <span class="s4">&quot;gray78&quot;</span><span class="s2">: </span><span class="s6">251</span><span class="s2">,</span>
+    <span class="s4">&quot;grey82&quot;</span><span class="s2">: </span><span class="s6">252</span><span class="s2">,</span>
+    <span class="s4">&quot;gray82&quot;</span><span class="s2">: </span><span class="s6">252</span><span class="s2">,</span>
+    <span class="s4">&quot;grey85&quot;</span><span class="s2">: </span><span class="s6">253</span><span class="s2">,</span>
+    <span class="s4">&quot;gray85&quot;</span><span class="s2">: </span><span class="s6">253</span><span class="s2">,</span>
+    <span class="s4">&quot;grey89&quot;</span><span class="s2">: </span><span class="s6">254</span><span class="s2">,</span>
+    <span class="s4">&quot;gray89&quot;</span><span class="s2">: </span><span class="s6">254</span><span class="s2">,</span>
+    <span class="s4">&quot;grey93&quot;</span><span class="s2">: </span><span class="s6">255</span><span class="s2">,</span>
+    <span class="s4">&quot;gray93&quot;</span><span class="s2">: </span><span class="s6">255</span><span class="s2">,</span>
+<span class="s2">}</span>
+
+
+<span class="s0">class </span><span class="s1">ColorParseError</span><span class="s2">(</span><span class="s1">Exception</span><span class="s2">):</span>
+    <span class="s5">&quot;&quot;&quot;The color could not be parsed.&quot;&quot;&quot;</span>
+
+
+<span class="s1">RE_COLOR </span><span class="s2">= </span><span class="s1">re</span><span class="s2">.</span><span class="s1">compile</span><span class="s2">(</span>
+    <span class="s4">r&quot;&quot;&quot;^ 
+\#([0-9a-f]{6})$| 
+color\(([0-9]{1,3})\)$| 
+rgb\(([\d\s,]+)\)$ 
+&quot;&quot;&quot;</span><span class="s2">,</span>
+    <span class="s1">re</span><span class="s2">.</span><span class="s1">VERBOSE</span><span class="s2">,</span>
+<span class="s2">)</span>
+
+
+<span class="s2">@</span><span class="s1">rich_repr</span>
+<span class="s0">class </span><span class="s1">Color</span><span class="s2">(</span><span class="s1">NamedTuple</span><span class="s2">):</span>
+    <span class="s5">&quot;&quot;&quot;Terminal color definition.&quot;&quot;&quot;</span>
+
+    <span class="s1">name</span><span class="s2">: </span><span class="s1">str</span>
+    <span class="s4">&quot;&quot;&quot;The name of the color (typically the input to Color.parse).&quot;&quot;&quot;</span>
+    <span class="s1">type</span><span class="s2">: </span><span class="s1">ColorType</span>
+    <span class="s4">&quot;&quot;&quot;The type of the color.&quot;&quot;&quot;</span>
+    <span class="s1">number</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">int</span><span class="s2">] = </span><span class="s0">None</span>
+    <span class="s4">&quot;&quot;&quot;The color number, if a standard color, or None.&quot;&quot;&quot;</span>
+    <span class="s1">triplet</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">ColorTriplet</span><span class="s2">] = </span><span class="s0">None</span>
+    <span class="s4">&quot;&quot;&quot;A triplet of color components, if an RGB color.&quot;&quot;&quot;</span>
+
+    <span class="s0">def </span><span class="s1">__rich__</span><span class="s2">(</span><span class="s1">self</span><span class="s2">) </span><span class="s1">-&gt; </span><span class="s4">&quot;Text&quot;</span><span class="s2">:</span>
+        <span class="s5">&quot;&quot;&quot;Displays the actual color if Rich printed.&quot;&quot;&quot;</span>
+        <span class="s0">from </span><span class="s2">.</span><span class="s1">style </span><span class="s0">import </span><span class="s1">Style</span>
+        <span class="s0">from </span><span class="s2">.</span><span class="s1">text </span><span class="s0">import </span><span class="s1">Text</span>
+
+        <span class="s0">return </span><span class="s1">Text</span><span class="s2">.</span><span class="s1">assemble</span><span class="s2">(</span>
+            <span class="s4">f&quot;&lt;color </span><span class="s0">{</span><span class="s1">self</span><span class="s2">.</span><span class="s1">name</span><span class="s0">!r} </span><span class="s4">(</span><span class="s0">{</span><span class="s1">self</span><span class="s2">.</span><span class="s1">type</span><span class="s2">.</span><span class="s1">name</span><span class="s2">.</span><span class="s1">lower</span><span class="s2">()</span><span class="s0">}</span><span class="s4">)&quot;</span><span class="s2">,</span>
+            <span class="s2">(</span><span class="s4">&quot;⬤&quot;</span><span class="s2">, </span><span class="s1">Style</span><span class="s2">(</span><span class="s1">color</span><span class="s2">=</span><span class="s1">self</span><span class="s2">)),</span>
+            <span class="s4">&quot; &gt;&quot;</span><span class="s2">,</span>
+        <span class="s2">)</span>
+
+    <span class="s0">def </span><span class="s1">__rich_repr__</span><span class="s2">(</span><span class="s1">self</span><span class="s2">) </span><span class="s1">-&gt; Result</span><span class="s2">:</span>
+        <span class="s0">yield </span><span class="s1">self</span><span class="s2">.</span><span class="s1">name</span>
+        <span class="s0">yield </span><span class="s1">self</span><span class="s2">.</span><span class="s1">type</span>
+        <span class="s0">yield </span><span class="s4">&quot;number&quot;</span><span class="s2">, </span><span class="s1">self</span><span class="s2">.</span><span class="s1">number</span><span class="s2">, </span><span class="s0">None</span>
+        <span class="s0">yield </span><span class="s4">&quot;triplet&quot;</span><span class="s2">, </span><span class="s1">self</span><span class="s2">.</span><span class="s1">triplet</span><span class="s2">, </span><span class="s0">None</span>
+
+    <span class="s2">@</span><span class="s1">property</span>
+    <span class="s0">def </span><span class="s1">system</span><span class="s2">(</span><span class="s1">self</span><span class="s2">) </span><span class="s1">-&gt; ColorSystem</span><span class="s2">:</span>
+        <span class="s5">&quot;&quot;&quot;Get the native color system for this color.&quot;&quot;&quot;</span>
+        <span class="s0">if </span><span class="s1">self</span><span class="s2">.</span><span class="s1">type </span><span class="s2">== </span><span class="s1">ColorType</span><span class="s2">.</span><span class="s1">DEFAULT</span><span class="s2">:</span>
+            <span class="s0">return </span><span class="s1">ColorSystem</span><span class="s2">.</span><span class="s1">STANDARD</span>
+        <span class="s0">return </span><span class="s1">ColorSystem</span><span class="s2">(</span><span class="s1">int</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">type</span><span class="s2">))</span>
+
+    <span class="s2">@</span><span class="s1">property</span>
+    <span class="s0">def </span><span class="s1">is_system_defined</span><span class="s2">(</span><span class="s1">self</span><span class="s2">) </span><span class="s1">-&gt; bool</span><span class="s2">:</span>
+        <span class="s5">&quot;&quot;&quot;Check if the color is ultimately defined by the system.&quot;&quot;&quot;</span>
+        <span class="s0">return </span><span class="s1">self</span><span class="s2">.</span><span class="s1">system </span><span class="s0">not in </span><span class="s2">(</span><span class="s1">ColorSystem</span><span class="s2">.</span><span class="s1">EIGHT_BIT</span><span class="s2">, </span><span class="s1">ColorSystem</span><span class="s2">.</span><span class="s1">TRUECOLOR</span><span class="s2">)</span>
+
+    <span class="s2">@</span><span class="s1">property</span>
+    <span class="s0">def </span><span class="s1">is_default</span><span class="s2">(</span><span class="s1">self</span><span class="s2">) </span><span class="s1">-&gt; bool</span><span class="s2">:</span>
+        <span class="s5">&quot;&quot;&quot;Check if the color is a default color.&quot;&quot;&quot;</span>
+        <span class="s0">return </span><span class="s1">self</span><span class="s2">.</span><span class="s1">type </span><span class="s2">== </span><span class="s1">ColorType</span><span class="s2">.</span><span class="s1">DEFAULT</span>
+
+    <span class="s0">def </span><span class="s1">get_truecolor</span><span class="s2">(</span>
+        <span class="s1">self</span><span class="s2">, </span><span class="s1">theme</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s4">&quot;TerminalTheme&quot;</span><span class="s2">] = </span><span class="s0">None</span><span class="s2">, </span><span class="s1">foreground</span><span class="s2">: </span><span class="s1">bool </span><span class="s2">= </span><span class="s0">True</span>
+    <span class="s2">) </span><span class="s1">-&gt; ColorTriplet</span><span class="s2">:</span>
+        <span class="s5">&quot;&quot;&quot;Get an equivalent color triplet for this color. 
+ 
+        Args: 
+            theme (TerminalTheme, optional): Optional terminal theme, or None to use default. Defaults to None. 
+            foreground (bool, optional): True for a foreground color, or False for background. Defaults to True. 
+ 
+        Returns: 
+            ColorTriplet: A color triplet containing RGB components. 
+        &quot;&quot;&quot;</span>
+
+        <span class="s0">if </span><span class="s1">theme </span><span class="s0">is None</span><span class="s2">:</span>
+            <span class="s1">theme </span><span class="s2">= </span><span class="s1">DEFAULT_TERMINAL_THEME</span>
+        <span class="s0">if </span><span class="s1">self</span><span class="s2">.</span><span class="s1">type </span><span class="s2">== </span><span class="s1">ColorType</span><span class="s2">.</span><span class="s1">TRUECOLOR</span><span class="s2">:</span>
+            <span class="s0">assert </span><span class="s1">self</span><span class="s2">.</span><span class="s1">triplet </span><span class="s0">is not None</span>
+            <span class="s0">return </span><span class="s1">self</span><span class="s2">.</span><span class="s1">triplet</span>
+        <span class="s0">elif </span><span class="s1">self</span><span class="s2">.</span><span class="s1">type </span><span class="s2">== </span><span class="s1">ColorType</span><span class="s2">.</span><span class="s1">EIGHT_BIT</span><span class="s2">:</span>
+            <span class="s0">assert </span><span class="s1">self</span><span class="s2">.</span><span class="s1">number </span><span class="s0">is not None</span>
+            <span class="s0">return </span><span class="s1">EIGHT_BIT_PALETTE</span><span class="s2">[</span><span class="s1">self</span><span class="s2">.</span><span class="s1">number</span><span class="s2">]</span>
+        <span class="s0">elif </span><span class="s1">self</span><span class="s2">.</span><span class="s1">type </span><span class="s2">== </span><span class="s1">ColorType</span><span class="s2">.</span><span class="s1">STANDARD</span><span class="s2">:</span>
+            <span class="s0">assert </span><span class="s1">self</span><span class="s2">.</span><span class="s1">number </span><span class="s0">is not None</span>
+            <span class="s0">return </span><span class="s1">theme</span><span class="s2">.</span><span class="s1">ansi_colors</span><span class="s2">[</span><span class="s1">self</span><span class="s2">.</span><span class="s1">number</span><span class="s2">]</span>
+        <span class="s0">elif </span><span class="s1">self</span><span class="s2">.</span><span class="s1">type </span><span class="s2">== </span><span class="s1">ColorType</span><span class="s2">.</span><span class="s1">WINDOWS</span><span class="s2">:</span>
+            <span class="s0">assert </span><span class="s1">self</span><span class="s2">.</span><span class="s1">number </span><span class="s0">is not None</span>
+            <span class="s0">return </span><span class="s1">WINDOWS_PALETTE</span><span class="s2">[</span><span class="s1">self</span><span class="s2">.</span><span class="s1">number</span><span class="s2">]</span>
+        <span class="s0">else</span><span class="s2">:  </span><span class="s3"># self.type == ColorType.DEFAULT:</span>
+            <span class="s0">assert </span><span class="s1">self</span><span class="s2">.</span><span class="s1">number </span><span class="s0">is None</span>
+            <span class="s0">return </span><span class="s1">theme</span><span class="s2">.</span><span class="s1">foreground_color </span><span class="s0">if </span><span class="s1">foreground </span><span class="s0">else </span><span class="s1">theme</span><span class="s2">.</span><span class="s1">background_color</span>
+
+    <span class="s2">@</span><span class="s1">classmethod</span>
+    <span class="s0">def </span><span class="s1">from_ansi</span><span class="s2">(</span><span class="s1">cls</span><span class="s2">, </span><span class="s1">number</span><span class="s2">: </span><span class="s1">int</span><span class="s2">) </span><span class="s1">-&gt; </span><span class="s4">&quot;Color&quot;</span><span class="s2">:</span>
+        <span class="s5">&quot;&quot;&quot;Create a Color number from it's 8-bit ansi number. 
+ 
+        Args: 
+            number (int): A number between 0-255 inclusive. 
+ 
+        Returns: 
+            Color: A new Color instance. 
+        &quot;&quot;&quot;</span>
+        <span class="s0">return </span><span class="s1">cls</span><span class="s2">(</span>
+            <span class="s1">name</span><span class="s2">=</span><span class="s4">f&quot;color(</span><span class="s0">{</span><span class="s1">number</span><span class="s0">}</span><span class="s4">)&quot;</span><span class="s2">,</span>
+            <span class="s1">type</span><span class="s2">=(</span><span class="s1">ColorType</span><span class="s2">.</span><span class="s1">STANDARD </span><span class="s0">if </span><span class="s1">number </span><span class="s2">&lt; </span><span class="s6">16 </span><span class="s0">else </span><span class="s1">ColorType</span><span class="s2">.</span><span class="s1">EIGHT_BIT</span><span class="s2">),</span>
+            <span class="s1">number</span><span class="s2">=</span><span class="s1">number</span><span class="s2">,</span>
+        <span class="s2">)</span>
+
+    <span class="s2">@</span><span class="s1">classmethod</span>
+    <span class="s0">def </span><span class="s1">from_triplet</span><span class="s2">(</span><span class="s1">cls</span><span class="s2">, </span><span class="s1">triplet</span><span class="s2">: </span><span class="s4">&quot;ColorTriplet&quot;</span><span class="s2">) </span><span class="s1">-&gt; </span><span class="s4">&quot;Color&quot;</span><span class="s2">:</span>
+        <span class="s5">&quot;&quot;&quot;Create a truecolor RGB color from a triplet of values. 
+ 
+        Args: 
+            triplet (ColorTriplet): A color triplet containing red, green and blue components. 
+ 
+        Returns: 
+            Color: A new color object. 
+        &quot;&quot;&quot;</span>
+        <span class="s0">return </span><span class="s1">cls</span><span class="s2">(</span><span class="s1">name</span><span class="s2">=</span><span class="s1">triplet</span><span class="s2">.</span><span class="s1">hex</span><span class="s2">, </span><span class="s1">type</span><span class="s2">=</span><span class="s1">ColorType</span><span class="s2">.</span><span class="s1">TRUECOLOR</span><span class="s2">, </span><span class="s1">triplet</span><span class="s2">=</span><span class="s1">triplet</span><span class="s2">)</span>
+
+    <span class="s2">@</span><span class="s1">classmethod</span>
+    <span class="s0">def </span><span class="s1">from_rgb</span><span class="s2">(</span><span class="s1">cls</span><span class="s2">, </span><span class="s1">red</span><span class="s2">: </span><span class="s1">float</span><span class="s2">, </span><span class="s1">green</span><span class="s2">: </span><span class="s1">float</span><span class="s2">, </span><span class="s1">blue</span><span class="s2">: </span><span class="s1">float</span><span class="s2">) </span><span class="s1">-&gt; </span><span class="s4">&quot;Color&quot;</span><span class="s2">:</span>
+        <span class="s5">&quot;&quot;&quot;Create a truecolor from three color components in the range(0-&gt;255). 
+ 
+        Args: 
+            red (float): Red component in range 0-255. 
+            green (float): Green component in range 0-255. 
+            blue (float): Blue component in range 0-255. 
+ 
+        Returns: 
+            Color: A new color object. 
+        &quot;&quot;&quot;</span>
+        <span class="s0">return </span><span class="s1">cls</span><span class="s2">.</span><span class="s1">from_triplet</span><span class="s2">(</span><span class="s1">ColorTriplet</span><span class="s2">(</span><span class="s1">int</span><span class="s2">(</span><span class="s1">red</span><span class="s2">), </span><span class="s1">int</span><span class="s2">(</span><span class="s1">green</span><span class="s2">), </span><span class="s1">int</span><span class="s2">(</span><span class="s1">blue</span><span class="s2">)))</span>
+
+    <span class="s2">@</span><span class="s1">classmethod</span>
+    <span class="s0">def </span><span class="s1">default</span><span class="s2">(</span><span class="s1">cls</span><span class="s2">) </span><span class="s1">-&gt; </span><span class="s4">&quot;Color&quot;</span><span class="s2">:</span>
+        <span class="s5">&quot;&quot;&quot;Get a Color instance representing the default color. 
+ 
+        Returns: 
+            Color: Default color. 
+        &quot;&quot;&quot;</span>
+        <span class="s0">return </span><span class="s1">cls</span><span class="s2">(</span><span class="s1">name</span><span class="s2">=</span><span class="s4">&quot;default&quot;</span><span class="s2">, </span><span class="s1">type</span><span class="s2">=</span><span class="s1">ColorType</span><span class="s2">.</span><span class="s1">DEFAULT</span><span class="s2">)</span>
+
+    <span class="s2">@</span><span class="s1">classmethod</span>
+    <span class="s2">@</span><span class="s1">lru_cache</span><span class="s2">(</span><span class="s1">maxsize</span><span class="s2">=</span><span class="s6">1024</span><span class="s2">)</span>
+    <span class="s0">def </span><span class="s1">parse</span><span class="s2">(</span><span class="s1">cls</span><span class="s2">, </span><span class="s1">color</span><span class="s2">: </span><span class="s1">str</span><span class="s2">) </span><span class="s1">-&gt; </span><span class="s4">&quot;Color&quot;</span><span class="s2">:</span>
+        <span class="s5">&quot;&quot;&quot;Parse a color definition.&quot;&quot;&quot;</span>
+        <span class="s1">original_color </span><span class="s2">= </span><span class="s1">color</span>
+        <span class="s1">color </span><span class="s2">= </span><span class="s1">color</span><span class="s2">.</span><span class="s1">lower</span><span class="s2">().</span><span class="s1">strip</span><span class="s2">()</span>
+
+        <span class="s0">if </span><span class="s1">color </span><span class="s2">== </span><span class="s4">&quot;default&quot;</span><span class="s2">:</span>
+            <span class="s0">return </span><span class="s1">cls</span><span class="s2">(</span><span class="s1">color</span><span class="s2">, </span><span class="s1">type</span><span class="s2">=</span><span class="s1">ColorType</span><span class="s2">.</span><span class="s1">DEFAULT</span><span class="s2">)</span>
+
+        <span class="s1">color_number </span><span class="s2">= </span><span class="s1">ANSI_COLOR_NAMES</span><span class="s2">.</span><span class="s1">get</span><span class="s2">(</span><span class="s1">color</span><span class="s2">)</span>
+        <span class="s0">if </span><span class="s1">color_number </span><span class="s0">is not None</span><span class="s2">:</span>
+            <span class="s0">return </span><span class="s1">cls</span><span class="s2">(</span>
+                <span class="s1">color</span><span class="s2">,</span>
+                <span class="s1">type</span><span class="s2">=(</span><span class="s1">ColorType</span><span class="s2">.</span><span class="s1">STANDARD </span><span class="s0">if </span><span class="s1">color_number </span><span class="s2">&lt; </span><span class="s6">16 </span><span class="s0">else </span><span class="s1">ColorType</span><span class="s2">.</span><span class="s1">EIGHT_BIT</span><span class="s2">),</span>
+                <span class="s1">number</span><span class="s2">=</span><span class="s1">color_number</span><span class="s2">,</span>
+            <span class="s2">)</span>
+
+        <span class="s1">color_match </span><span class="s2">= </span><span class="s1">RE_COLOR</span><span class="s2">.</span><span class="s1">match</span><span class="s2">(</span><span class="s1">color</span><span class="s2">)</span>
+        <span class="s0">if </span><span class="s1">color_match </span><span class="s0">is None</span><span class="s2">:</span>
+            <span class="s0">raise </span><span class="s1">ColorParseError</span><span class="s2">(</span><span class="s4">f&quot;</span><span class="s0">{</span><span class="s1">original_color</span><span class="s0">!r} </span><span class="s4">is not a valid color&quot;</span><span class="s2">)</span>
+
+        <span class="s1">color_24</span><span class="s2">, </span><span class="s1">color_8</span><span class="s2">, </span><span class="s1">color_rgb </span><span class="s2">= </span><span class="s1">color_match</span><span class="s2">.</span><span class="s1">groups</span><span class="s2">()</span>
+        <span class="s0">if </span><span class="s1">color_24</span><span class="s2">:</span>
+            <span class="s1">triplet </span><span class="s2">= </span><span class="s1">ColorTriplet</span><span class="s2">(</span>
+                <span class="s1">int</span><span class="s2">(</span><span class="s1">color_24</span><span class="s2">[</span><span class="s6">0</span><span class="s2">:</span><span class="s6">2</span><span class="s2">], </span><span class="s6">16</span><span class="s2">), </span><span class="s1">int</span><span class="s2">(</span><span class="s1">color_24</span><span class="s2">[</span><span class="s6">2</span><span class="s2">:</span><span class="s6">4</span><span class="s2">], </span><span class="s6">16</span><span class="s2">), </span><span class="s1">int</span><span class="s2">(</span><span class="s1">color_24</span><span class="s2">[</span><span class="s6">4</span><span class="s2">:</span><span class="s6">6</span><span class="s2">], </span><span class="s6">16</span><span class="s2">)</span>
+            <span class="s2">)</span>
+            <span class="s0">return </span><span class="s1">cls</span><span class="s2">(</span><span class="s1">color</span><span class="s2">, </span><span class="s1">ColorType</span><span class="s2">.</span><span class="s1">TRUECOLOR</span><span class="s2">, </span><span class="s1">triplet</span><span class="s2">=</span><span class="s1">triplet</span><span class="s2">)</span>
+
+        <span class="s0">elif </span><span class="s1">color_8</span><span class="s2">:</span>
+            <span class="s1">number </span><span class="s2">= </span><span class="s1">int</span><span class="s2">(</span><span class="s1">color_8</span><span class="s2">)</span>
+            <span class="s0">if </span><span class="s1">number </span><span class="s2">&gt; </span><span class="s6">255</span><span class="s2">:</span>
+                <span class="s0">raise </span><span class="s1">ColorParseError</span><span class="s2">(</span><span class="s4">f&quot;color number must be &lt;= 255 in </span><span class="s0">{</span><span class="s1">color</span><span class="s0">!r}</span><span class="s4">&quot;</span><span class="s2">)</span>
+            <span class="s0">return </span><span class="s1">cls</span><span class="s2">(</span>
+                <span class="s1">color</span><span class="s2">,</span>
+                <span class="s1">type</span><span class="s2">=(</span><span class="s1">ColorType</span><span class="s2">.</span><span class="s1">STANDARD </span><span class="s0">if </span><span class="s1">number </span><span class="s2">&lt; </span><span class="s6">16 </span><span class="s0">else </span><span class="s1">ColorType</span><span class="s2">.</span><span class="s1">EIGHT_BIT</span><span class="s2">),</span>
+                <span class="s1">number</span><span class="s2">=</span><span class="s1">number</span><span class="s2">,</span>
+            <span class="s2">)</span>
+
+        <span class="s0">else</span><span class="s2">:  </span><span class="s3">#  color_rgb:</span>
+            <span class="s1">components </span><span class="s2">= </span><span class="s1">color_rgb</span><span class="s2">.</span><span class="s1">split</span><span class="s2">(</span><span class="s4">&quot;,&quot;</span><span class="s2">)</span>
+            <span class="s0">if </span><span class="s1">len</span><span class="s2">(</span><span class="s1">components</span><span class="s2">) != </span><span class="s6">3</span><span class="s2">:</span>
+                <span class="s0">raise </span><span class="s1">ColorParseError</span><span class="s2">(</span>
+                    <span class="s4">f&quot;expected three components in </span><span class="s0">{</span><span class="s1">original_color</span><span class="s0">!r}</span><span class="s4">&quot;</span>
+                <span class="s2">)</span>
+            <span class="s1">red</span><span class="s2">, </span><span class="s1">green</span><span class="s2">, </span><span class="s1">blue </span><span class="s2">= </span><span class="s1">components</span>
+            <span class="s1">triplet </span><span class="s2">= </span><span class="s1">ColorTriplet</span><span class="s2">(</span><span class="s1">int</span><span class="s2">(</span><span class="s1">red</span><span class="s2">), </span><span class="s1">int</span><span class="s2">(</span><span class="s1">green</span><span class="s2">), </span><span class="s1">int</span><span class="s2">(</span><span class="s1">blue</span><span class="s2">))</span>
+            <span class="s0">if not </span><span class="s1">all</span><span class="s2">(</span><span class="s1">component </span><span class="s2">&lt;= </span><span class="s6">255 </span><span class="s0">for </span><span class="s1">component </span><span class="s0">in </span><span class="s1">triplet</span><span class="s2">):</span>
+                <span class="s0">raise </span><span class="s1">ColorParseError</span><span class="s2">(</span>
+                    <span class="s4">f&quot;color components must be &lt;= 255 in </span><span class="s0">{</span><span class="s1">original_color</span><span class="s0">!r}</span><span class="s4">&quot;</span>
+                <span class="s2">)</span>
+            <span class="s0">return </span><span class="s1">cls</span><span class="s2">(</span><span class="s1">color</span><span class="s2">, </span><span class="s1">ColorType</span><span class="s2">.</span><span class="s1">TRUECOLOR</span><span class="s2">, </span><span class="s1">triplet</span><span class="s2">=</span><span class="s1">triplet</span><span class="s2">)</span>
+
+    <span class="s2">@</span><span class="s1">lru_cache</span><span class="s2">(</span><span class="s1">maxsize</span><span class="s2">=</span><span class="s6">1024</span><span class="s2">)</span>
+    <span class="s0">def </span><span class="s1">get_ansi_codes</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">foreground</span><span class="s2">: </span><span class="s1">bool </span><span class="s2">= </span><span class="s0">True</span><span class="s2">) </span><span class="s1">-&gt; Tuple</span><span class="s2">[</span><span class="s1">str</span><span class="s2">, ...]:</span>
+        <span class="s5">&quot;&quot;&quot;Get the ANSI escape codes for this color.&quot;&quot;&quot;</span>
+        <span class="s1">_type </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">type</span>
+        <span class="s0">if </span><span class="s1">_type </span><span class="s2">== </span><span class="s1">ColorType</span><span class="s2">.</span><span class="s1">DEFAULT</span><span class="s2">:</span>
+            <span class="s0">return </span><span class="s2">(</span><span class="s4">&quot;39&quot; </span><span class="s0">if </span><span class="s1">foreground </span><span class="s0">else </span><span class="s4">&quot;49&quot;</span><span class="s2">,)</span>
+
+        <span class="s0">elif </span><span class="s1">_type </span><span class="s2">== </span><span class="s1">ColorType</span><span class="s2">.</span><span class="s1">WINDOWS</span><span class="s2">:</span>
+            <span class="s1">number </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">number</span>
+            <span class="s0">assert </span><span class="s1">number </span><span class="s0">is not None</span>
+            <span class="s1">fore</span><span class="s2">, </span><span class="s1">back </span><span class="s2">= (</span><span class="s6">30</span><span class="s2">, </span><span class="s6">40</span><span class="s2">) </span><span class="s0">if </span><span class="s1">number </span><span class="s2">&lt; </span><span class="s6">8 </span><span class="s0">else </span><span class="s2">(</span><span class="s6">82</span><span class="s2">, </span><span class="s6">92</span><span class="s2">)</span>
+            <span class="s0">return </span><span class="s2">(</span><span class="s1">str</span><span class="s2">(</span><span class="s1">fore </span><span class="s2">+ </span><span class="s1">number </span><span class="s0">if </span><span class="s1">foreground </span><span class="s0">else </span><span class="s1">back </span><span class="s2">+ </span><span class="s1">number</span><span class="s2">),)</span>
+
+        <span class="s0">elif </span><span class="s1">_type </span><span class="s2">== </span><span class="s1">ColorType</span><span class="s2">.</span><span class="s1">STANDARD</span><span class="s2">:</span>
+            <span class="s1">number </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">number</span>
+            <span class="s0">assert </span><span class="s1">number </span><span class="s0">is not None</span>
+            <span class="s1">fore</span><span class="s2">, </span><span class="s1">back </span><span class="s2">= (</span><span class="s6">30</span><span class="s2">, </span><span class="s6">40</span><span class="s2">) </span><span class="s0">if </span><span class="s1">number </span><span class="s2">&lt; </span><span class="s6">8 </span><span class="s0">else </span><span class="s2">(</span><span class="s6">82</span><span class="s2">, </span><span class="s6">92</span><span class="s2">)</span>
+            <span class="s0">return </span><span class="s2">(</span><span class="s1">str</span><span class="s2">(</span><span class="s1">fore </span><span class="s2">+ </span><span class="s1">number </span><span class="s0">if </span><span class="s1">foreground </span><span class="s0">else </span><span class="s1">back </span><span class="s2">+ </span><span class="s1">number</span><span class="s2">),)</span>
+
+        <span class="s0">elif </span><span class="s1">_type </span><span class="s2">== </span><span class="s1">ColorType</span><span class="s2">.</span><span class="s1">EIGHT_BIT</span><span class="s2">:</span>
+            <span class="s0">assert </span><span class="s1">self</span><span class="s2">.</span><span class="s1">number </span><span class="s0">is not None</span>
+            <span class="s0">return </span><span class="s2">(</span><span class="s4">&quot;38&quot; </span><span class="s0">if </span><span class="s1">foreground </span><span class="s0">else </span><span class="s4">&quot;48&quot;</span><span class="s2">, </span><span class="s4">&quot;5&quot;</span><span class="s2">, </span><span class="s1">str</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">number</span><span class="s2">))</span>
+
+        <span class="s0">else</span><span class="s2">:  </span><span class="s3"># self.standard == ColorStandard.TRUECOLOR:</span>
+            <span class="s0">assert </span><span class="s1">self</span><span class="s2">.</span><span class="s1">triplet </span><span class="s0">is not None</span>
+            <span class="s1">red</span><span class="s2">, </span><span class="s1">green</span><span class="s2">, </span><span class="s1">blue </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">triplet</span>
+            <span class="s0">return </span><span class="s2">(</span><span class="s4">&quot;38&quot; </span><span class="s0">if </span><span class="s1">foreground </span><span class="s0">else </span><span class="s4">&quot;48&quot;</span><span class="s2">, </span><span class="s4">&quot;2&quot;</span><span class="s2">, </span><span class="s1">str</span><span class="s2">(</span><span class="s1">red</span><span class="s2">), </span><span class="s1">str</span><span class="s2">(</span><span class="s1">green</span><span class="s2">), </span><span class="s1">str</span><span class="s2">(</span><span class="s1">blue</span><span class="s2">))</span>
+
+    <span class="s2">@</span><span class="s1">lru_cache</span><span class="s2">(</span><span class="s1">maxsize</span><span class="s2">=</span><span class="s6">1024</span><span class="s2">)</span>
+    <span class="s0">def </span><span class="s1">downgrade</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">system</span><span class="s2">: </span><span class="s1">ColorSystem</span><span class="s2">) </span><span class="s1">-&gt; </span><span class="s4">&quot;Color&quot;</span><span class="s2">:</span>
+        <span class="s5">&quot;&quot;&quot;Downgrade a color system to a system with fewer colors.&quot;&quot;&quot;</span>
+
+        <span class="s0">if </span><span class="s1">self</span><span class="s2">.</span><span class="s1">type </span><span class="s0">in </span><span class="s2">(</span><span class="s1">ColorType</span><span class="s2">.</span><span class="s1">DEFAULT</span><span class="s2">, </span><span class="s1">system</span><span class="s2">):</span>
+            <span class="s0">return </span><span class="s1">self</span>
+        <span class="s3"># Convert to 8-bit color from truecolor color</span>
+        <span class="s0">if </span><span class="s1">system </span><span class="s2">== </span><span class="s1">ColorSystem</span><span class="s2">.</span><span class="s1">EIGHT_BIT </span><span class="s0">and </span><span class="s1">self</span><span class="s2">.</span><span class="s1">system </span><span class="s2">== </span><span class="s1">ColorSystem</span><span class="s2">.</span><span class="s1">TRUECOLOR</span><span class="s2">:</span>
+            <span class="s0">assert </span><span class="s1">self</span><span class="s2">.</span><span class="s1">triplet </span><span class="s0">is not None</span>
+            <span class="s1">_h</span><span class="s2">, </span><span class="s1">l</span><span class="s2">, </span><span class="s1">s </span><span class="s2">= </span><span class="s1">rgb_to_hls</span><span class="s2">(*</span><span class="s1">self</span><span class="s2">.</span><span class="s1">triplet</span><span class="s2">.</span><span class="s1">normalized</span><span class="s2">)</span>
+            <span class="s3"># If saturation is under 15% assume it is grayscale</span>
+            <span class="s0">if </span><span class="s1">s </span><span class="s2">&lt; </span><span class="s6">0.15</span><span class="s2">:</span>
+                <span class="s1">gray </span><span class="s2">= </span><span class="s1">round</span><span class="s2">(</span><span class="s1">l </span><span class="s2">* </span><span class="s6">25.0</span><span class="s2">)</span>
+                <span class="s0">if </span><span class="s1">gray </span><span class="s2">== </span><span class="s6">0</span><span class="s2">:</span>
+                    <span class="s1">color_number </span><span class="s2">= </span><span class="s6">16</span>
+                <span class="s0">elif </span><span class="s1">gray </span><span class="s2">== </span><span class="s6">25</span><span class="s2">:</span>
+                    <span class="s1">color_number </span><span class="s2">= </span><span class="s6">231</span>
+                <span class="s0">else</span><span class="s2">:</span>
+                    <span class="s1">color_number </span><span class="s2">= </span><span class="s6">231 </span><span class="s2">+ </span><span class="s1">gray</span>
+                <span class="s0">return </span><span class="s1">Color</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">name</span><span class="s2">, </span><span class="s1">ColorType</span><span class="s2">.</span><span class="s1">EIGHT_BIT</span><span class="s2">, </span><span class="s1">number</span><span class="s2">=</span><span class="s1">color_number</span><span class="s2">)</span>
+
+            <span class="s1">red</span><span class="s2">, </span><span class="s1">green</span><span class="s2">, </span><span class="s1">blue </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">triplet</span>
+            <span class="s1">six_red </span><span class="s2">= </span><span class="s1">red </span><span class="s2">/ </span><span class="s6">95 </span><span class="s0">if </span><span class="s1">red </span><span class="s2">&lt; </span><span class="s6">95 </span><span class="s0">else </span><span class="s6">1 </span><span class="s2">+ (</span><span class="s1">red </span><span class="s2">- </span><span class="s6">95</span><span class="s2">) / </span><span class="s6">40</span>
+            <span class="s1">six_green </span><span class="s2">= </span><span class="s1">green </span><span class="s2">/ </span><span class="s6">95 </span><span class="s0">if </span><span class="s1">green </span><span class="s2">&lt; </span><span class="s6">95 </span><span class="s0">else </span><span class="s6">1 </span><span class="s2">+ (</span><span class="s1">green </span><span class="s2">- </span><span class="s6">95</span><span class="s2">) / </span><span class="s6">40</span>
+            <span class="s1">six_blue </span><span class="s2">= </span><span class="s1">blue </span><span class="s2">/ </span><span class="s6">95 </span><span class="s0">if </span><span class="s1">blue </span><span class="s2">&lt; </span><span class="s6">95 </span><span class="s0">else </span><span class="s6">1 </span><span class="s2">+ (</span><span class="s1">blue </span><span class="s2">- </span><span class="s6">95</span><span class="s2">) / </span><span class="s6">40</span>
+
+            <span class="s1">color_number </span><span class="s2">= (</span>
+                <span class="s6">16 </span><span class="s2">+ </span><span class="s6">36 </span><span class="s2">* </span><span class="s1">round</span><span class="s2">(</span><span class="s1">six_red</span><span class="s2">) + </span><span class="s6">6 </span><span class="s2">* </span><span class="s1">round</span><span class="s2">(</span><span class="s1">six_green</span><span class="s2">) + </span><span class="s1">round</span><span class="s2">(</span><span class="s1">six_blue</span><span class="s2">)</span>
+            <span class="s2">)</span>
+            <span class="s0">return </span><span class="s1">Color</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">name</span><span class="s2">, </span><span class="s1">ColorType</span><span class="s2">.</span><span class="s1">EIGHT_BIT</span><span class="s2">, </span><span class="s1">number</span><span class="s2">=</span><span class="s1">color_number</span><span class="s2">)</span>
+
+        <span class="s3"># Convert to standard from truecolor or 8-bit</span>
+        <span class="s0">elif </span><span class="s1">system </span><span class="s2">== </span><span class="s1">ColorSystem</span><span class="s2">.</span><span class="s1">STANDARD</span><span class="s2">:</span>
+            <span class="s0">if </span><span class="s1">self</span><span class="s2">.</span><span class="s1">system </span><span class="s2">== </span><span class="s1">ColorSystem</span><span class="s2">.</span><span class="s1">TRUECOLOR</span><span class="s2">:</span>
+                <span class="s0">assert </span><span class="s1">self</span><span class="s2">.</span><span class="s1">triplet </span><span class="s0">is not None</span>
+                <span class="s1">triplet </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">triplet</span>
+            <span class="s0">else</span><span class="s2">:  </span><span class="s3"># self.system == ColorSystem.EIGHT_BIT</span>
+                <span class="s0">assert </span><span class="s1">self</span><span class="s2">.</span><span class="s1">number </span><span class="s0">is not None</span>
+                <span class="s1">triplet </span><span class="s2">= </span><span class="s1">ColorTriplet</span><span class="s2">(*</span><span class="s1">EIGHT_BIT_PALETTE</span><span class="s2">[</span><span class="s1">self</span><span class="s2">.</span><span class="s1">number</span><span class="s2">])</span>
+
+            <span class="s1">color_number </span><span class="s2">= </span><span class="s1">STANDARD_PALETTE</span><span class="s2">.</span><span class="s1">match</span><span class="s2">(</span><span class="s1">triplet</span><span class="s2">)</span>
+            <span class="s0">return </span><span class="s1">Color</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">name</span><span class="s2">, </span><span class="s1">ColorType</span><span class="s2">.</span><span class="s1">STANDARD</span><span class="s2">, </span><span class="s1">number</span><span class="s2">=</span><span class="s1">color_number</span><span class="s2">)</span>
+
+        <span class="s0">elif </span><span class="s1">system </span><span class="s2">== </span><span class="s1">ColorSystem</span><span class="s2">.</span><span class="s1">WINDOWS</span><span class="s2">:</span>
+            <span class="s0">if </span><span class="s1">self</span><span class="s2">.</span><span class="s1">system </span><span class="s2">== </span><span class="s1">ColorSystem</span><span class="s2">.</span><span class="s1">TRUECOLOR</span><span class="s2">:</span>
+                <span class="s0">assert </span><span class="s1">self</span><span class="s2">.</span><span class="s1">triplet </span><span class="s0">is not None</span>
+                <span class="s1">triplet </span><span class="s2">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">triplet</span>
+            <span class="s0">else</span><span class="s2">:  </span><span class="s3"># self.system == ColorSystem.EIGHT_BIT</span>
+                <span class="s0">assert </span><span class="s1">self</span><span class="s2">.</span><span class="s1">number </span><span class="s0">is not None</span>
+                <span class="s0">if </span><span class="s1">self</span><span class="s2">.</span><span class="s1">number </span><span class="s2">&lt; </span><span class="s6">16</span><span class="s2">:</span>
+                    <span class="s0">return </span><span class="s1">Color</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">name</span><span class="s2">, </span><span class="s1">ColorType</span><span class="s2">.</span><span class="s1">WINDOWS</span><span class="s2">, </span><span class="s1">number</span><span class="s2">=</span><span class="s1">self</span><span class="s2">.</span><span class="s1">number</span><span class="s2">)</span>
+                <span class="s1">triplet </span><span class="s2">= </span><span class="s1">ColorTriplet</span><span class="s2">(*</span><span class="s1">EIGHT_BIT_PALETTE</span><span class="s2">[</span><span class="s1">self</span><span class="s2">.</span><span class="s1">number</span><span class="s2">])</span>
+
+            <span class="s1">color_number </span><span class="s2">= </span><span class="s1">WINDOWS_PALETTE</span><span class="s2">.</span><span class="s1">match</span><span class="s2">(</span><span class="s1">triplet</span><span class="s2">)</span>
+            <span class="s0">return </span><span class="s1">Color</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">name</span><span class="s2">, </span><span class="s1">ColorType</span><span class="s2">.</span><span class="s1">WINDOWS</span><span class="s2">, </span><span class="s1">number</span><span class="s2">=</span><span class="s1">color_number</span><span class="s2">)</span>
+
+        <span class="s0">return </span><span class="s1">self</span>
+
+
+<span class="s0">def </span><span class="s1">parse_rgb_hex</span><span class="s2">(</span><span class="s1">hex_color</span><span class="s2">: </span><span class="s1">str</span><span class="s2">) </span><span class="s1">-&gt; ColorTriplet</span><span class="s2">:</span>
+    <span class="s5">&quot;&quot;&quot;Parse six hex characters in to RGB triplet.&quot;&quot;&quot;</span>
+    <span class="s0">assert </span><span class="s1">len</span><span class="s2">(</span><span class="s1">hex_color</span><span class="s2">) == </span><span class="s6">6</span><span class="s2">, </span><span class="s4">&quot;must be 6 characters&quot;</span>
+    <span class="s1">color </span><span class="s2">= </span><span class="s1">ColorTriplet</span><span class="s2">(</span>
+        <span class="s1">int</span><span class="s2">(</span><span class="s1">hex_color</span><span class="s2">[</span><span class="s6">0</span><span class="s2">:</span><span class="s6">2</span><span class="s2">], </span><span class="s6">16</span><span class="s2">), </span><span class="s1">int</span><span class="s2">(</span><span class="s1">hex_color</span><span class="s2">[</span><span class="s6">2</span><span class="s2">:</span><span class="s6">4</span><span class="s2">], </span><span class="s6">16</span><span class="s2">), </span><span class="s1">int</span><span class="s2">(</span><span class="s1">hex_color</span><span class="s2">[</span><span class="s6">4</span><span class="s2">:</span><span class="s6">6</span><span class="s2">], </span><span class="s6">16</span><span class="s2">)</span>
+    <span class="s2">)</span>
+    <span class="s0">return </span><span class="s1">color</span>
+
+
+<span class="s0">def </span><span class="s1">blend_rgb</span><span class="s2">(</span>
+    <span class="s1">color1</span><span class="s2">: </span><span class="s1">ColorTriplet</span><span class="s2">, </span><span class="s1">color2</span><span class="s2">: </span><span class="s1">ColorTriplet</span><span class="s2">, </span><span class="s1">cross_fade</span><span class="s2">: </span><span class="s1">float </span><span class="s2">= </span><span class="s6">0.5</span>
+<span class="s2">) </span><span class="s1">-&gt; ColorTriplet</span><span class="s2">:</span>
+    <span class="s5">&quot;&quot;&quot;Blend one RGB color in to another.&quot;&quot;&quot;</span>
+    <span class="s1">r1</span><span class="s2">, </span><span class="s1">g1</span><span class="s2">, </span><span class="s1">b1 </span><span class="s2">= </span><span class="s1">color1</span>
+    <span class="s1">r2</span><span class="s2">, </span><span class="s1">g2</span><span class="s2">, </span><span class="s1">b2 </span><span class="s2">= </span><span class="s1">color2</span>
+    <span class="s1">new_color </span><span class="s2">= </span><span class="s1">ColorTriplet</span><span class="s2">(</span>
+        <span class="s1">int</span><span class="s2">(</span><span class="s1">r1 </span><span class="s2">+ (</span><span class="s1">r2 </span><span class="s2">- </span><span class="s1">r1</span><span class="s2">) * </span><span class="s1">cross_fade</span><span class="s2">),</span>
+        <span class="s1">int</span><span class="s2">(</span><span class="s1">g1 </span><span class="s2">+ (</span><span class="s1">g2 </span><span class="s2">- </span><span class="s1">g1</span><span class="s2">) * </span><span class="s1">cross_fade</span><span class="s2">),</span>
+        <span class="s1">int</span><span class="s2">(</span><span class="s1">b1 </span><span class="s2">+ (</span><span class="s1">b2 </span><span class="s2">- </span><span class="s1">b1</span><span class="s2">) * </span><span class="s1">cross_fade</span><span class="s2">),</span>
+    <span class="s2">)</span>
+    <span class="s0">return </span><span class="s1">new_color</span>
+
+
+<span class="s0">if </span><span class="s1">__name__ </span><span class="s2">== </span><span class="s4">&quot;__main__&quot;</span><span class="s2">:  </span><span class="s3"># pragma: no cover</span>
+
+    <span class="s0">from </span><span class="s2">.</span><span class="s1">console </span><span class="s0">import </span><span class="s1">Console</span>
+    <span class="s0">from </span><span class="s2">.</span><span class="s1">table </span><span class="s0">import </span><span class="s1">Table</span>
+    <span class="s0">from </span><span class="s2">.</span><span class="s1">text </span><span class="s0">import </span><span class="s1">Text</span>
+
+    <span class="s1">console </span><span class="s2">= </span><span class="s1">Console</span><span class="s2">()</span>
+
+    <span class="s1">table </span><span class="s2">= </span><span class="s1">Table</span><span class="s2">(</span><span class="s1">show_footer</span><span class="s2">=</span><span class="s0">False</span><span class="s2">, </span><span class="s1">show_edge</span><span class="s2">=</span><span class="s0">True</span><span class="s2">)</span>
+    <span class="s1">table</span><span class="s2">.</span><span class="s1">add_column</span><span class="s2">(</span><span class="s4">&quot;Color&quot;</span><span class="s2">, </span><span class="s1">width</span><span class="s2">=</span><span class="s6">10</span><span class="s2">, </span><span class="s1">overflow</span><span class="s2">=</span><span class="s4">&quot;ellipsis&quot;</span><span class="s2">)</span>
+    <span class="s1">table</span><span class="s2">.</span><span class="s1">add_column</span><span class="s2">(</span><span class="s4">&quot;Number&quot;</span><span class="s2">, </span><span class="s1">justify</span><span class="s2">=</span><span class="s4">&quot;right&quot;</span><span class="s2">, </span><span class="s1">style</span><span class="s2">=</span><span class="s4">&quot;yellow&quot;</span><span class="s2">)</span>
+    <span class="s1">table</span><span class="s2">.</span><span class="s1">add_column</span><span class="s2">(</span><span class="s4">&quot;Name&quot;</span><span class="s2">, </span><span class="s1">style</span><span class="s2">=</span><span class="s4">&quot;green&quot;</span><span class="s2">)</span>
+    <span class="s1">table</span><span class="s2">.</span><span class="s1">add_column</span><span class="s2">(</span><span class="s4">&quot;Hex&quot;</span><span class="s2">, </span><span class="s1">style</span><span class="s2">=</span><span class="s4">&quot;blue&quot;</span><span class="s2">)</span>
+    <span class="s1">table</span><span class="s2">.</span><span class="s1">add_column</span><span class="s2">(</span><span class="s4">&quot;RGB&quot;</span><span class="s2">, </span><span class="s1">style</span><span class="s2">=</span><span class="s4">&quot;magenta&quot;</span><span class="s2">)</span>
+
+    <span class="s1">colors </span><span class="s2">= </span><span class="s1">sorted</span><span class="s2">((</span><span class="s1">v</span><span class="s2">, </span><span class="s1">k</span><span class="s2">) </span><span class="s0">for </span><span class="s1">k</span><span class="s2">, </span><span class="s1">v </span><span class="s0">in </span><span class="s1">ANSI_COLOR_NAMES</span><span class="s2">.</span><span class="s1">items</span><span class="s2">())</span>
+    <span class="s0">for </span><span class="s1">color_number</span><span class="s2">, </span><span class="s1">name </span><span class="s0">in </span><span class="s1">colors</span><span class="s2">:</span>
+        <span class="s0">if </span><span class="s4">&quot;grey&quot; </span><span class="s0">in </span><span class="s1">name</span><span class="s2">:</span>
+            <span class="s0">continue</span>
+        <span class="s1">color_cell </span><span class="s2">= </span><span class="s1">Text</span><span class="s2">(</span><span class="s4">&quot; &quot; </span><span class="s2">* </span><span class="s6">10</span><span class="s2">, </span><span class="s1">style</span><span class="s2">=</span><span class="s4">f&quot;on </span><span class="s0">{</span><span class="s1">name</span><span class="s0">}</span><span class="s4">&quot;</span><span class="s2">)</span>
+        <span class="s0">if </span><span class="s1">color_number </span><span class="s2">&lt; </span><span class="s6">16</span><span class="s2">:</span>
+            <span class="s1">table</span><span class="s2">.</span><span class="s1">add_row</span><span class="s2">(</span><span class="s1">color_cell</span><span class="s2">, </span><span class="s4">f&quot;</span><span class="s0">{</span><span class="s1">color_number</span><span class="s0">}</span><span class="s4">&quot;</span><span class="s2">, </span><span class="s1">Text</span><span class="s2">(</span><span class="s4">f'&quot;</span><span class="s0">{</span><span class="s1">name</span><span class="s0">}</span><span class="s4">&quot;'</span><span class="s2">))</span>
+        <span class="s0">else</span><span class="s2">:</span>
+            <span class="s1">color </span><span class="s2">= </span><span class="s1">EIGHT_BIT_PALETTE</span><span class="s2">[</span><span class="s1">color_number</span><span class="s2">]  </span><span class="s3"># type: ignore[has-type]</span>
+            <span class="s1">table</span><span class="s2">.</span><span class="s1">add_row</span><span class="s2">(</span>
+                <span class="s1">color_cell</span><span class="s2">, </span><span class="s1">str</span><span class="s2">(</span><span class="s1">color_number</span><span class="s2">), </span><span class="s1">Text</span><span class="s2">(</span><span class="s4">f'&quot;</span><span class="s0">{</span><span class="s1">name</span><span class="s0">}</span><span class="s4">&quot;'</span><span class="s2">), </span><span class="s1">color</span><span class="s2">.</span><span class="s1">hex</span><span class="s2">, </span><span class="s1">color</span><span class="s2">.</span><span class="s1">rgb</span>
+            <span class="s2">)</span>
+
+    <span class="s1">console</span><span class="s2">.</span><span class="s1">print</span><span class="s2">(</span><span class="s1">table</span><span class="s2">)</span>
+</pre>
+</body>
+</html>

@@ -1,0 +1,64 @@
+<html>
+<head>
+<title>protocol.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cf8e6d;}
+.s1 { color: #bcbec4;}
+.s2 { color: #bcbec4;}
+.s3 { color: #6aab73;}
+.s4 { color: #5f826b; font-style: italic;}
+.s5 { color: #7a7e85;}
+</style>
+</head>
+<body bgcolor="#1e1f22">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+protocol.py</font>
+</center></td></tr></table>
+<pre><span class="s0">from </span><span class="s1">typing </span><span class="s0">import </span><span class="s1">Any</span><span class="s2">, </span><span class="s1">cast</span><span class="s2">, </span><span class="s1">Set</span><span class="s2">, </span><span class="s1">TYPE_CHECKING</span>
+<span class="s0">from </span><span class="s1">inspect </span><span class="s0">import </span><span class="s1">isclass</span>
+
+<span class="s0">if </span><span class="s1">TYPE_CHECKING</span><span class="s2">:</span>
+    <span class="s0">from </span><span class="s1">pip</span><span class="s2">.</span><span class="s1">_vendor</span><span class="s2">.</span><span class="s1">rich</span><span class="s2">.</span><span class="s1">console </span><span class="s0">import </span><span class="s1">RenderableType</span>
+
+<span class="s1">_GIBBERISH </span><span class="s2">= </span><span class="s3">&quot;&quot;&quot;aihwerij235234ljsdnp34ksodfipwoe234234jlskjdf&quot;&quot;&quot;</span>
+
+
+<span class="s0">def </span><span class="s1">is_renderable</span><span class="s2">(</span><span class="s1">check_object</span><span class="s2">: </span><span class="s1">Any</span><span class="s2">) </span><span class="s1">-&gt; bool</span><span class="s2">:</span>
+    <span class="s4">&quot;&quot;&quot;Check if an object may be rendered by Rich.&quot;&quot;&quot;</span>
+    <span class="s0">return </span><span class="s2">(</span>
+        <span class="s1">isinstance</span><span class="s2">(</span><span class="s1">check_object</span><span class="s2">, </span><span class="s1">str</span><span class="s2">)</span>
+        <span class="s0">or </span><span class="s1">hasattr</span><span class="s2">(</span><span class="s1">check_object</span><span class="s2">, </span><span class="s3">&quot;__rich__&quot;</span><span class="s2">)</span>
+        <span class="s0">or </span><span class="s1">hasattr</span><span class="s2">(</span><span class="s1">check_object</span><span class="s2">, </span><span class="s3">&quot;__rich_console__&quot;</span><span class="s2">)</span>
+    <span class="s2">)</span>
+
+
+<span class="s0">def </span><span class="s1">rich_cast</span><span class="s2">(</span><span class="s1">renderable</span><span class="s2">: </span><span class="s1">object</span><span class="s2">) </span><span class="s1">-&gt; </span><span class="s3">&quot;RenderableType&quot;</span><span class="s2">:</span>
+    <span class="s4">&quot;&quot;&quot;Cast an object to a renderable by calling __rich__ if present. 
+ 
+    Args: 
+        renderable (object): A potentially renderable object 
+ 
+    Returns: 
+        object: The result of recursively calling __rich__. 
+    &quot;&quot;&quot;</span>
+    <span class="s0">from </span><span class="s1">pip</span><span class="s2">.</span><span class="s1">_vendor</span><span class="s2">.</span><span class="s1">rich</span><span class="s2">.</span><span class="s1">console </span><span class="s0">import </span><span class="s1">RenderableType</span>
+
+    <span class="s1">rich_visited_set</span><span class="s2">: </span><span class="s1">Set</span><span class="s2">[</span><span class="s1">type</span><span class="s2">] = </span><span class="s1">set</span><span class="s2">()  </span><span class="s5"># Prevent potential infinite loop</span>
+    <span class="s0">while </span><span class="s1">hasattr</span><span class="s2">(</span><span class="s1">renderable</span><span class="s2">, </span><span class="s3">&quot;__rich__&quot;</span><span class="s2">) </span><span class="s0">and not </span><span class="s1">isclass</span><span class="s2">(</span><span class="s1">renderable</span><span class="s2">):</span>
+        <span class="s5"># Detect object which claim to have all the attributes</span>
+        <span class="s0">if </span><span class="s1">hasattr</span><span class="s2">(</span><span class="s1">renderable</span><span class="s2">, </span><span class="s1">_GIBBERISH</span><span class="s2">):</span>
+            <span class="s0">return </span><span class="s1">repr</span><span class="s2">(</span><span class="s1">renderable</span><span class="s2">)</span>
+        <span class="s1">cast_method </span><span class="s2">= </span><span class="s1">getattr</span><span class="s2">(</span><span class="s1">renderable</span><span class="s2">, </span><span class="s3">&quot;__rich__&quot;</span><span class="s2">)</span>
+        <span class="s1">renderable </span><span class="s2">= </span><span class="s1">cast_method</span><span class="s2">()</span>
+        <span class="s1">renderable_type </span><span class="s2">= </span><span class="s1">type</span><span class="s2">(</span><span class="s1">renderable</span><span class="s2">)</span>
+        <span class="s0">if </span><span class="s1">renderable_type </span><span class="s0">in </span><span class="s1">rich_visited_set</span><span class="s2">:</span>
+            <span class="s0">break</span>
+        <span class="s1">rich_visited_set</span><span class="s2">.</span><span class="s1">add</span><span class="s2">(</span><span class="s1">renderable_type</span><span class="s2">)</span>
+
+    <span class="s0">return </span><span class="s1">cast</span><span class="s2">(</span><span class="s1">RenderableType</span><span class="s2">, </span><span class="s1">renderable</span><span class="s2">)</span>
+</pre>
+</body>
+</html>

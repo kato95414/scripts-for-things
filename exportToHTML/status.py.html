@@ -1,0 +1,155 @@
+<html>
+<head>
+<title>status.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cf8e6d;}
+.s1 { color: #bcbec4;}
+.s2 { color: #bcbec4;}
+.s3 { color: #5f826b; font-style: italic;}
+.s4 { color: #6aab73;}
+.s5 { color: #2aacb8;}
+.s6 { color: #7a7e85;}
+</style>
+</head>
+<body bgcolor="#1e1f22">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+status.py</font>
+</center></td></tr></table>
+<pre><span class="s0">from </span><span class="s1">types </span><span class="s0">import </span><span class="s1">TracebackType</span>
+<span class="s0">from </span><span class="s1">typing </span><span class="s0">import </span><span class="s1">Optional</span><span class="s2">, </span><span class="s1">Type</span>
+
+<span class="s0">from </span><span class="s2">.</span><span class="s1">console </span><span class="s0">import </span><span class="s1">Console</span><span class="s2">, </span><span class="s1">RenderableType</span>
+<span class="s0">from </span><span class="s2">.</span><span class="s1">jupyter </span><span class="s0">import </span><span class="s1">JupyterMixin</span>
+<span class="s0">from </span><span class="s2">.</span><span class="s1">live </span><span class="s0">import </span><span class="s1">Live</span>
+<span class="s0">from </span><span class="s2">.</span><span class="s1">spinner </span><span class="s0">import </span><span class="s1">Spinner</span>
+<span class="s0">from </span><span class="s2">.</span><span class="s1">style </span><span class="s0">import </span><span class="s1">StyleType</span>
+
+
+<span class="s0">class </span><span class="s1">Status</span><span class="s2">(</span><span class="s1">JupyterMixin</span><span class="s2">):</span>
+    <span class="s3">&quot;&quot;&quot;Displays a status indicator with a 'spinner' animation. 
+ 
+    Args: 
+        status (RenderableType): A status renderable (str or Text typically). 
+        console (Console, optional): Console instance to use, or None for global console. Defaults to None. 
+        spinner (str, optional): Name of spinner animation (see python -m rich.spinner). Defaults to &quot;dots&quot;. 
+        spinner_style (StyleType, optional): Style of spinner. Defaults to &quot;status.spinner&quot;. 
+        speed (float, optional): Speed factor for spinner animation. Defaults to 1.0. 
+        refresh_per_second (float, optional): Number of refreshes per second. Defaults to 12.5. 
+    &quot;&quot;&quot;</span>
+
+    <span class="s0">def </span><span class="s1">__init__</span><span class="s2">(</span>
+        <span class="s1">self</span><span class="s2">,</span>
+        <span class="s1">status</span><span class="s2">: </span><span class="s1">RenderableType</span><span class="s2">,</span>
+        <span class="s2">*,</span>
+        <span class="s1">console</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">Console</span><span class="s2">] = </span><span class="s0">None</span><span class="s2">,</span>
+        <span class="s1">spinner</span><span class="s2">: </span><span class="s1">str </span><span class="s2">= </span><span class="s4">&quot;dots&quot;</span><span class="s2">,</span>
+        <span class="s1">spinner_style</span><span class="s2">: </span><span class="s1">StyleType </span><span class="s2">= </span><span class="s4">&quot;status.spinner&quot;</span><span class="s2">,</span>
+        <span class="s1">speed</span><span class="s2">: </span><span class="s1">float </span><span class="s2">= </span><span class="s5">1.0</span><span class="s2">,</span>
+        <span class="s1">refresh_per_second</span><span class="s2">: </span><span class="s1">float </span><span class="s2">= </span><span class="s5">12.5</span><span class="s2">,</span>
+    <span class="s2">):</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">status </span><span class="s2">= </span><span class="s1">status</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">spinner_style </span><span class="s2">= </span><span class="s1">spinner_style</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">speed </span><span class="s2">= </span><span class="s1">speed</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">_spinner </span><span class="s2">= </span><span class="s1">Spinner</span><span class="s2">(</span><span class="s1">spinner</span><span class="s2">, </span><span class="s1">text</span><span class="s2">=</span><span class="s1">status</span><span class="s2">, </span><span class="s1">style</span><span class="s2">=</span><span class="s1">spinner_style</span><span class="s2">, </span><span class="s1">speed</span><span class="s2">=</span><span class="s1">speed</span><span class="s2">)</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">_live </span><span class="s2">= </span><span class="s1">Live</span><span class="s2">(</span>
+            <span class="s1">self</span><span class="s2">.</span><span class="s1">renderable</span><span class="s2">,</span>
+            <span class="s1">console</span><span class="s2">=</span><span class="s1">console</span><span class="s2">,</span>
+            <span class="s1">refresh_per_second</span><span class="s2">=</span><span class="s1">refresh_per_second</span><span class="s2">,</span>
+            <span class="s1">transient</span><span class="s2">=</span><span class="s0">True</span><span class="s2">,</span>
+        <span class="s2">)</span>
+
+    <span class="s2">@</span><span class="s1">property</span>
+    <span class="s0">def </span><span class="s1">renderable</span><span class="s2">(</span><span class="s1">self</span><span class="s2">) </span><span class="s1">-&gt; Spinner</span><span class="s2">:</span>
+        <span class="s0">return </span><span class="s1">self</span><span class="s2">.</span><span class="s1">_spinner</span>
+
+    <span class="s2">@</span><span class="s1">property</span>
+    <span class="s0">def </span><span class="s1">console</span><span class="s2">(</span><span class="s1">self</span><span class="s2">) </span><span class="s1">-&gt; </span><span class="s4">&quot;Console&quot;</span><span class="s2">:</span>
+        <span class="s3">&quot;&quot;&quot;Get the Console used by the Status objects.&quot;&quot;&quot;</span>
+        <span class="s0">return </span><span class="s1">self</span><span class="s2">.</span><span class="s1">_live</span><span class="s2">.</span><span class="s1">console</span>
+
+    <span class="s0">def </span><span class="s1">update</span><span class="s2">(</span>
+        <span class="s1">self</span><span class="s2">,</span>
+        <span class="s1">status</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">RenderableType</span><span class="s2">] = </span><span class="s0">None</span><span class="s2">,</span>
+        <span class="s2">*,</span>
+        <span class="s1">spinner</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">str</span><span class="s2">] = </span><span class="s0">None</span><span class="s2">,</span>
+        <span class="s1">spinner_style</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">StyleType</span><span class="s2">] = </span><span class="s0">None</span><span class="s2">,</span>
+        <span class="s1">speed</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">float</span><span class="s2">] = </span><span class="s0">None</span><span class="s2">,</span>
+    <span class="s2">) </span><span class="s1">-&gt; </span><span class="s0">None</span><span class="s2">:</span>
+        <span class="s3">&quot;&quot;&quot;Update status. 
+ 
+        Args: 
+            status (Optional[RenderableType], optional): New status renderable or None for no change. Defaults to None. 
+            spinner (Optional[str], optional): New spinner or None for no change. Defaults to None. 
+            spinner_style (Optional[StyleType], optional): New spinner style or None for no change. Defaults to None. 
+            speed (Optional[float], optional): Speed factor for spinner animation or None for no change. Defaults to None. 
+        &quot;&quot;&quot;</span>
+        <span class="s0">if </span><span class="s1">status </span><span class="s0">is not None</span><span class="s2">:</span>
+            <span class="s1">self</span><span class="s2">.</span><span class="s1">status </span><span class="s2">= </span><span class="s1">status</span>
+        <span class="s0">if </span><span class="s1">spinner_style </span><span class="s0">is not None</span><span class="s2">:</span>
+            <span class="s1">self</span><span class="s2">.</span><span class="s1">spinner_style </span><span class="s2">= </span><span class="s1">spinner_style</span>
+        <span class="s0">if </span><span class="s1">speed </span><span class="s0">is not None</span><span class="s2">:</span>
+            <span class="s1">self</span><span class="s2">.</span><span class="s1">speed </span><span class="s2">= </span><span class="s1">speed</span>
+        <span class="s0">if </span><span class="s1">spinner </span><span class="s0">is not None</span><span class="s2">:</span>
+            <span class="s1">self</span><span class="s2">.</span><span class="s1">_spinner </span><span class="s2">= </span><span class="s1">Spinner</span><span class="s2">(</span>
+                <span class="s1">spinner</span><span class="s2">, </span><span class="s1">text</span><span class="s2">=</span><span class="s1">self</span><span class="s2">.</span><span class="s1">status</span><span class="s2">, </span><span class="s1">style</span><span class="s2">=</span><span class="s1">self</span><span class="s2">.</span><span class="s1">spinner_style</span><span class="s2">, </span><span class="s1">speed</span><span class="s2">=</span><span class="s1">self</span><span class="s2">.</span><span class="s1">speed</span>
+            <span class="s2">)</span>
+            <span class="s1">self</span><span class="s2">.</span><span class="s1">_live</span><span class="s2">.</span><span class="s1">update</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">renderable</span><span class="s2">, </span><span class="s1">refresh</span><span class="s2">=</span><span class="s0">True</span><span class="s2">)</span>
+        <span class="s0">else</span><span class="s2">:</span>
+            <span class="s1">self</span><span class="s2">.</span><span class="s1">_spinner</span><span class="s2">.</span><span class="s1">update</span><span class="s2">(</span>
+                <span class="s1">text</span><span class="s2">=</span><span class="s1">self</span><span class="s2">.</span><span class="s1">status</span><span class="s2">, </span><span class="s1">style</span><span class="s2">=</span><span class="s1">self</span><span class="s2">.</span><span class="s1">spinner_style</span><span class="s2">, </span><span class="s1">speed</span><span class="s2">=</span><span class="s1">self</span><span class="s2">.</span><span class="s1">speed</span>
+            <span class="s2">)</span>
+
+    <span class="s0">def </span><span class="s1">start</span><span class="s2">(</span><span class="s1">self</span><span class="s2">) </span><span class="s1">-&gt; </span><span class="s0">None</span><span class="s2">:</span>
+        <span class="s3">&quot;&quot;&quot;Start the status animation.&quot;&quot;&quot;</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">_live</span><span class="s2">.</span><span class="s1">start</span><span class="s2">()</span>
+
+    <span class="s0">def </span><span class="s1">stop</span><span class="s2">(</span><span class="s1">self</span><span class="s2">) </span><span class="s1">-&gt; </span><span class="s0">None</span><span class="s2">:</span>
+        <span class="s3">&quot;&quot;&quot;Stop the spinner animation.&quot;&quot;&quot;</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">_live</span><span class="s2">.</span><span class="s1">stop</span><span class="s2">()</span>
+
+    <span class="s0">def </span><span class="s1">__rich__</span><span class="s2">(</span><span class="s1">self</span><span class="s2">) </span><span class="s1">-&gt; RenderableType</span><span class="s2">:</span>
+        <span class="s0">return </span><span class="s1">self</span><span class="s2">.</span><span class="s1">renderable</span>
+
+    <span class="s0">def </span><span class="s1">__enter__</span><span class="s2">(</span><span class="s1">self</span><span class="s2">) </span><span class="s1">-&gt; </span><span class="s4">&quot;Status&quot;</span><span class="s2">:</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">start</span><span class="s2">()</span>
+        <span class="s0">return </span><span class="s1">self</span>
+
+    <span class="s0">def </span><span class="s1">__exit__</span><span class="s2">(</span>
+        <span class="s1">self</span><span class="s2">,</span>
+        <span class="s1">exc_type</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">Type</span><span class="s2">[</span><span class="s1">BaseException</span><span class="s2">]],</span>
+        <span class="s1">exc_val</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">BaseException</span><span class="s2">],</span>
+        <span class="s1">exc_tb</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">TracebackType</span><span class="s2">],</span>
+    <span class="s2">) </span><span class="s1">-&gt; </span><span class="s0">None</span><span class="s2">:</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">stop</span><span class="s2">()</span>
+
+
+<span class="s0">if </span><span class="s1">__name__ </span><span class="s2">== </span><span class="s4">&quot;__main__&quot;</span><span class="s2">:  </span><span class="s6"># pragma: no cover</span>
+
+    <span class="s0">from </span><span class="s1">time </span><span class="s0">import </span><span class="s1">sleep</span>
+
+    <span class="s0">from </span><span class="s2">.</span><span class="s1">console </span><span class="s0">import </span><span class="s1">Console</span>
+
+    <span class="s1">console </span><span class="s2">= </span><span class="s1">Console</span><span class="s2">()</span>
+    <span class="s0">with </span><span class="s1">console</span><span class="s2">.</span><span class="s1">status</span><span class="s2">(</span><span class="s4">&quot;[magenta]Covid detector booting up&quot;</span><span class="s2">) </span><span class="s0">as </span><span class="s1">status</span><span class="s2">:</span>
+        <span class="s1">sleep</span><span class="s2">(</span><span class="s5">3</span><span class="s2">)</span>
+        <span class="s1">console</span><span class="s2">.</span><span class="s1">log</span><span class="s2">(</span><span class="s4">&quot;Importing advanced AI&quot;</span><span class="s2">)</span>
+        <span class="s1">sleep</span><span class="s2">(</span><span class="s5">3</span><span class="s2">)</span>
+        <span class="s1">console</span><span class="s2">.</span><span class="s1">log</span><span class="s2">(</span><span class="s4">&quot;Advanced Covid AI Ready&quot;</span><span class="s2">)</span>
+        <span class="s1">sleep</span><span class="s2">(</span><span class="s5">3</span><span class="s2">)</span>
+        <span class="s1">status</span><span class="s2">.</span><span class="s1">update</span><span class="s2">(</span><span class="s1">status</span><span class="s2">=</span><span class="s4">&quot;[bold blue] Scanning for Covid&quot;</span><span class="s2">, </span><span class="s1">spinner</span><span class="s2">=</span><span class="s4">&quot;earth&quot;</span><span class="s2">)</span>
+        <span class="s1">sleep</span><span class="s2">(</span><span class="s5">3</span><span class="s2">)</span>
+        <span class="s1">console</span><span class="s2">.</span><span class="s1">log</span><span class="s2">(</span><span class="s4">&quot;Found 10,000,000,000 copies of Covid32.exe&quot;</span><span class="s2">)</span>
+        <span class="s1">sleep</span><span class="s2">(</span><span class="s5">3</span><span class="s2">)</span>
+        <span class="s1">status</span><span class="s2">.</span><span class="s1">update</span><span class="s2">(</span>
+            <span class="s1">status</span><span class="s2">=</span><span class="s4">&quot;[bold red]Moving Covid32.exe to Trash&quot;</span><span class="s2">,</span>
+            <span class="s1">spinner</span><span class="s2">=</span><span class="s4">&quot;bouncingBall&quot;</span><span class="s2">,</span>
+            <span class="s1">spinner_style</span><span class="s2">=</span><span class="s4">&quot;yellow&quot;</span><span class="s2">,</span>
+        <span class="s2">)</span>
+        <span class="s1">sleep</span><span class="s2">(</span><span class="s5">5</span><span class="s2">)</span>
+    <span class="s1">console</span><span class="s2">.</span><span class="s1">print</span><span class="s2">(</span><span class="s4">&quot;[bold green]Covid deleted successfully&quot;</span><span class="s2">)</span>
+</pre>
+</body>
+</html>

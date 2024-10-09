@@ -1,0 +1,109 @@
+<html>
+<head>
+<title>scope.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cf8e6d;}
+.s1 { color: #bcbec4;}
+.s2 { color: #bcbec4;}
+.s3 { color: #6aab73;}
+.s4 { color: #5f826b; font-style: italic;}
+.s5 { color: #2aacb8;}
+.s6 { color: #7a7e85;}
+</style>
+</head>
+<body bgcolor="#1e1f22">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+scope.py</font>
+</center></td></tr></table>
+<pre><span class="s0">from </span><span class="s1">collections</span><span class="s2">.</span><span class="s1">abc </span><span class="s0">import </span><span class="s1">Mapping</span>
+<span class="s0">from </span><span class="s1">typing </span><span class="s0">import </span><span class="s1">TYPE_CHECKING</span><span class="s2">, </span><span class="s1">Any</span><span class="s2">, </span><span class="s1">Optional</span><span class="s2">, </span><span class="s1">Tuple</span>
+
+<span class="s0">from </span><span class="s2">.</span><span class="s1">highlighter </span><span class="s0">import </span><span class="s1">ReprHighlighter</span>
+<span class="s0">from </span><span class="s2">.</span><span class="s1">panel </span><span class="s0">import </span><span class="s1">Panel</span>
+<span class="s0">from </span><span class="s2">.</span><span class="s1">pretty </span><span class="s0">import </span><span class="s1">Pretty</span>
+<span class="s0">from </span><span class="s2">.</span><span class="s1">table </span><span class="s0">import </span><span class="s1">Table</span>
+<span class="s0">from </span><span class="s2">.</span><span class="s1">text </span><span class="s0">import </span><span class="s1">Text</span><span class="s2">, </span><span class="s1">TextType</span>
+
+<span class="s0">if </span><span class="s1">TYPE_CHECKING</span><span class="s2">:</span>
+    <span class="s0">from </span><span class="s2">.</span><span class="s1">console </span><span class="s0">import </span><span class="s1">ConsoleRenderable</span>
+
+
+<span class="s0">def </span><span class="s1">render_scope</span><span class="s2">(</span>
+    <span class="s1">scope</span><span class="s2">: </span><span class="s3">&quot;Mapping[str, Any]&quot;</span><span class="s2">,</span>
+    <span class="s2">*,</span>
+    <span class="s1">title</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">TextType</span><span class="s2">] = </span><span class="s0">None</span><span class="s2">,</span>
+    <span class="s1">sort_keys</span><span class="s2">: </span><span class="s1">bool </span><span class="s2">= </span><span class="s0">True</span><span class="s2">,</span>
+    <span class="s1">indent_guides</span><span class="s2">: </span><span class="s1">bool </span><span class="s2">= </span><span class="s0">False</span><span class="s2">,</span>
+    <span class="s1">max_length</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">int</span><span class="s2">] = </span><span class="s0">None</span><span class="s2">,</span>
+    <span class="s1">max_string</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">int</span><span class="s2">] = </span><span class="s0">None</span><span class="s2">,</span>
+<span class="s2">) </span><span class="s1">-&gt; </span><span class="s3">&quot;ConsoleRenderable&quot;</span><span class="s2">:</span>
+    <span class="s4">&quot;&quot;&quot;Render python variables in a given scope. 
+ 
+    Args: 
+        scope (Mapping): A mapping containing variable names and values. 
+        title (str, optional): Optional title. Defaults to None. 
+        sort_keys (bool, optional): Enable sorting of items. Defaults to True. 
+        indent_guides (bool, optional): Enable indentation guides. Defaults to False. 
+        max_length (int, optional): Maximum length of containers before abbreviating, or None for no abbreviation. 
+            Defaults to None. 
+        max_string (int, optional): Maximum length of string before truncating, or None to disable. Defaults to None. 
+ 
+    Returns: 
+        ConsoleRenderable: A renderable object. 
+    &quot;&quot;&quot;</span>
+    <span class="s1">highlighter </span><span class="s2">= </span><span class="s1">ReprHighlighter</span><span class="s2">()</span>
+    <span class="s1">items_table </span><span class="s2">= </span><span class="s1">Table</span><span class="s2">.</span><span class="s1">grid</span><span class="s2">(</span><span class="s1">padding</span><span class="s2">=(</span><span class="s5">0</span><span class="s2">, </span><span class="s5">1</span><span class="s2">), </span><span class="s1">expand</span><span class="s2">=</span><span class="s0">False</span><span class="s2">)</span>
+    <span class="s1">items_table</span><span class="s2">.</span><span class="s1">add_column</span><span class="s2">(</span><span class="s1">justify</span><span class="s2">=</span><span class="s3">&quot;right&quot;</span><span class="s2">)</span>
+
+    <span class="s0">def </span><span class="s1">sort_items</span><span class="s2">(</span><span class="s1">item</span><span class="s2">: </span><span class="s1">Tuple</span><span class="s2">[</span><span class="s1">str</span><span class="s2">, </span><span class="s1">Any</span><span class="s2">]) </span><span class="s1">-&gt; Tuple</span><span class="s2">[</span><span class="s1">bool</span><span class="s2">, </span><span class="s1">str</span><span class="s2">]:</span>
+        <span class="s4">&quot;&quot;&quot;Sort special variables first, then alphabetically.&quot;&quot;&quot;</span>
+        <span class="s1">key</span><span class="s2">, </span><span class="s1">_ </span><span class="s2">= </span><span class="s1">item</span>
+        <span class="s0">return </span><span class="s2">(</span><span class="s0">not </span><span class="s1">key</span><span class="s2">.</span><span class="s1">startswith</span><span class="s2">(</span><span class="s3">&quot;__&quot;</span><span class="s2">), </span><span class="s1">key</span><span class="s2">.</span><span class="s1">lower</span><span class="s2">())</span>
+
+    <span class="s1">items </span><span class="s2">= </span><span class="s1">sorted</span><span class="s2">(</span><span class="s1">scope</span><span class="s2">.</span><span class="s1">items</span><span class="s2">(), </span><span class="s1">key</span><span class="s2">=</span><span class="s1">sort_items</span><span class="s2">) </span><span class="s0">if </span><span class="s1">sort_keys </span><span class="s0">else </span><span class="s1">scope</span><span class="s2">.</span><span class="s1">items</span><span class="s2">()</span>
+    <span class="s0">for </span><span class="s1">key</span><span class="s2">, </span><span class="s1">value </span><span class="s0">in </span><span class="s1">items</span><span class="s2">:</span>
+        <span class="s1">key_text </span><span class="s2">= </span><span class="s1">Text</span><span class="s2">.</span><span class="s1">assemble</span><span class="s2">(</span>
+            <span class="s2">(</span><span class="s1">key</span><span class="s2">, </span><span class="s3">&quot;scope.key.special&quot; </span><span class="s0">if </span><span class="s1">key</span><span class="s2">.</span><span class="s1">startswith</span><span class="s2">(</span><span class="s3">&quot;__&quot;</span><span class="s2">) </span><span class="s0">else </span><span class="s3">&quot;scope.key&quot;</span><span class="s2">),</span>
+            <span class="s2">(</span><span class="s3">&quot; =&quot;</span><span class="s2">, </span><span class="s3">&quot;scope.equals&quot;</span><span class="s2">),</span>
+        <span class="s2">)</span>
+        <span class="s1">items_table</span><span class="s2">.</span><span class="s1">add_row</span><span class="s2">(</span>
+            <span class="s1">key_text</span><span class="s2">,</span>
+            <span class="s1">Pretty</span><span class="s2">(</span>
+                <span class="s1">value</span><span class="s2">,</span>
+                <span class="s1">highlighter</span><span class="s2">=</span><span class="s1">highlighter</span><span class="s2">,</span>
+                <span class="s1">indent_guides</span><span class="s2">=</span><span class="s1">indent_guides</span><span class="s2">,</span>
+                <span class="s1">max_length</span><span class="s2">=</span><span class="s1">max_length</span><span class="s2">,</span>
+                <span class="s1">max_string</span><span class="s2">=</span><span class="s1">max_string</span><span class="s2">,</span>
+            <span class="s2">),</span>
+        <span class="s2">)</span>
+    <span class="s0">return </span><span class="s1">Panel</span><span class="s2">.</span><span class="s1">fit</span><span class="s2">(</span>
+        <span class="s1">items_table</span><span class="s2">,</span>
+        <span class="s1">title</span><span class="s2">=</span><span class="s1">title</span><span class="s2">,</span>
+        <span class="s1">border_style</span><span class="s2">=</span><span class="s3">&quot;scope.border&quot;</span><span class="s2">,</span>
+        <span class="s1">padding</span><span class="s2">=(</span><span class="s5">0</span><span class="s2">, </span><span class="s5">1</span><span class="s2">),</span>
+    <span class="s2">)</span>
+
+
+<span class="s0">if </span><span class="s1">__name__ </span><span class="s2">== </span><span class="s3">&quot;__main__&quot;</span><span class="s2">:  </span><span class="s6"># pragma: no cover</span>
+    <span class="s0">from </span><span class="s1">pip</span><span class="s2">.</span><span class="s1">_vendor</span><span class="s2">.</span><span class="s1">rich </span><span class="s0">import </span><span class="s1">print</span>
+
+    <span class="s1">print</span><span class="s2">()</span>
+
+    <span class="s0">def </span><span class="s1">test</span><span class="s2">(</span><span class="s1">foo</span><span class="s2">: </span><span class="s1">float</span><span class="s2">, </span><span class="s1">bar</span><span class="s2">: </span><span class="s1">float</span><span class="s2">) </span><span class="s1">-&gt; </span><span class="s0">None</span><span class="s2">:</span>
+        <span class="s1">list_of_things </span><span class="s2">= [</span><span class="s5">1</span><span class="s2">, </span><span class="s5">2</span><span class="s2">, </span><span class="s5">3</span><span class="s2">, </span><span class="s0">None</span><span class="s2">, </span><span class="s5">4</span><span class="s2">, </span><span class="s0">True</span><span class="s2">, </span><span class="s0">False</span><span class="s2">, </span><span class="s3">&quot;Hello World&quot;</span><span class="s2">]</span>
+        <span class="s1">dict_of_things </span><span class="s2">= {</span>
+            <span class="s3">&quot;version&quot;</span><span class="s2">: </span><span class="s3">&quot;1.1&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;method&quot;</span><span class="s2">: </span><span class="s3">&quot;confirmFruitPurchase&quot;</span><span class="s2">,</span>
+            <span class="s3">&quot;params&quot;</span><span class="s2">: [[</span><span class="s3">&quot;apple&quot;</span><span class="s2">, </span><span class="s3">&quot;orange&quot;</span><span class="s2">, </span><span class="s3">&quot;mangoes&quot;</span><span class="s2">, </span><span class="s3">&quot;pomelo&quot;</span><span class="s2">], </span><span class="s5">1.123</span><span class="s2">],</span>
+            <span class="s3">&quot;id&quot;</span><span class="s2">: </span><span class="s3">&quot;194521489&quot;</span><span class="s2">,</span>
+        <span class="s2">}</span>
+        <span class="s1">print</span><span class="s2">(</span><span class="s1">render_scope</span><span class="s2">(</span><span class="s1">locals</span><span class="s2">(), </span><span class="s1">title</span><span class="s2">=</span><span class="s3">&quot;[i]locals&quot;</span><span class="s2">, </span><span class="s1">sort_keys</span><span class="s2">=</span><span class="s0">False</span><span class="s2">))</span>
+
+    <span class="s1">test</span><span class="s2">(</span><span class="s5">20.3423</span><span class="s2">, </span><span class="s5">3.1427</span><span class="s2">)</span>
+    <span class="s1">print</span><span class="s2">()</span>
+</pre>
+</body>
+</html>

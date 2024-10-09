@@ -1,0 +1,46 @@
+<html>
+<head>
+<title>_fileno.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cf8e6d;}
+.s1 { color: #bcbec4;}
+.s2 { color: #bcbec4;}
+.s3 { color: #5f826b; font-style: italic;}
+.s4 { color: #6aab73;}
+.s5 { color: #7a7e85;}
+</style>
+</head>
+<body bgcolor="#1e1f22">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+_fileno.py</font>
+</center></td></tr></table>
+<pre><span class="s0">from </span><span class="s1">__future__ </span><span class="s0">import </span><span class="s1">annotations</span>
+
+<span class="s0">from </span><span class="s1">typing </span><span class="s0">import </span><span class="s1">IO</span><span class="s2">, </span><span class="s1">Callable</span>
+
+
+<span class="s0">def </span><span class="s1">get_fileno</span><span class="s2">(</span><span class="s1">file_like</span><span class="s2">: </span><span class="s1">IO</span><span class="s2">[</span><span class="s1">str</span><span class="s2">]) </span><span class="s1">-&gt; int </span><span class="s2">| </span><span class="s0">None</span><span class="s2">:</span>
+    <span class="s3">&quot;&quot;&quot;Get fileno() from a file, accounting for poorly implemented file-like objects. 
+ 
+    Args: 
+        file_like (IO): A file-like object. 
+ 
+    Returns: 
+        int | None: The result of fileno if available, or None if operation failed. 
+    &quot;&quot;&quot;</span>
+    <span class="s1">fileno</span><span class="s2">: </span><span class="s1">Callable</span><span class="s2">[[], </span><span class="s1">int</span><span class="s2">] | </span><span class="s0">None </span><span class="s2">= </span><span class="s1">getattr</span><span class="s2">(</span><span class="s1">file_like</span><span class="s2">, </span><span class="s4">&quot;fileno&quot;</span><span class="s2">, </span><span class="s0">None</span><span class="s2">)</span>
+    <span class="s0">if </span><span class="s1">fileno </span><span class="s0">is not None</span><span class="s2">:</span>
+        <span class="s0">try</span><span class="s2">:</span>
+            <span class="s0">return </span><span class="s1">fileno</span><span class="s2">()</span>
+        <span class="s0">except </span><span class="s1">Exception</span><span class="s2">:</span>
+            <span class="s5"># `fileno` is documented as potentially raising a OSError</span>
+            <span class="s5"># Alas, from the issues, there are so many poorly implemented file-like objects,</span>
+            <span class="s5"># that `fileno()` can raise just about anything.</span>
+            <span class="s0">return None</span>
+    <span class="s0">return None</span>
+</pre>
+</body>
+</html>

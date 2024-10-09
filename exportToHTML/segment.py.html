@@ -1,0 +1,762 @@
+<html>
+<head>
+<title>segment.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cf8e6d;}
+.s1 { color: #bcbec4;}
+.s2 { color: #bcbec4;}
+.s3 { color: #6aab73;}
+.s4 { color: #5f826b; font-style: italic;}
+.s5 { color: #2aacb8;}
+.s6 { color: #7a7e85;}
+</style>
+</head>
+<body bgcolor="#1e1f22">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+segment.py</font>
+</center></td></tr></table>
+<pre><span class="s0">from </span><span class="s1">enum </span><span class="s0">import </span><span class="s1">IntEnum</span>
+<span class="s0">from </span><span class="s1">functools </span><span class="s0">import </span><span class="s1">lru_cache</span>
+<span class="s0">from </span><span class="s1">itertools </span><span class="s0">import </span><span class="s1">filterfalse</span>
+<span class="s0">from </span><span class="s1">logging </span><span class="s0">import </span><span class="s1">getLogger</span>
+<span class="s0">from </span><span class="s1">operator </span><span class="s0">import </span><span class="s1">attrgetter</span>
+<span class="s0">from </span><span class="s1">typing </span><span class="s0">import </span><span class="s2">(</span>
+    <span class="s1">TYPE_CHECKING</span><span class="s2">,</span>
+    <span class="s1">Dict</span><span class="s2">,</span>
+    <span class="s1">Iterable</span><span class="s2">,</span>
+    <span class="s1">List</span><span class="s2">,</span>
+    <span class="s1">NamedTuple</span><span class="s2">,</span>
+    <span class="s1">Optional</span><span class="s2">,</span>
+    <span class="s1">Sequence</span><span class="s2">,</span>
+    <span class="s1">Tuple</span><span class="s2">,</span>
+    <span class="s1">Type</span><span class="s2">,</span>
+    <span class="s1">Union</span><span class="s2">,</span>
+<span class="s2">)</span>
+
+<span class="s0">from </span><span class="s2">.</span><span class="s1">cells </span><span class="s0">import </span><span class="s2">(</span>
+    <span class="s1">_is_single_cell_widths</span><span class="s2">,</span>
+    <span class="s1">cached_cell_len</span><span class="s2">,</span>
+    <span class="s1">cell_len</span><span class="s2">,</span>
+    <span class="s1">get_character_cell_size</span><span class="s2">,</span>
+    <span class="s1">set_cell_size</span><span class="s2">,</span>
+<span class="s2">)</span>
+<span class="s0">from </span><span class="s2">.</span><span class="s1">repr </span><span class="s0">import </span><span class="s1">Result</span><span class="s2">, </span><span class="s1">rich_repr</span>
+<span class="s0">from </span><span class="s2">.</span><span class="s1">style </span><span class="s0">import </span><span class="s1">Style</span>
+
+<span class="s0">if </span><span class="s1">TYPE_CHECKING</span><span class="s2">:</span>
+    <span class="s0">from </span><span class="s2">.</span><span class="s1">console </span><span class="s0">import </span><span class="s1">Console</span><span class="s2">, </span><span class="s1">ConsoleOptions</span><span class="s2">, </span><span class="s1">RenderResult</span>
+
+<span class="s1">log </span><span class="s2">= </span><span class="s1">getLogger</span><span class="s2">(</span><span class="s3">&quot;rich&quot;</span><span class="s2">)</span>
+
+
+<span class="s0">class </span><span class="s1">ControlType</span><span class="s2">(</span><span class="s1">IntEnum</span><span class="s2">):</span>
+    <span class="s4">&quot;&quot;&quot;Non-printable control codes which typically translate to ANSI codes.&quot;&quot;&quot;</span>
+
+    <span class="s1">BELL </span><span class="s2">= </span><span class="s5">1</span>
+    <span class="s1">CARRIAGE_RETURN </span><span class="s2">= </span><span class="s5">2</span>
+    <span class="s1">HOME </span><span class="s2">= </span><span class="s5">3</span>
+    <span class="s1">CLEAR </span><span class="s2">= </span><span class="s5">4</span>
+    <span class="s1">SHOW_CURSOR </span><span class="s2">= </span><span class="s5">5</span>
+    <span class="s1">HIDE_CURSOR </span><span class="s2">= </span><span class="s5">6</span>
+    <span class="s1">ENABLE_ALT_SCREEN </span><span class="s2">= </span><span class="s5">7</span>
+    <span class="s1">DISABLE_ALT_SCREEN </span><span class="s2">= </span><span class="s5">8</span>
+    <span class="s1">CURSOR_UP </span><span class="s2">= </span><span class="s5">9</span>
+    <span class="s1">CURSOR_DOWN </span><span class="s2">= </span><span class="s5">10</span>
+    <span class="s1">CURSOR_FORWARD </span><span class="s2">= </span><span class="s5">11</span>
+    <span class="s1">CURSOR_BACKWARD </span><span class="s2">= </span><span class="s5">12</span>
+    <span class="s1">CURSOR_MOVE_TO_COLUMN </span><span class="s2">= </span><span class="s5">13</span>
+    <span class="s1">CURSOR_MOVE_TO </span><span class="s2">= </span><span class="s5">14</span>
+    <span class="s1">ERASE_IN_LINE </span><span class="s2">= </span><span class="s5">15</span>
+    <span class="s1">SET_WINDOW_TITLE </span><span class="s2">= </span><span class="s5">16</span>
+
+
+<span class="s1">ControlCode </span><span class="s2">= </span><span class="s1">Union</span><span class="s2">[</span>
+    <span class="s1">Tuple</span><span class="s2">[</span><span class="s1">ControlType</span><span class="s2">],</span>
+    <span class="s1">Tuple</span><span class="s2">[</span><span class="s1">ControlType</span><span class="s2">, </span><span class="s1">Union</span><span class="s2">[</span><span class="s1">int</span><span class="s2">, </span><span class="s1">str</span><span class="s2">]],</span>
+    <span class="s1">Tuple</span><span class="s2">[</span><span class="s1">ControlType</span><span class="s2">, </span><span class="s1">int</span><span class="s2">, </span><span class="s1">int</span><span class="s2">],</span>
+<span class="s2">]</span>
+
+
+<span class="s2">@</span><span class="s1">rich_repr</span><span class="s2">()</span>
+<span class="s0">class </span><span class="s1">Segment</span><span class="s2">(</span><span class="s1">NamedTuple</span><span class="s2">):</span>
+    <span class="s4">&quot;&quot;&quot;A piece of text with associated style. Segments are produced by the Console render process and 
+    are ultimately converted in to strings to be written to the terminal. 
+ 
+    Args: 
+        text (str): A piece of text. 
+        style (:class:`~rich.style.Style`, optional): An optional style to apply to the text. 
+        control (Tuple[ControlCode], optional): Optional sequence of control codes. 
+ 
+    Attributes: 
+        cell_length (int): The cell length of this Segment. 
+    &quot;&quot;&quot;</span>
+
+    <span class="s1">text</span><span class="s2">: </span><span class="s1">str</span>
+    <span class="s1">style</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">Style</span><span class="s2">] = </span><span class="s0">None</span>
+    <span class="s1">control</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">Sequence</span><span class="s2">[</span><span class="s1">ControlCode</span><span class="s2">]] = </span><span class="s0">None</span>
+
+    <span class="s2">@</span><span class="s1">property</span>
+    <span class="s0">def </span><span class="s1">cell_length</span><span class="s2">(</span><span class="s1">self</span><span class="s2">) </span><span class="s1">-&gt; int</span><span class="s2">:</span>
+        <span class="s4">&quot;&quot;&quot;The number of terminal cells required to display self.text. 
+ 
+        Returns: 
+            int: A number of cells. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">text</span><span class="s2">, </span><span class="s1">_style</span><span class="s2">, </span><span class="s1">control </span><span class="s2">= </span><span class="s1">self</span>
+        <span class="s0">return </span><span class="s5">0 </span><span class="s0">if </span><span class="s1">control </span><span class="s0">else </span><span class="s1">cell_len</span><span class="s2">(</span><span class="s1">text</span><span class="s2">)</span>
+
+    <span class="s0">def </span><span class="s1">__rich_repr__</span><span class="s2">(</span><span class="s1">self</span><span class="s2">) </span><span class="s1">-&gt; Result</span><span class="s2">:</span>
+        <span class="s0">yield </span><span class="s1">self</span><span class="s2">.</span><span class="s1">text</span>
+        <span class="s0">if </span><span class="s1">self</span><span class="s2">.</span><span class="s1">control </span><span class="s0">is None</span><span class="s2">:</span>
+            <span class="s0">if </span><span class="s1">self</span><span class="s2">.</span><span class="s1">style </span><span class="s0">is not None</span><span class="s2">:</span>
+                <span class="s0">yield </span><span class="s1">self</span><span class="s2">.</span><span class="s1">style</span>
+        <span class="s0">else</span><span class="s2">:</span>
+            <span class="s0">yield </span><span class="s1">self</span><span class="s2">.</span><span class="s1">style</span>
+            <span class="s0">yield </span><span class="s1">self</span><span class="s2">.</span><span class="s1">control</span>
+
+    <span class="s0">def </span><span class="s1">__bool__</span><span class="s2">(</span><span class="s1">self</span><span class="s2">) </span><span class="s1">-&gt; bool</span><span class="s2">:</span>
+        <span class="s4">&quot;&quot;&quot;Check if the segment contains text.&quot;&quot;&quot;</span>
+        <span class="s0">return </span><span class="s1">bool</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">text</span><span class="s2">)</span>
+
+    <span class="s2">@</span><span class="s1">property</span>
+    <span class="s0">def </span><span class="s1">is_control</span><span class="s2">(</span><span class="s1">self</span><span class="s2">) </span><span class="s1">-&gt; bool</span><span class="s2">:</span>
+        <span class="s4">&quot;&quot;&quot;Check if the segment contains control codes.&quot;&quot;&quot;</span>
+        <span class="s0">return </span><span class="s1">self</span><span class="s2">.</span><span class="s1">control </span><span class="s0">is not None</span>
+
+    <span class="s2">@</span><span class="s1">classmethod</span>
+    <span class="s2">@</span><span class="s1">lru_cache</span><span class="s2">(</span><span class="s5">1024 </span><span class="s2">* </span><span class="s5">16</span><span class="s2">)</span>
+    <span class="s0">def </span><span class="s1">_split_cells</span><span class="s2">(</span><span class="s1">cls</span><span class="s2">, </span><span class="s1">segment</span><span class="s2">: </span><span class="s3">&quot;Segment&quot;</span><span class="s2">, </span><span class="s1">cut</span><span class="s2">: </span><span class="s1">int</span><span class="s2">) </span><span class="s1">-&gt; Tuple</span><span class="s2">[</span><span class="s3">&quot;Segment&quot;</span><span class="s2">, </span><span class="s3">&quot;Segment&quot;</span><span class="s2">]:</span>
+
+        <span class="s1">text</span><span class="s2">, </span><span class="s1">style</span><span class="s2">, </span><span class="s1">control </span><span class="s2">= </span><span class="s1">segment</span>
+        <span class="s1">_Segment </span><span class="s2">= </span><span class="s1">Segment</span>
+
+        <span class="s1">cell_length </span><span class="s2">= </span><span class="s1">segment</span><span class="s2">.</span><span class="s1">cell_length</span>
+        <span class="s0">if </span><span class="s1">cut </span><span class="s2">&gt;= </span><span class="s1">cell_length</span><span class="s2">:</span>
+            <span class="s0">return </span><span class="s1">segment</span><span class="s2">, </span><span class="s1">_Segment</span><span class="s2">(</span><span class="s3">&quot;&quot;</span><span class="s2">, </span><span class="s1">style</span><span class="s2">, </span><span class="s1">control</span><span class="s2">)</span>
+
+        <span class="s1">cell_size </span><span class="s2">= </span><span class="s1">get_character_cell_size</span>
+
+        <span class="s1">pos </span><span class="s2">= </span><span class="s1">int</span><span class="s2">((</span><span class="s1">cut </span><span class="s2">/ </span><span class="s1">cell_length</span><span class="s2">) * (</span><span class="s1">len</span><span class="s2">(</span><span class="s1">text</span><span class="s2">) - </span><span class="s5">1</span><span class="s2">))</span>
+
+        <span class="s1">before </span><span class="s2">= </span><span class="s1">text</span><span class="s2">[:</span><span class="s1">pos</span><span class="s2">]</span>
+        <span class="s1">cell_pos </span><span class="s2">= </span><span class="s1">cell_len</span><span class="s2">(</span><span class="s1">before</span><span class="s2">)</span>
+        <span class="s0">if </span><span class="s1">cell_pos </span><span class="s2">== </span><span class="s1">cut</span><span class="s2">:</span>
+            <span class="s0">return </span><span class="s2">(</span>
+                <span class="s1">_Segment</span><span class="s2">(</span><span class="s1">before</span><span class="s2">, </span><span class="s1">style</span><span class="s2">, </span><span class="s1">control</span><span class="s2">),</span>
+                <span class="s1">_Segment</span><span class="s2">(</span><span class="s1">text</span><span class="s2">[</span><span class="s1">pos</span><span class="s2">:], </span><span class="s1">style</span><span class="s2">, </span><span class="s1">control</span><span class="s2">),</span>
+            <span class="s2">)</span>
+        <span class="s0">while </span><span class="s1">pos </span><span class="s2">&lt; </span><span class="s1">len</span><span class="s2">(</span><span class="s1">text</span><span class="s2">):</span>
+            <span class="s1">char </span><span class="s2">= </span><span class="s1">text</span><span class="s2">[</span><span class="s1">pos</span><span class="s2">]</span>
+            <span class="s1">pos </span><span class="s2">+= </span><span class="s5">1</span>
+            <span class="s1">cell_pos </span><span class="s2">+= </span><span class="s1">cell_size</span><span class="s2">(</span><span class="s1">char</span><span class="s2">)</span>
+            <span class="s1">before </span><span class="s2">= </span><span class="s1">text</span><span class="s2">[:</span><span class="s1">pos</span><span class="s2">]</span>
+            <span class="s0">if </span><span class="s1">cell_pos </span><span class="s2">== </span><span class="s1">cut</span><span class="s2">:</span>
+                <span class="s0">return </span><span class="s2">(</span>
+                    <span class="s1">_Segment</span><span class="s2">(</span><span class="s1">before</span><span class="s2">, </span><span class="s1">style</span><span class="s2">, </span><span class="s1">control</span><span class="s2">),</span>
+                    <span class="s1">_Segment</span><span class="s2">(</span><span class="s1">text</span><span class="s2">[</span><span class="s1">pos</span><span class="s2">:], </span><span class="s1">style</span><span class="s2">, </span><span class="s1">control</span><span class="s2">),</span>
+                <span class="s2">)</span>
+            <span class="s0">if </span><span class="s1">cell_pos </span><span class="s2">&gt; </span><span class="s1">cut</span><span class="s2">:</span>
+                <span class="s0">return </span><span class="s2">(</span>
+                    <span class="s1">_Segment</span><span class="s2">(</span><span class="s1">before</span><span class="s2">[: </span><span class="s1">pos </span><span class="s2">- </span><span class="s5">1</span><span class="s2">] + </span><span class="s3">&quot; &quot;</span><span class="s2">, </span><span class="s1">style</span><span class="s2">, </span><span class="s1">control</span><span class="s2">),</span>
+                    <span class="s1">_Segment</span><span class="s2">(</span><span class="s3">&quot; &quot; </span><span class="s2">+ </span><span class="s1">text</span><span class="s2">[</span><span class="s1">pos</span><span class="s2">:], </span><span class="s1">style</span><span class="s2">, </span><span class="s1">control</span><span class="s2">),</span>
+                <span class="s2">)</span>
+
+        <span class="s0">raise </span><span class="s1">AssertionError</span><span class="s2">(</span><span class="s3">&quot;Will never reach here&quot;</span><span class="s2">)</span>
+
+    <span class="s0">def </span><span class="s1">split_cells</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">cut</span><span class="s2">: </span><span class="s1">int</span><span class="s2">) </span><span class="s1">-&gt; Tuple</span><span class="s2">[</span><span class="s3">&quot;Segment&quot;</span><span class="s2">, </span><span class="s3">&quot;Segment&quot;</span><span class="s2">]:</span>
+        <span class="s4">&quot;&quot;&quot;Split segment in to two segments at the specified column. 
+ 
+        If the cut point falls in the middle of a 2-cell wide character then it is replaced 
+        by two spaces, to preserve the display width of the parent segment. 
+ 
+        Returns: 
+            Tuple[Segment, Segment]: Two segments. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">text</span><span class="s2">, </span><span class="s1">style</span><span class="s2">, </span><span class="s1">control </span><span class="s2">= </span><span class="s1">self</span>
+
+        <span class="s0">if </span><span class="s1">_is_single_cell_widths</span><span class="s2">(</span><span class="s1">text</span><span class="s2">):</span>
+            <span class="s6"># Fast path with all 1 cell characters</span>
+            <span class="s0">if </span><span class="s1">cut </span><span class="s2">&gt;= </span><span class="s1">len</span><span class="s2">(</span><span class="s1">text</span><span class="s2">):</span>
+                <span class="s0">return </span><span class="s1">self</span><span class="s2">, </span><span class="s1">Segment</span><span class="s2">(</span><span class="s3">&quot;&quot;</span><span class="s2">, </span><span class="s1">style</span><span class="s2">, </span><span class="s1">control</span><span class="s2">)</span>
+            <span class="s0">return </span><span class="s2">(</span>
+                <span class="s1">Segment</span><span class="s2">(</span><span class="s1">text</span><span class="s2">[:</span><span class="s1">cut</span><span class="s2">], </span><span class="s1">style</span><span class="s2">, </span><span class="s1">control</span><span class="s2">),</span>
+                <span class="s1">Segment</span><span class="s2">(</span><span class="s1">text</span><span class="s2">[</span><span class="s1">cut</span><span class="s2">:], </span><span class="s1">style</span><span class="s2">, </span><span class="s1">control</span><span class="s2">),</span>
+            <span class="s2">)</span>
+
+        <span class="s0">return </span><span class="s1">self</span><span class="s2">.</span><span class="s1">_split_cells</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">cut</span><span class="s2">)</span>
+
+    <span class="s2">@</span><span class="s1">classmethod</span>
+    <span class="s0">def </span><span class="s1">line</span><span class="s2">(</span><span class="s1">cls</span><span class="s2">) </span><span class="s1">-&gt; </span><span class="s3">&quot;Segment&quot;</span><span class="s2">:</span>
+        <span class="s4">&quot;&quot;&quot;Make a new line segment.&quot;&quot;&quot;</span>
+        <span class="s0">return </span><span class="s1">cls</span><span class="s2">(</span><span class="s3">&quot;</span><span class="s0">\n</span><span class="s3">&quot;</span><span class="s2">)</span>
+
+    <span class="s2">@</span><span class="s1">classmethod</span>
+    <span class="s0">def </span><span class="s1">apply_style</span><span class="s2">(</span>
+        <span class="s1">cls</span><span class="s2">,</span>
+        <span class="s1">segments</span><span class="s2">: </span><span class="s1">Iterable</span><span class="s2">[</span><span class="s3">&quot;Segment&quot;</span><span class="s2">],</span>
+        <span class="s1">style</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">Style</span><span class="s2">] = </span><span class="s0">None</span><span class="s2">,</span>
+        <span class="s1">post_style</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">Style</span><span class="s2">] = </span><span class="s0">None</span><span class="s2">,</span>
+    <span class="s2">) </span><span class="s1">-&gt; Iterable</span><span class="s2">[</span><span class="s3">&quot;Segment&quot;</span><span class="s2">]:</span>
+        <span class="s4">&quot;&quot;&quot;Apply style(s) to an iterable of segments. 
+ 
+        Returns an iterable of segments where the style is replaced by ``style + segment.style + post_style``. 
+ 
+        Args: 
+            segments (Iterable[Segment]): Segments to process. 
+            style (Style, optional): Base style. Defaults to None. 
+            post_style (Style, optional): Style to apply on top of segment style. Defaults to None. 
+ 
+        Returns: 
+            Iterable[Segments]: A new iterable of segments (possibly the same iterable). 
+        &quot;&quot;&quot;</span>
+        <span class="s1">result_segments </span><span class="s2">= </span><span class="s1">segments</span>
+        <span class="s0">if </span><span class="s1">style</span><span class="s2">:</span>
+            <span class="s1">apply </span><span class="s2">= </span><span class="s1">style</span><span class="s2">.</span><span class="s1">__add__</span>
+            <span class="s1">result_segments </span><span class="s2">= (</span>
+                <span class="s1">cls</span><span class="s2">(</span><span class="s1">text</span><span class="s2">, </span><span class="s0">None if </span><span class="s1">control </span><span class="s0">else </span><span class="s1">apply</span><span class="s2">(</span><span class="s1">_style</span><span class="s2">), </span><span class="s1">control</span><span class="s2">)</span>
+                <span class="s0">for </span><span class="s1">text</span><span class="s2">, </span><span class="s1">_style</span><span class="s2">, </span><span class="s1">control </span><span class="s0">in </span><span class="s1">result_segments</span>
+            <span class="s2">)</span>
+        <span class="s0">if </span><span class="s1">post_style</span><span class="s2">:</span>
+            <span class="s1">result_segments </span><span class="s2">= (</span>
+                <span class="s1">cls</span><span class="s2">(</span>
+                    <span class="s1">text</span><span class="s2">,</span>
+                    <span class="s2">(</span>
+                        <span class="s0">None</span>
+                        <span class="s0">if </span><span class="s1">control</span>
+                        <span class="s0">else </span><span class="s2">(</span><span class="s1">_style </span><span class="s2">+ </span><span class="s1">post_style </span><span class="s0">if </span><span class="s1">_style </span><span class="s0">else </span><span class="s1">post_style</span><span class="s2">)</span>
+                    <span class="s2">),</span>
+                    <span class="s1">control</span><span class="s2">,</span>
+                <span class="s2">)</span>
+                <span class="s0">for </span><span class="s1">text</span><span class="s2">, </span><span class="s1">_style</span><span class="s2">, </span><span class="s1">control </span><span class="s0">in </span><span class="s1">result_segments</span>
+            <span class="s2">)</span>
+        <span class="s0">return </span><span class="s1">result_segments</span>
+
+    <span class="s2">@</span><span class="s1">classmethod</span>
+    <span class="s0">def </span><span class="s1">filter_control</span><span class="s2">(</span>
+        <span class="s1">cls</span><span class="s2">, </span><span class="s1">segments</span><span class="s2">: </span><span class="s1">Iterable</span><span class="s2">[</span><span class="s3">&quot;Segment&quot;</span><span class="s2">], </span><span class="s1">is_control</span><span class="s2">: </span><span class="s1">bool </span><span class="s2">= </span><span class="s0">False</span>
+    <span class="s2">) </span><span class="s1">-&gt; Iterable</span><span class="s2">[</span><span class="s3">&quot;Segment&quot;</span><span class="s2">]:</span>
+        <span class="s4">&quot;&quot;&quot;Filter segments by ``is_control`` attribute. 
+ 
+        Args: 
+            segments (Iterable[Segment]): An iterable of Segment instances. 
+            is_control (bool, optional): is_control flag to match in search. 
+ 
+        Returns: 
+            Iterable[Segment]: And iterable of Segment instances. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s0">if </span><span class="s1">is_control</span><span class="s2">:</span>
+            <span class="s0">return </span><span class="s1">filter</span><span class="s2">(</span><span class="s1">attrgetter</span><span class="s2">(</span><span class="s3">&quot;control&quot;</span><span class="s2">), </span><span class="s1">segments</span><span class="s2">)</span>
+        <span class="s0">else</span><span class="s2">:</span>
+            <span class="s0">return </span><span class="s1">filterfalse</span><span class="s2">(</span><span class="s1">attrgetter</span><span class="s2">(</span><span class="s3">&quot;control&quot;</span><span class="s2">), </span><span class="s1">segments</span><span class="s2">)</span>
+
+    <span class="s2">@</span><span class="s1">classmethod</span>
+    <span class="s0">def </span><span class="s1">split_lines</span><span class="s2">(</span><span class="s1">cls</span><span class="s2">, </span><span class="s1">segments</span><span class="s2">: </span><span class="s1">Iterable</span><span class="s2">[</span><span class="s3">&quot;Segment&quot;</span><span class="s2">]) </span><span class="s1">-&gt; Iterable</span><span class="s2">[</span><span class="s1">List</span><span class="s2">[</span><span class="s3">&quot;Segment&quot;</span><span class="s2">]]:</span>
+        <span class="s4">&quot;&quot;&quot;Split a sequence of segments in to a list of lines. 
+ 
+        Args: 
+            segments (Iterable[Segment]): Segments potentially containing line feeds. 
+ 
+        Yields: 
+            Iterable[List[Segment]]: Iterable of segment lists, one per line. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">line</span><span class="s2">: </span><span class="s1">List</span><span class="s2">[</span><span class="s1">Segment</span><span class="s2">] = []</span>
+        <span class="s1">append </span><span class="s2">= </span><span class="s1">line</span><span class="s2">.</span><span class="s1">append</span>
+
+        <span class="s0">for </span><span class="s1">segment </span><span class="s0">in </span><span class="s1">segments</span><span class="s2">:</span>
+            <span class="s0">if </span><span class="s3">&quot;</span><span class="s0">\n</span><span class="s3">&quot; </span><span class="s0">in </span><span class="s1">segment</span><span class="s2">.</span><span class="s1">text </span><span class="s0">and not </span><span class="s1">segment</span><span class="s2">.</span><span class="s1">control</span><span class="s2">:</span>
+                <span class="s1">text</span><span class="s2">, </span><span class="s1">style</span><span class="s2">, </span><span class="s1">_ </span><span class="s2">= </span><span class="s1">segment</span>
+                <span class="s0">while </span><span class="s1">text</span><span class="s2">:</span>
+                    <span class="s1">_text</span><span class="s2">, </span><span class="s1">new_line</span><span class="s2">, </span><span class="s1">text </span><span class="s2">= </span><span class="s1">text</span><span class="s2">.</span><span class="s1">partition</span><span class="s2">(</span><span class="s3">&quot;</span><span class="s0">\n</span><span class="s3">&quot;</span><span class="s2">)</span>
+                    <span class="s0">if </span><span class="s1">_text</span><span class="s2">:</span>
+                        <span class="s1">append</span><span class="s2">(</span><span class="s1">cls</span><span class="s2">(</span><span class="s1">_text</span><span class="s2">, </span><span class="s1">style</span><span class="s2">))</span>
+                    <span class="s0">if </span><span class="s1">new_line</span><span class="s2">:</span>
+                        <span class="s0">yield </span><span class="s1">line</span>
+                        <span class="s1">line </span><span class="s2">= []</span>
+                        <span class="s1">append </span><span class="s2">= </span><span class="s1">line</span><span class="s2">.</span><span class="s1">append</span>
+            <span class="s0">else</span><span class="s2">:</span>
+                <span class="s1">append</span><span class="s2">(</span><span class="s1">segment</span><span class="s2">)</span>
+        <span class="s0">if </span><span class="s1">line</span><span class="s2">:</span>
+            <span class="s0">yield </span><span class="s1">line</span>
+
+    <span class="s2">@</span><span class="s1">classmethod</span>
+    <span class="s0">def </span><span class="s1">split_and_crop_lines</span><span class="s2">(</span>
+        <span class="s1">cls</span><span class="s2">,</span>
+        <span class="s1">segments</span><span class="s2">: </span><span class="s1">Iterable</span><span class="s2">[</span><span class="s3">&quot;Segment&quot;</span><span class="s2">],</span>
+        <span class="s1">length</span><span class="s2">: </span><span class="s1">int</span><span class="s2">,</span>
+        <span class="s1">style</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">Style</span><span class="s2">] = </span><span class="s0">None</span><span class="s2">,</span>
+        <span class="s1">pad</span><span class="s2">: </span><span class="s1">bool </span><span class="s2">= </span><span class="s0">True</span><span class="s2">,</span>
+        <span class="s1">include_new_lines</span><span class="s2">: </span><span class="s1">bool </span><span class="s2">= </span><span class="s0">True</span><span class="s2">,</span>
+    <span class="s2">) </span><span class="s1">-&gt; Iterable</span><span class="s2">[</span><span class="s1">List</span><span class="s2">[</span><span class="s3">&quot;Segment&quot;</span><span class="s2">]]:</span>
+        <span class="s4">&quot;&quot;&quot;Split segments in to lines, and crop lines greater than a given length. 
+ 
+        Args: 
+            segments (Iterable[Segment]): An iterable of segments, probably 
+                generated from console.render. 
+            length (int): Desired line length. 
+            style (Style, optional): Style to use for any padding. 
+            pad (bool): Enable padding of lines that are less than `length`. 
+ 
+        Returns: 
+            Iterable[List[Segment]]: An iterable of lines of segments. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">line</span><span class="s2">: </span><span class="s1">List</span><span class="s2">[</span><span class="s1">Segment</span><span class="s2">] = []</span>
+        <span class="s1">append </span><span class="s2">= </span><span class="s1">line</span><span class="s2">.</span><span class="s1">append</span>
+
+        <span class="s1">adjust_line_length </span><span class="s2">= </span><span class="s1">cls</span><span class="s2">.</span><span class="s1">adjust_line_length</span>
+        <span class="s1">new_line_segment </span><span class="s2">= </span><span class="s1">cls</span><span class="s2">(</span><span class="s3">&quot;</span><span class="s0">\n</span><span class="s3">&quot;</span><span class="s2">)</span>
+
+        <span class="s0">for </span><span class="s1">segment </span><span class="s0">in </span><span class="s1">segments</span><span class="s2">:</span>
+            <span class="s0">if </span><span class="s3">&quot;</span><span class="s0">\n</span><span class="s3">&quot; </span><span class="s0">in </span><span class="s1">segment</span><span class="s2">.</span><span class="s1">text </span><span class="s0">and not </span><span class="s1">segment</span><span class="s2">.</span><span class="s1">control</span><span class="s2">:</span>
+                <span class="s1">text</span><span class="s2">, </span><span class="s1">segment_style</span><span class="s2">, </span><span class="s1">_ </span><span class="s2">= </span><span class="s1">segment</span>
+                <span class="s0">while </span><span class="s1">text</span><span class="s2">:</span>
+                    <span class="s1">_text</span><span class="s2">, </span><span class="s1">new_line</span><span class="s2">, </span><span class="s1">text </span><span class="s2">= </span><span class="s1">text</span><span class="s2">.</span><span class="s1">partition</span><span class="s2">(</span><span class="s3">&quot;</span><span class="s0">\n</span><span class="s3">&quot;</span><span class="s2">)</span>
+                    <span class="s0">if </span><span class="s1">_text</span><span class="s2">:</span>
+                        <span class="s1">append</span><span class="s2">(</span><span class="s1">cls</span><span class="s2">(</span><span class="s1">_text</span><span class="s2">, </span><span class="s1">segment_style</span><span class="s2">))</span>
+                    <span class="s0">if </span><span class="s1">new_line</span><span class="s2">:</span>
+                        <span class="s1">cropped_line </span><span class="s2">= </span><span class="s1">adjust_line_length</span><span class="s2">(</span>
+                            <span class="s1">line</span><span class="s2">, </span><span class="s1">length</span><span class="s2">, </span><span class="s1">style</span><span class="s2">=</span><span class="s1">style</span><span class="s2">, </span><span class="s1">pad</span><span class="s2">=</span><span class="s1">pad</span>
+                        <span class="s2">)</span>
+                        <span class="s0">if </span><span class="s1">include_new_lines</span><span class="s2">:</span>
+                            <span class="s1">cropped_line</span><span class="s2">.</span><span class="s1">append</span><span class="s2">(</span><span class="s1">new_line_segment</span><span class="s2">)</span>
+                        <span class="s0">yield </span><span class="s1">cropped_line</span>
+                        <span class="s1">line</span><span class="s2">.</span><span class="s1">clear</span><span class="s2">()</span>
+            <span class="s0">else</span><span class="s2">:</span>
+                <span class="s1">append</span><span class="s2">(</span><span class="s1">segment</span><span class="s2">)</span>
+        <span class="s0">if </span><span class="s1">line</span><span class="s2">:</span>
+            <span class="s0">yield </span><span class="s1">adjust_line_length</span><span class="s2">(</span><span class="s1">line</span><span class="s2">, </span><span class="s1">length</span><span class="s2">, </span><span class="s1">style</span><span class="s2">=</span><span class="s1">style</span><span class="s2">, </span><span class="s1">pad</span><span class="s2">=</span><span class="s1">pad</span><span class="s2">)</span>
+
+    <span class="s2">@</span><span class="s1">classmethod</span>
+    <span class="s0">def </span><span class="s1">adjust_line_length</span><span class="s2">(</span>
+        <span class="s1">cls</span><span class="s2">,</span>
+        <span class="s1">line</span><span class="s2">: </span><span class="s1">List</span><span class="s2">[</span><span class="s3">&quot;Segment&quot;</span><span class="s2">],</span>
+        <span class="s1">length</span><span class="s2">: </span><span class="s1">int</span><span class="s2">,</span>
+        <span class="s1">style</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">Style</span><span class="s2">] = </span><span class="s0">None</span><span class="s2">,</span>
+        <span class="s1">pad</span><span class="s2">: </span><span class="s1">bool </span><span class="s2">= </span><span class="s0">True</span><span class="s2">,</span>
+    <span class="s2">) </span><span class="s1">-&gt; List</span><span class="s2">[</span><span class="s3">&quot;Segment&quot;</span><span class="s2">]:</span>
+        <span class="s4">&quot;&quot;&quot;Adjust a line to a given width (cropping or padding as required). 
+ 
+        Args: 
+            segments (Iterable[Segment]): A list of segments in a single line. 
+            length (int): The desired width of the line. 
+            style (Style, optional): The style of padding if used (space on the end). Defaults to None. 
+            pad (bool, optional): Pad lines with spaces if they are shorter than `length`. Defaults to True. 
+ 
+        Returns: 
+            List[Segment]: A line of segments with the desired length. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">line_length </span><span class="s2">= </span><span class="s1">sum</span><span class="s2">(</span><span class="s1">segment</span><span class="s2">.</span><span class="s1">cell_length </span><span class="s0">for </span><span class="s1">segment </span><span class="s0">in </span><span class="s1">line</span><span class="s2">)</span>
+        <span class="s1">new_line</span><span class="s2">: </span><span class="s1">List</span><span class="s2">[</span><span class="s1">Segment</span><span class="s2">]</span>
+
+        <span class="s0">if </span><span class="s1">line_length </span><span class="s2">&lt; </span><span class="s1">length</span><span class="s2">:</span>
+            <span class="s0">if </span><span class="s1">pad</span><span class="s2">:</span>
+                <span class="s1">new_line </span><span class="s2">= </span><span class="s1">line </span><span class="s2">+ [</span><span class="s1">cls</span><span class="s2">(</span><span class="s3">&quot; &quot; </span><span class="s2">* (</span><span class="s1">length </span><span class="s2">- </span><span class="s1">line_length</span><span class="s2">), </span><span class="s1">style</span><span class="s2">)]</span>
+            <span class="s0">else</span><span class="s2">:</span>
+                <span class="s1">new_line </span><span class="s2">= </span><span class="s1">line</span><span class="s2">[:]</span>
+        <span class="s0">elif </span><span class="s1">line_length </span><span class="s2">&gt; </span><span class="s1">length</span><span class="s2">:</span>
+            <span class="s1">new_line </span><span class="s2">= []</span>
+            <span class="s1">append </span><span class="s2">= </span><span class="s1">new_line</span><span class="s2">.</span><span class="s1">append</span>
+            <span class="s1">line_length </span><span class="s2">= </span><span class="s5">0</span>
+            <span class="s0">for </span><span class="s1">segment </span><span class="s0">in </span><span class="s1">line</span><span class="s2">:</span>
+                <span class="s1">segment_length </span><span class="s2">= </span><span class="s1">segment</span><span class="s2">.</span><span class="s1">cell_length</span>
+                <span class="s0">if </span><span class="s1">line_length </span><span class="s2">+ </span><span class="s1">segment_length </span><span class="s2">&lt; </span><span class="s1">length </span><span class="s0">or </span><span class="s1">segment</span><span class="s2">.</span><span class="s1">control</span><span class="s2">:</span>
+                    <span class="s1">append</span><span class="s2">(</span><span class="s1">segment</span><span class="s2">)</span>
+                    <span class="s1">line_length </span><span class="s2">+= </span><span class="s1">segment_length</span>
+                <span class="s0">else</span><span class="s2">:</span>
+                    <span class="s1">text</span><span class="s2">, </span><span class="s1">segment_style</span><span class="s2">, </span><span class="s1">_ </span><span class="s2">= </span><span class="s1">segment</span>
+                    <span class="s1">text </span><span class="s2">= </span><span class="s1">set_cell_size</span><span class="s2">(</span><span class="s1">text</span><span class="s2">, </span><span class="s1">length </span><span class="s2">- </span><span class="s1">line_length</span><span class="s2">)</span>
+                    <span class="s1">append</span><span class="s2">(</span><span class="s1">cls</span><span class="s2">(</span><span class="s1">text</span><span class="s2">, </span><span class="s1">segment_style</span><span class="s2">))</span>
+                    <span class="s0">break</span>
+        <span class="s0">else</span><span class="s2">:</span>
+            <span class="s1">new_line </span><span class="s2">= </span><span class="s1">line</span><span class="s2">[:]</span>
+        <span class="s0">return </span><span class="s1">new_line</span>
+
+    <span class="s2">@</span><span class="s1">classmethod</span>
+    <span class="s0">def </span><span class="s1">get_line_length</span><span class="s2">(</span><span class="s1">cls</span><span class="s2">, </span><span class="s1">line</span><span class="s2">: </span><span class="s1">List</span><span class="s2">[</span><span class="s3">&quot;Segment&quot;</span><span class="s2">]) </span><span class="s1">-&gt; int</span><span class="s2">:</span>
+        <span class="s4">&quot;&quot;&quot;Get the length of list of segments. 
+ 
+        Args: 
+            line (List[Segment]): A line encoded as a list of Segments (assumes no '\\\\n' characters), 
+ 
+        Returns: 
+            int: The length of the line. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">_cell_len </span><span class="s2">= </span><span class="s1">cell_len</span>
+        <span class="s0">return </span><span class="s1">sum</span><span class="s2">(</span><span class="s1">_cell_len</span><span class="s2">(</span><span class="s1">text</span><span class="s2">) </span><span class="s0">for </span><span class="s1">text</span><span class="s2">, </span><span class="s1">style</span><span class="s2">, </span><span class="s1">control </span><span class="s0">in </span><span class="s1">line </span><span class="s0">if not </span><span class="s1">control</span><span class="s2">)</span>
+
+    <span class="s2">@</span><span class="s1">classmethod</span>
+    <span class="s0">def </span><span class="s1">get_shape</span><span class="s2">(</span><span class="s1">cls</span><span class="s2">, </span><span class="s1">lines</span><span class="s2">: </span><span class="s1">List</span><span class="s2">[</span><span class="s1">List</span><span class="s2">[</span><span class="s3">&quot;Segment&quot;</span><span class="s2">]]) </span><span class="s1">-&gt; Tuple</span><span class="s2">[</span><span class="s1">int</span><span class="s2">, </span><span class="s1">int</span><span class="s2">]:</span>
+        <span class="s4">&quot;&quot;&quot;Get the shape (enclosing rectangle) of a list of lines. 
+ 
+        Args: 
+            lines (List[List[Segment]]): A list of lines (no '\\\\n' characters). 
+ 
+        Returns: 
+            Tuple[int, int]: Width and height in characters. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">get_line_length </span><span class="s2">= </span><span class="s1">cls</span><span class="s2">.</span><span class="s1">get_line_length</span>
+        <span class="s1">max_width </span><span class="s2">= </span><span class="s1">max</span><span class="s2">(</span><span class="s1">get_line_length</span><span class="s2">(</span><span class="s1">line</span><span class="s2">) </span><span class="s0">for </span><span class="s1">line </span><span class="s0">in </span><span class="s1">lines</span><span class="s2">) </span><span class="s0">if </span><span class="s1">lines </span><span class="s0">else </span><span class="s5">0</span>
+        <span class="s0">return </span><span class="s2">(</span><span class="s1">max_width</span><span class="s2">, </span><span class="s1">len</span><span class="s2">(</span><span class="s1">lines</span><span class="s2">))</span>
+
+    <span class="s2">@</span><span class="s1">classmethod</span>
+    <span class="s0">def </span><span class="s1">set_shape</span><span class="s2">(</span>
+        <span class="s1">cls</span><span class="s2">,</span>
+        <span class="s1">lines</span><span class="s2">: </span><span class="s1">List</span><span class="s2">[</span><span class="s1">List</span><span class="s2">[</span><span class="s3">&quot;Segment&quot;</span><span class="s2">]],</span>
+        <span class="s1">width</span><span class="s2">: </span><span class="s1">int</span><span class="s2">,</span>
+        <span class="s1">height</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">int</span><span class="s2">] = </span><span class="s0">None</span><span class="s2">,</span>
+        <span class="s1">style</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">Style</span><span class="s2">] = </span><span class="s0">None</span><span class="s2">,</span>
+        <span class="s1">new_lines</span><span class="s2">: </span><span class="s1">bool </span><span class="s2">= </span><span class="s0">False</span><span class="s2">,</span>
+    <span class="s2">) </span><span class="s1">-&gt; List</span><span class="s2">[</span><span class="s1">List</span><span class="s2">[</span><span class="s3">&quot;Segment&quot;</span><span class="s2">]]:</span>
+        <span class="s4">&quot;&quot;&quot;Set the shape of a list of lines (enclosing rectangle). 
+ 
+        Args: 
+            lines (List[List[Segment]]): A list of lines. 
+            width (int): Desired width. 
+            height (int, optional): Desired height or None for no change. 
+            style (Style, optional): Style of any padding added. 
+            new_lines (bool, optional): Padded lines should include &quot;\n&quot;. Defaults to False. 
+ 
+        Returns: 
+            List[List[Segment]]: New list of lines. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">_height </span><span class="s2">= </span><span class="s1">height </span><span class="s0">or </span><span class="s1">len</span><span class="s2">(</span><span class="s1">lines</span><span class="s2">)</span>
+
+        <span class="s1">blank </span><span class="s2">= (</span>
+            <span class="s2">[</span><span class="s1">cls</span><span class="s2">(</span><span class="s3">&quot; &quot; </span><span class="s2">* </span><span class="s1">width </span><span class="s2">+ </span><span class="s3">&quot;</span><span class="s0">\n</span><span class="s3">&quot;</span><span class="s2">, </span><span class="s1">style</span><span class="s2">)] </span><span class="s0">if </span><span class="s1">new_lines </span><span class="s0">else </span><span class="s2">[</span><span class="s1">cls</span><span class="s2">(</span><span class="s3">&quot; &quot; </span><span class="s2">* </span><span class="s1">width</span><span class="s2">, </span><span class="s1">style</span><span class="s2">)]</span>
+        <span class="s2">)</span>
+
+        <span class="s1">adjust_line_length </span><span class="s2">= </span><span class="s1">cls</span><span class="s2">.</span><span class="s1">adjust_line_length</span>
+        <span class="s1">shaped_lines </span><span class="s2">= </span><span class="s1">lines</span><span class="s2">[:</span><span class="s1">_height</span><span class="s2">]</span>
+        <span class="s1">shaped_lines</span><span class="s2">[:] = [</span>
+            <span class="s1">adjust_line_length</span><span class="s2">(</span><span class="s1">line</span><span class="s2">, </span><span class="s1">width</span><span class="s2">, </span><span class="s1">style</span><span class="s2">=</span><span class="s1">style</span><span class="s2">) </span><span class="s0">for </span><span class="s1">line </span><span class="s0">in </span><span class="s1">lines</span>
+        <span class="s2">]</span>
+        <span class="s0">if </span><span class="s1">len</span><span class="s2">(</span><span class="s1">shaped_lines</span><span class="s2">) &lt; </span><span class="s1">_height</span><span class="s2">:</span>
+            <span class="s1">shaped_lines</span><span class="s2">.</span><span class="s1">extend</span><span class="s2">([</span><span class="s1">blank</span><span class="s2">] * (</span><span class="s1">_height </span><span class="s2">- </span><span class="s1">len</span><span class="s2">(</span><span class="s1">shaped_lines</span><span class="s2">)))</span>
+        <span class="s0">return </span><span class="s1">shaped_lines</span>
+
+    <span class="s2">@</span><span class="s1">classmethod</span>
+    <span class="s0">def </span><span class="s1">align_top</span><span class="s2">(</span>
+        <span class="s1">cls</span><span class="s2">: </span><span class="s1">Type</span><span class="s2">[</span><span class="s3">&quot;Segment&quot;</span><span class="s2">],</span>
+        <span class="s1">lines</span><span class="s2">: </span><span class="s1">List</span><span class="s2">[</span><span class="s1">List</span><span class="s2">[</span><span class="s3">&quot;Segment&quot;</span><span class="s2">]],</span>
+        <span class="s1">width</span><span class="s2">: </span><span class="s1">int</span><span class="s2">,</span>
+        <span class="s1">height</span><span class="s2">: </span><span class="s1">int</span><span class="s2">,</span>
+        <span class="s1">style</span><span class="s2">: </span><span class="s1">Style</span><span class="s2">,</span>
+        <span class="s1">new_lines</span><span class="s2">: </span><span class="s1">bool </span><span class="s2">= </span><span class="s0">False</span><span class="s2">,</span>
+    <span class="s2">) </span><span class="s1">-&gt; List</span><span class="s2">[</span><span class="s1">List</span><span class="s2">[</span><span class="s3">&quot;Segment&quot;</span><span class="s2">]]:</span>
+        <span class="s4">&quot;&quot;&quot;Aligns lines to top (adds extra lines to bottom as required). 
+ 
+        Args: 
+            lines (List[List[Segment]]): A list of lines. 
+            width (int): Desired width. 
+            height (int, optional): Desired height or None for no change. 
+            style (Style): Style of any padding added. 
+            new_lines (bool, optional): Padded lines should include &quot;\n&quot;. Defaults to False. 
+ 
+        Returns: 
+            List[List[Segment]]: New list of lines. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">extra_lines </span><span class="s2">= </span><span class="s1">height </span><span class="s2">- </span><span class="s1">len</span><span class="s2">(</span><span class="s1">lines</span><span class="s2">)</span>
+        <span class="s0">if not </span><span class="s1">extra_lines</span><span class="s2">:</span>
+            <span class="s0">return </span><span class="s1">lines</span><span class="s2">[:]</span>
+        <span class="s1">lines </span><span class="s2">= </span><span class="s1">lines</span><span class="s2">[:</span><span class="s1">height</span><span class="s2">]</span>
+        <span class="s1">blank </span><span class="s2">= </span><span class="s1">cls</span><span class="s2">(</span><span class="s3">&quot; &quot; </span><span class="s2">* </span><span class="s1">width </span><span class="s2">+ </span><span class="s3">&quot;</span><span class="s0">\n</span><span class="s3">&quot;</span><span class="s2">, </span><span class="s1">style</span><span class="s2">) </span><span class="s0">if </span><span class="s1">new_lines </span><span class="s0">else </span><span class="s1">cls</span><span class="s2">(</span><span class="s3">&quot; &quot; </span><span class="s2">* </span><span class="s1">width</span><span class="s2">, </span><span class="s1">style</span><span class="s2">)</span>
+        <span class="s1">lines </span><span class="s2">= </span><span class="s1">lines </span><span class="s2">+ [[</span><span class="s1">blank</span><span class="s2">]] * </span><span class="s1">extra_lines</span>
+        <span class="s0">return </span><span class="s1">lines</span>
+
+    <span class="s2">@</span><span class="s1">classmethod</span>
+    <span class="s0">def </span><span class="s1">align_bottom</span><span class="s2">(</span>
+        <span class="s1">cls</span><span class="s2">: </span><span class="s1">Type</span><span class="s2">[</span><span class="s3">&quot;Segment&quot;</span><span class="s2">],</span>
+        <span class="s1">lines</span><span class="s2">: </span><span class="s1">List</span><span class="s2">[</span><span class="s1">List</span><span class="s2">[</span><span class="s3">&quot;Segment&quot;</span><span class="s2">]],</span>
+        <span class="s1">width</span><span class="s2">: </span><span class="s1">int</span><span class="s2">,</span>
+        <span class="s1">height</span><span class="s2">: </span><span class="s1">int</span><span class="s2">,</span>
+        <span class="s1">style</span><span class="s2">: </span><span class="s1">Style</span><span class="s2">,</span>
+        <span class="s1">new_lines</span><span class="s2">: </span><span class="s1">bool </span><span class="s2">= </span><span class="s0">False</span><span class="s2">,</span>
+    <span class="s2">) </span><span class="s1">-&gt; List</span><span class="s2">[</span><span class="s1">List</span><span class="s2">[</span><span class="s3">&quot;Segment&quot;</span><span class="s2">]]:</span>
+        <span class="s4">&quot;&quot;&quot;Aligns render to bottom (adds extra lines above as required). 
+ 
+        Args: 
+            lines (List[List[Segment]]): A list of lines. 
+            width (int): Desired width. 
+            height (int, optional): Desired height or None for no change. 
+            style (Style): Style of any padding added. Defaults to None. 
+            new_lines (bool, optional): Padded lines should include &quot;\n&quot;. Defaults to False. 
+ 
+        Returns: 
+            List[List[Segment]]: New list of lines. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">extra_lines </span><span class="s2">= </span><span class="s1">height </span><span class="s2">- </span><span class="s1">len</span><span class="s2">(</span><span class="s1">lines</span><span class="s2">)</span>
+        <span class="s0">if not </span><span class="s1">extra_lines</span><span class="s2">:</span>
+            <span class="s0">return </span><span class="s1">lines</span><span class="s2">[:]</span>
+        <span class="s1">lines </span><span class="s2">= </span><span class="s1">lines</span><span class="s2">[:</span><span class="s1">height</span><span class="s2">]</span>
+        <span class="s1">blank </span><span class="s2">= </span><span class="s1">cls</span><span class="s2">(</span><span class="s3">&quot; &quot; </span><span class="s2">* </span><span class="s1">width </span><span class="s2">+ </span><span class="s3">&quot;</span><span class="s0">\n</span><span class="s3">&quot;</span><span class="s2">, </span><span class="s1">style</span><span class="s2">) </span><span class="s0">if </span><span class="s1">new_lines </span><span class="s0">else </span><span class="s1">cls</span><span class="s2">(</span><span class="s3">&quot; &quot; </span><span class="s2">* </span><span class="s1">width</span><span class="s2">, </span><span class="s1">style</span><span class="s2">)</span>
+        <span class="s1">lines </span><span class="s2">= [[</span><span class="s1">blank</span><span class="s2">]] * </span><span class="s1">extra_lines </span><span class="s2">+ </span><span class="s1">lines</span>
+        <span class="s0">return </span><span class="s1">lines</span>
+
+    <span class="s2">@</span><span class="s1">classmethod</span>
+    <span class="s0">def </span><span class="s1">align_middle</span><span class="s2">(</span>
+        <span class="s1">cls</span><span class="s2">: </span><span class="s1">Type</span><span class="s2">[</span><span class="s3">&quot;Segment&quot;</span><span class="s2">],</span>
+        <span class="s1">lines</span><span class="s2">: </span><span class="s1">List</span><span class="s2">[</span><span class="s1">List</span><span class="s2">[</span><span class="s3">&quot;Segment&quot;</span><span class="s2">]],</span>
+        <span class="s1">width</span><span class="s2">: </span><span class="s1">int</span><span class="s2">,</span>
+        <span class="s1">height</span><span class="s2">: </span><span class="s1">int</span><span class="s2">,</span>
+        <span class="s1">style</span><span class="s2">: </span><span class="s1">Style</span><span class="s2">,</span>
+        <span class="s1">new_lines</span><span class="s2">: </span><span class="s1">bool </span><span class="s2">= </span><span class="s0">False</span><span class="s2">,</span>
+    <span class="s2">) </span><span class="s1">-&gt; List</span><span class="s2">[</span><span class="s1">List</span><span class="s2">[</span><span class="s3">&quot;Segment&quot;</span><span class="s2">]]:</span>
+        <span class="s4">&quot;&quot;&quot;Aligns lines to middle (adds extra lines to above and below as required). 
+ 
+        Args: 
+            lines (List[List[Segment]]): A list of lines. 
+            width (int): Desired width. 
+            height (int, optional): Desired height or None for no change. 
+            style (Style): Style of any padding added. 
+            new_lines (bool, optional): Padded lines should include &quot;\n&quot;. Defaults to False. 
+ 
+        Returns: 
+            List[List[Segment]]: New list of lines. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">extra_lines </span><span class="s2">= </span><span class="s1">height </span><span class="s2">- </span><span class="s1">len</span><span class="s2">(</span><span class="s1">lines</span><span class="s2">)</span>
+        <span class="s0">if not </span><span class="s1">extra_lines</span><span class="s2">:</span>
+            <span class="s0">return </span><span class="s1">lines</span><span class="s2">[:]</span>
+        <span class="s1">lines </span><span class="s2">= </span><span class="s1">lines</span><span class="s2">[:</span><span class="s1">height</span><span class="s2">]</span>
+        <span class="s1">blank </span><span class="s2">= </span><span class="s1">cls</span><span class="s2">(</span><span class="s3">&quot; &quot; </span><span class="s2">* </span><span class="s1">width </span><span class="s2">+ </span><span class="s3">&quot;</span><span class="s0">\n</span><span class="s3">&quot;</span><span class="s2">, </span><span class="s1">style</span><span class="s2">) </span><span class="s0">if </span><span class="s1">new_lines </span><span class="s0">else </span><span class="s1">cls</span><span class="s2">(</span><span class="s3">&quot; &quot; </span><span class="s2">* </span><span class="s1">width</span><span class="s2">, </span><span class="s1">style</span><span class="s2">)</span>
+        <span class="s1">top_lines </span><span class="s2">= </span><span class="s1">extra_lines </span><span class="s2">// </span><span class="s5">2</span>
+        <span class="s1">bottom_lines </span><span class="s2">= </span><span class="s1">extra_lines </span><span class="s2">- </span><span class="s1">top_lines</span>
+        <span class="s1">lines </span><span class="s2">= [[</span><span class="s1">blank</span><span class="s2">]] * </span><span class="s1">top_lines </span><span class="s2">+ </span><span class="s1">lines </span><span class="s2">+ [[</span><span class="s1">blank</span><span class="s2">]] * </span><span class="s1">bottom_lines</span>
+        <span class="s0">return </span><span class="s1">lines</span>
+
+    <span class="s2">@</span><span class="s1">classmethod</span>
+    <span class="s0">def </span><span class="s1">simplify</span><span class="s2">(</span><span class="s1">cls</span><span class="s2">, </span><span class="s1">segments</span><span class="s2">: </span><span class="s1">Iterable</span><span class="s2">[</span><span class="s3">&quot;Segment&quot;</span><span class="s2">]) </span><span class="s1">-&gt; Iterable</span><span class="s2">[</span><span class="s3">&quot;Segment&quot;</span><span class="s2">]:</span>
+        <span class="s4">&quot;&quot;&quot;Simplify an iterable of segments by combining contiguous segments with the same style. 
+ 
+        Args: 
+            segments (Iterable[Segment]): An iterable of segments. 
+ 
+        Returns: 
+            Iterable[Segment]: A possibly smaller iterable of segments that will render the same way. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">iter_segments </span><span class="s2">= </span><span class="s1">iter</span><span class="s2">(</span><span class="s1">segments</span><span class="s2">)</span>
+        <span class="s0">try</span><span class="s2">:</span>
+            <span class="s1">last_segment </span><span class="s2">= </span><span class="s1">next</span><span class="s2">(</span><span class="s1">iter_segments</span><span class="s2">)</span>
+        <span class="s0">except </span><span class="s1">StopIteration</span><span class="s2">:</span>
+            <span class="s0">return</span>
+
+        <span class="s1">_Segment </span><span class="s2">= </span><span class="s1">Segment</span>
+        <span class="s0">for </span><span class="s1">segment </span><span class="s0">in </span><span class="s1">iter_segments</span><span class="s2">:</span>
+            <span class="s0">if </span><span class="s1">last_segment</span><span class="s2">.</span><span class="s1">style </span><span class="s2">== </span><span class="s1">segment</span><span class="s2">.</span><span class="s1">style </span><span class="s0">and not </span><span class="s1">segment</span><span class="s2">.</span><span class="s1">control</span><span class="s2">:</span>
+                <span class="s1">last_segment </span><span class="s2">= </span><span class="s1">_Segment</span><span class="s2">(</span>
+                    <span class="s1">last_segment</span><span class="s2">.</span><span class="s1">text </span><span class="s2">+ </span><span class="s1">segment</span><span class="s2">.</span><span class="s1">text</span><span class="s2">, </span><span class="s1">last_segment</span><span class="s2">.</span><span class="s1">style</span>
+                <span class="s2">)</span>
+            <span class="s0">else</span><span class="s2">:</span>
+                <span class="s0">yield </span><span class="s1">last_segment</span>
+                <span class="s1">last_segment </span><span class="s2">= </span><span class="s1">segment</span>
+        <span class="s0">yield </span><span class="s1">last_segment</span>
+
+    <span class="s2">@</span><span class="s1">classmethod</span>
+    <span class="s0">def </span><span class="s1">strip_links</span><span class="s2">(</span><span class="s1">cls</span><span class="s2">, </span><span class="s1">segments</span><span class="s2">: </span><span class="s1">Iterable</span><span class="s2">[</span><span class="s3">&quot;Segment&quot;</span><span class="s2">]) </span><span class="s1">-&gt; Iterable</span><span class="s2">[</span><span class="s3">&quot;Segment&quot;</span><span class="s2">]:</span>
+        <span class="s4">&quot;&quot;&quot;Remove all links from an iterable of styles. 
+ 
+        Args: 
+            segments (Iterable[Segment]): An iterable segments. 
+ 
+        Yields: 
+            Segment: Segments with link removed. 
+        &quot;&quot;&quot;</span>
+        <span class="s0">for </span><span class="s1">segment </span><span class="s0">in </span><span class="s1">segments</span><span class="s2">:</span>
+            <span class="s0">if </span><span class="s1">segment</span><span class="s2">.</span><span class="s1">control </span><span class="s0">or </span><span class="s1">segment</span><span class="s2">.</span><span class="s1">style </span><span class="s0">is None</span><span class="s2">:</span>
+                <span class="s0">yield </span><span class="s1">segment</span>
+            <span class="s0">else</span><span class="s2">:</span>
+                <span class="s1">text</span><span class="s2">, </span><span class="s1">style</span><span class="s2">, </span><span class="s1">_control </span><span class="s2">= </span><span class="s1">segment</span>
+                <span class="s0">yield </span><span class="s1">cls</span><span class="s2">(</span><span class="s1">text</span><span class="s2">, </span><span class="s1">style</span><span class="s2">.</span><span class="s1">update_link</span><span class="s2">(</span><span class="s0">None</span><span class="s2">) </span><span class="s0">if </span><span class="s1">style </span><span class="s0">else None</span><span class="s2">)</span>
+
+    <span class="s2">@</span><span class="s1">classmethod</span>
+    <span class="s0">def </span><span class="s1">strip_styles</span><span class="s2">(</span><span class="s1">cls</span><span class="s2">, </span><span class="s1">segments</span><span class="s2">: </span><span class="s1">Iterable</span><span class="s2">[</span><span class="s3">&quot;Segment&quot;</span><span class="s2">]) </span><span class="s1">-&gt; Iterable</span><span class="s2">[</span><span class="s3">&quot;Segment&quot;</span><span class="s2">]:</span>
+        <span class="s4">&quot;&quot;&quot;Remove all styles from an iterable of segments. 
+ 
+        Args: 
+            segments (Iterable[Segment]): An iterable segments. 
+ 
+        Yields: 
+            Segment: Segments with styles replace with None 
+        &quot;&quot;&quot;</span>
+        <span class="s0">for </span><span class="s1">text</span><span class="s2">, </span><span class="s1">_style</span><span class="s2">, </span><span class="s1">control </span><span class="s0">in </span><span class="s1">segments</span><span class="s2">:</span>
+            <span class="s0">yield </span><span class="s1">cls</span><span class="s2">(</span><span class="s1">text</span><span class="s2">, </span><span class="s0">None</span><span class="s2">, </span><span class="s1">control</span><span class="s2">)</span>
+
+    <span class="s2">@</span><span class="s1">classmethod</span>
+    <span class="s0">def </span><span class="s1">remove_color</span><span class="s2">(</span><span class="s1">cls</span><span class="s2">, </span><span class="s1">segments</span><span class="s2">: </span><span class="s1">Iterable</span><span class="s2">[</span><span class="s3">&quot;Segment&quot;</span><span class="s2">]) </span><span class="s1">-&gt; Iterable</span><span class="s2">[</span><span class="s3">&quot;Segment&quot;</span><span class="s2">]:</span>
+        <span class="s4">&quot;&quot;&quot;Remove all color from an iterable of segments. 
+ 
+        Args: 
+            segments (Iterable[Segment]): An iterable segments. 
+ 
+        Yields: 
+            Segment: Segments with colorless style. 
+        &quot;&quot;&quot;</span>
+
+        <span class="s1">cache</span><span class="s2">: </span><span class="s1">Dict</span><span class="s2">[</span><span class="s1">Style</span><span class="s2">, </span><span class="s1">Style</span><span class="s2">] = {}</span>
+        <span class="s0">for </span><span class="s1">text</span><span class="s2">, </span><span class="s1">style</span><span class="s2">, </span><span class="s1">control </span><span class="s0">in </span><span class="s1">segments</span><span class="s2">:</span>
+            <span class="s0">if </span><span class="s1">style</span><span class="s2">:</span>
+                <span class="s1">colorless_style </span><span class="s2">= </span><span class="s1">cache</span><span class="s2">.</span><span class="s1">get</span><span class="s2">(</span><span class="s1">style</span><span class="s2">)</span>
+                <span class="s0">if </span><span class="s1">colorless_style </span><span class="s0">is None</span><span class="s2">:</span>
+                    <span class="s1">colorless_style </span><span class="s2">= </span><span class="s1">style</span><span class="s2">.</span><span class="s1">without_color</span>
+                    <span class="s1">cache</span><span class="s2">[</span><span class="s1">style</span><span class="s2">] = </span><span class="s1">colorless_style</span>
+                <span class="s0">yield </span><span class="s1">cls</span><span class="s2">(</span><span class="s1">text</span><span class="s2">, </span><span class="s1">colorless_style</span><span class="s2">, </span><span class="s1">control</span><span class="s2">)</span>
+            <span class="s0">else</span><span class="s2">:</span>
+                <span class="s0">yield </span><span class="s1">cls</span><span class="s2">(</span><span class="s1">text</span><span class="s2">, </span><span class="s0">None</span><span class="s2">, </span><span class="s1">control</span><span class="s2">)</span>
+
+    <span class="s2">@</span><span class="s1">classmethod</span>
+    <span class="s0">def </span><span class="s1">divide</span><span class="s2">(</span>
+        <span class="s1">cls</span><span class="s2">, </span><span class="s1">segments</span><span class="s2">: </span><span class="s1">Iterable</span><span class="s2">[</span><span class="s3">&quot;Segment&quot;</span><span class="s2">], </span><span class="s1">cuts</span><span class="s2">: </span><span class="s1">Iterable</span><span class="s2">[</span><span class="s1">int</span><span class="s2">]</span>
+    <span class="s2">) </span><span class="s1">-&gt; Iterable</span><span class="s2">[</span><span class="s1">List</span><span class="s2">[</span><span class="s3">&quot;Segment&quot;</span><span class="s2">]]:</span>
+        <span class="s4">&quot;&quot;&quot;Divides an iterable of segments in to portions. 
+ 
+        Args: 
+            cuts (Iterable[int]): Cell positions where to divide. 
+ 
+        Yields: 
+            [Iterable[List[Segment]]]: An iterable of Segments in List. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">split_segments</span><span class="s2">: </span><span class="s1">List</span><span class="s2">[</span><span class="s3">&quot;Segment&quot;</span><span class="s2">] = []</span>
+        <span class="s1">add_segment </span><span class="s2">= </span><span class="s1">split_segments</span><span class="s2">.</span><span class="s1">append</span>
+
+        <span class="s1">iter_cuts </span><span class="s2">= </span><span class="s1">iter</span><span class="s2">(</span><span class="s1">cuts</span><span class="s2">)</span>
+
+        <span class="s0">while True</span><span class="s2">:</span>
+            <span class="s1">cut </span><span class="s2">= </span><span class="s1">next</span><span class="s2">(</span><span class="s1">iter_cuts</span><span class="s2">, -</span><span class="s5">1</span><span class="s2">)</span>
+            <span class="s0">if </span><span class="s1">cut </span><span class="s2">== -</span><span class="s5">1</span><span class="s2">:</span>
+                <span class="s0">return </span><span class="s2">[]</span>
+            <span class="s0">if </span><span class="s1">cut </span><span class="s2">!= </span><span class="s5">0</span><span class="s2">:</span>
+                <span class="s0">break</span>
+            <span class="s0">yield </span><span class="s2">[]</span>
+        <span class="s1">pos </span><span class="s2">= </span><span class="s5">0</span>
+
+        <span class="s1">segments_clear </span><span class="s2">= </span><span class="s1">split_segments</span><span class="s2">.</span><span class="s1">clear</span>
+        <span class="s1">segments_copy </span><span class="s2">= </span><span class="s1">split_segments</span><span class="s2">.</span><span class="s1">copy</span>
+
+        <span class="s1">_cell_len </span><span class="s2">= </span><span class="s1">cached_cell_len</span>
+        <span class="s0">for </span><span class="s1">segment </span><span class="s0">in </span><span class="s1">segments</span><span class="s2">:</span>
+            <span class="s1">text</span><span class="s2">, </span><span class="s1">_style</span><span class="s2">, </span><span class="s1">control </span><span class="s2">= </span><span class="s1">segment</span>
+            <span class="s0">while </span><span class="s1">text</span><span class="s2">:</span>
+                <span class="s1">end_pos </span><span class="s2">= </span><span class="s1">pos </span><span class="s0">if </span><span class="s1">control </span><span class="s0">else </span><span class="s1">pos </span><span class="s2">+ </span><span class="s1">_cell_len</span><span class="s2">(</span><span class="s1">text</span><span class="s2">)</span>
+                <span class="s0">if </span><span class="s1">end_pos </span><span class="s2">&lt; </span><span class="s1">cut</span><span class="s2">:</span>
+                    <span class="s1">add_segment</span><span class="s2">(</span><span class="s1">segment</span><span class="s2">)</span>
+                    <span class="s1">pos </span><span class="s2">= </span><span class="s1">end_pos</span>
+                    <span class="s0">break</span>
+
+                <span class="s0">if </span><span class="s1">end_pos </span><span class="s2">== </span><span class="s1">cut</span><span class="s2">:</span>
+                    <span class="s1">add_segment</span><span class="s2">(</span><span class="s1">segment</span><span class="s2">)</span>
+                    <span class="s0">yield </span><span class="s1">segments_copy</span><span class="s2">()</span>
+                    <span class="s1">segments_clear</span><span class="s2">()</span>
+                    <span class="s1">pos </span><span class="s2">= </span><span class="s1">end_pos</span>
+
+                    <span class="s1">cut </span><span class="s2">= </span><span class="s1">next</span><span class="s2">(</span><span class="s1">iter_cuts</span><span class="s2">, -</span><span class="s5">1</span><span class="s2">)</span>
+                    <span class="s0">if </span><span class="s1">cut </span><span class="s2">== -</span><span class="s5">1</span><span class="s2">:</span>
+                        <span class="s0">if </span><span class="s1">split_segments</span><span class="s2">:</span>
+                            <span class="s0">yield </span><span class="s1">segments_copy</span><span class="s2">()</span>
+                        <span class="s0">return</span>
+
+                    <span class="s0">break</span>
+
+                <span class="s0">else</span><span class="s2">:</span>
+                    <span class="s1">before</span><span class="s2">, </span><span class="s1">segment </span><span class="s2">= </span><span class="s1">segment</span><span class="s2">.</span><span class="s1">split_cells</span><span class="s2">(</span><span class="s1">cut </span><span class="s2">- </span><span class="s1">pos</span><span class="s2">)</span>
+                    <span class="s1">text</span><span class="s2">, </span><span class="s1">_style</span><span class="s2">, </span><span class="s1">control </span><span class="s2">= </span><span class="s1">segment</span>
+                    <span class="s1">add_segment</span><span class="s2">(</span><span class="s1">before</span><span class="s2">)</span>
+                    <span class="s0">yield </span><span class="s1">segments_copy</span><span class="s2">()</span>
+                    <span class="s1">segments_clear</span><span class="s2">()</span>
+                    <span class="s1">pos </span><span class="s2">= </span><span class="s1">cut</span>
+
+                <span class="s1">cut </span><span class="s2">= </span><span class="s1">next</span><span class="s2">(</span><span class="s1">iter_cuts</span><span class="s2">, -</span><span class="s5">1</span><span class="s2">)</span>
+                <span class="s0">if </span><span class="s1">cut </span><span class="s2">== -</span><span class="s5">1</span><span class="s2">:</span>
+                    <span class="s0">if </span><span class="s1">split_segments</span><span class="s2">:</span>
+                        <span class="s0">yield </span><span class="s1">segments_copy</span><span class="s2">()</span>
+                    <span class="s0">return</span>
+
+        <span class="s0">yield </span><span class="s1">segments_copy</span><span class="s2">()</span>
+
+
+<span class="s0">class </span><span class="s1">Segments</span><span class="s2">:</span>
+    <span class="s4">&quot;&quot;&quot;A simple renderable to render an iterable of segments. This class may be useful if 
+    you want to print segments outside of a __rich_console__ method. 
+ 
+    Args: 
+        segments (Iterable[Segment]): An iterable of segments. 
+        new_lines (bool, optional): Add new lines between segments. Defaults to False. 
+    &quot;&quot;&quot;</span>
+
+    <span class="s0">def </span><span class="s1">__init__</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">segments</span><span class="s2">: </span><span class="s1">Iterable</span><span class="s2">[</span><span class="s1">Segment</span><span class="s2">], </span><span class="s1">new_lines</span><span class="s2">: </span><span class="s1">bool </span><span class="s2">= </span><span class="s0">False</span><span class="s2">) </span><span class="s1">-&gt; </span><span class="s0">None</span><span class="s2">:</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">segments </span><span class="s2">= </span><span class="s1">list</span><span class="s2">(</span><span class="s1">segments</span><span class="s2">)</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">new_lines </span><span class="s2">= </span><span class="s1">new_lines</span>
+
+    <span class="s0">def </span><span class="s1">__rich_console__</span><span class="s2">(</span>
+        <span class="s1">self</span><span class="s2">, </span><span class="s1">console</span><span class="s2">: </span><span class="s3">&quot;Console&quot;</span><span class="s2">, </span><span class="s1">options</span><span class="s2">: </span><span class="s3">&quot;ConsoleOptions&quot;</span>
+    <span class="s2">) </span><span class="s1">-&gt; </span><span class="s3">&quot;RenderResult&quot;</span><span class="s2">:</span>
+        <span class="s0">if </span><span class="s1">self</span><span class="s2">.</span><span class="s1">new_lines</span><span class="s2">:</span>
+            <span class="s1">line </span><span class="s2">= </span><span class="s1">Segment</span><span class="s2">.</span><span class="s1">line</span><span class="s2">()</span>
+            <span class="s0">for </span><span class="s1">segment </span><span class="s0">in </span><span class="s1">self</span><span class="s2">.</span><span class="s1">segments</span><span class="s2">:</span>
+                <span class="s0">yield </span><span class="s1">segment</span>
+                <span class="s0">yield </span><span class="s1">line</span>
+        <span class="s0">else</span><span class="s2">:</span>
+            <span class="s0">yield from </span><span class="s1">self</span><span class="s2">.</span><span class="s1">segments</span>
+
+
+<span class="s0">class </span><span class="s1">SegmentLines</span><span class="s2">:</span>
+    <span class="s0">def </span><span class="s1">__init__</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">lines</span><span class="s2">: </span><span class="s1">Iterable</span><span class="s2">[</span><span class="s1">List</span><span class="s2">[</span><span class="s1">Segment</span><span class="s2">]], </span><span class="s1">new_lines</span><span class="s2">: </span><span class="s1">bool </span><span class="s2">= </span><span class="s0">False</span><span class="s2">) </span><span class="s1">-&gt; </span><span class="s0">None</span><span class="s2">:</span>
+        <span class="s4">&quot;&quot;&quot;A simple renderable containing a number of lines of segments. May be used as an intermediate 
+        in rendering process. 
+ 
+        Args: 
+            lines (Iterable[List[Segment]]): Lists of segments forming lines. 
+            new_lines (bool, optional): Insert new lines after each line. Defaults to False. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">lines </span><span class="s2">= </span><span class="s1">list</span><span class="s2">(</span><span class="s1">lines</span><span class="s2">)</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">new_lines </span><span class="s2">= </span><span class="s1">new_lines</span>
+
+    <span class="s0">def </span><span class="s1">__rich_console__</span><span class="s2">(</span>
+        <span class="s1">self</span><span class="s2">, </span><span class="s1">console</span><span class="s2">: </span><span class="s3">&quot;Console&quot;</span><span class="s2">, </span><span class="s1">options</span><span class="s2">: </span><span class="s3">&quot;ConsoleOptions&quot;</span>
+    <span class="s2">) </span><span class="s1">-&gt; </span><span class="s3">&quot;RenderResult&quot;</span><span class="s2">:</span>
+        <span class="s0">if </span><span class="s1">self</span><span class="s2">.</span><span class="s1">new_lines</span><span class="s2">:</span>
+            <span class="s1">new_line </span><span class="s2">= </span><span class="s1">Segment</span><span class="s2">.</span><span class="s1">line</span><span class="s2">()</span>
+            <span class="s0">for </span><span class="s1">line </span><span class="s0">in </span><span class="s1">self</span><span class="s2">.</span><span class="s1">lines</span><span class="s2">:</span>
+                <span class="s0">yield from </span><span class="s1">line</span>
+                <span class="s0">yield </span><span class="s1">new_line</span>
+        <span class="s0">else</span><span class="s2">:</span>
+            <span class="s0">for </span><span class="s1">line </span><span class="s0">in </span><span class="s1">self</span><span class="s2">.</span><span class="s1">lines</span><span class="s2">:</span>
+                <span class="s0">yield from </span><span class="s1">line</span>
+
+
+<span class="s0">if </span><span class="s1">__name__ </span><span class="s2">== </span><span class="s3">&quot;__main__&quot;</span><span class="s2">:  </span><span class="s6"># pragma: no cover</span>
+    <span class="s0">from </span><span class="s1">pip</span><span class="s2">.</span><span class="s1">_vendor</span><span class="s2">.</span><span class="s1">rich</span><span class="s2">.</span><span class="s1">console </span><span class="s0">import </span><span class="s1">Console</span>
+    <span class="s0">from </span><span class="s1">pip</span><span class="s2">.</span><span class="s1">_vendor</span><span class="s2">.</span><span class="s1">rich</span><span class="s2">.</span><span class="s1">syntax </span><span class="s0">import </span><span class="s1">Syntax</span>
+    <span class="s0">from </span><span class="s1">pip</span><span class="s2">.</span><span class="s1">_vendor</span><span class="s2">.</span><span class="s1">rich</span><span class="s2">.</span><span class="s1">text </span><span class="s0">import </span><span class="s1">Text</span>
+
+    <span class="s1">code </span><span class="s2">= </span><span class="s3">&quot;&quot;&quot;from rich.console import Console 
+console = Console() 
+text = Text.from_markup(&quot;Hello, [bold magenta]World[/]!&quot;) 
+console.print(text)&quot;&quot;&quot;</span>
+
+    <span class="s1">text </span><span class="s2">= </span><span class="s1">Text</span><span class="s2">.</span><span class="s1">from_markup</span><span class="s2">(</span><span class="s3">&quot;Hello, [bold magenta]World[/]!&quot;</span><span class="s2">)</span>
+
+    <span class="s1">console </span><span class="s2">= </span><span class="s1">Console</span><span class="s2">()</span>
+
+    <span class="s1">console</span><span class="s2">.</span><span class="s1">rule</span><span class="s2">(</span><span class="s3">&quot;rich.Segment&quot;</span><span class="s2">)</span>
+    <span class="s1">console</span><span class="s2">.</span><span class="s1">print</span><span class="s2">(</span>
+        <span class="s3">&quot;A Segment is the last step in the Rich render process before generating text with ANSI codes.&quot;</span>
+    <span class="s2">)</span>
+    <span class="s1">console</span><span class="s2">.</span><span class="s1">print</span><span class="s2">(</span><span class="s3">&quot;</span><span class="s0">\n</span><span class="s3">Consider the following code:</span><span class="s0">\n</span><span class="s3">&quot;</span><span class="s2">)</span>
+    <span class="s1">console</span><span class="s2">.</span><span class="s1">print</span><span class="s2">(</span><span class="s1">Syntax</span><span class="s2">(</span><span class="s1">code</span><span class="s2">, </span><span class="s3">&quot;python&quot;</span><span class="s2">, </span><span class="s1">line_numbers</span><span class="s2">=</span><span class="s0">True</span><span class="s2">))</span>
+    <span class="s1">console</span><span class="s2">.</span><span class="s1">print</span><span class="s2">()</span>
+    <span class="s1">console</span><span class="s2">.</span><span class="s1">print</span><span class="s2">(</span>
+        <span class="s3">&quot;When you call [b]print()[/b], Rich [i]renders[/i] the object in to the following:</span><span class="s0">\n</span><span class="s3">&quot;</span>
+    <span class="s2">)</span>
+    <span class="s1">fragments </span><span class="s2">= </span><span class="s1">list</span><span class="s2">(</span><span class="s1">console</span><span class="s2">.</span><span class="s1">render</span><span class="s2">(</span><span class="s1">text</span><span class="s2">))</span>
+    <span class="s1">console</span><span class="s2">.</span><span class="s1">print</span><span class="s2">(</span><span class="s1">fragments</span><span class="s2">)</span>
+    <span class="s1">console</span><span class="s2">.</span><span class="s1">print</span><span class="s2">()</span>
+    <span class="s1">console</span><span class="s2">.</span><span class="s1">print</span><span class="s2">(</span><span class="s3">&quot;The Segments are then processed to produce the following output:</span><span class="s0">\n</span><span class="s3">&quot;</span><span class="s2">)</span>
+    <span class="s1">console</span><span class="s2">.</span><span class="s1">print</span><span class="s2">(</span><span class="s1">text</span><span class="s2">)</span>
+    <span class="s1">console</span><span class="s2">.</span><span class="s1">print</span><span class="s2">(</span>
+        <span class="s3">&quot;</span><span class="s0">\n</span><span class="s3">You will only need to know this if you are implementing your own Rich renderables.&quot;</span>
+    <span class="s2">)</span>
+</pre>
+</body>
+</html>

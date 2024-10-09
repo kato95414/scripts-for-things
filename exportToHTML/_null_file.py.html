@@ -1,0 +1,90 @@
+<html>
+<head>
+<title>_null_file.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cf8e6d;}
+.s1 { color: #bcbec4;}
+.s2 { color: #bcbec4;}
+.s3 { color: #2aacb8;}
+.s4 { color: #6aab73;}
+</style>
+</head>
+<body bgcolor="#1e1f22">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+_null_file.py</font>
+</center></td></tr></table>
+<pre><span class="s0">from </span><span class="s1">types </span><span class="s0">import </span><span class="s1">TracebackType</span>
+<span class="s0">from </span><span class="s1">typing </span><span class="s0">import </span><span class="s1">IO</span><span class="s2">, </span><span class="s1">Iterable</span><span class="s2">, </span><span class="s1">Iterator</span><span class="s2">, </span><span class="s1">List</span><span class="s2">, </span><span class="s1">Optional</span><span class="s2">, </span><span class="s1">Type</span>
+
+
+<span class="s0">class </span><span class="s1">NullFile</span><span class="s2">(</span><span class="s1">IO</span><span class="s2">[</span><span class="s1">str</span><span class="s2">]):</span>
+    <span class="s0">def </span><span class="s1">close</span><span class="s2">(</span><span class="s1">self</span><span class="s2">) </span><span class="s1">-&gt; </span><span class="s0">None</span><span class="s2">:</span>
+        <span class="s0">pass</span>
+
+    <span class="s0">def </span><span class="s1">isatty</span><span class="s2">(</span><span class="s1">self</span><span class="s2">) </span><span class="s1">-&gt; bool</span><span class="s2">:</span>
+        <span class="s0">return False</span>
+
+    <span class="s0">def </span><span class="s1">read</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">__n</span><span class="s2">: </span><span class="s1">int </span><span class="s2">= </span><span class="s3">1</span><span class="s2">) </span><span class="s1">-&gt; str</span><span class="s2">:</span>
+        <span class="s0">return </span><span class="s4">&quot;&quot;</span>
+
+    <span class="s0">def </span><span class="s1">readable</span><span class="s2">(</span><span class="s1">self</span><span class="s2">) </span><span class="s1">-&gt; bool</span><span class="s2">:</span>
+        <span class="s0">return False</span>
+
+    <span class="s0">def </span><span class="s1">readline</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">__limit</span><span class="s2">: </span><span class="s1">int </span><span class="s2">= </span><span class="s3">1</span><span class="s2">) </span><span class="s1">-&gt; str</span><span class="s2">:</span>
+        <span class="s0">return </span><span class="s4">&quot;&quot;</span>
+
+    <span class="s0">def </span><span class="s1">readlines</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">__hint</span><span class="s2">: </span><span class="s1">int </span><span class="s2">= </span><span class="s3">1</span><span class="s2">) </span><span class="s1">-&gt; List</span><span class="s2">[</span><span class="s1">str</span><span class="s2">]:</span>
+        <span class="s0">return </span><span class="s2">[]</span>
+
+    <span class="s0">def </span><span class="s1">seek</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">__offset</span><span class="s2">: </span><span class="s1">int</span><span class="s2">, </span><span class="s1">__whence</span><span class="s2">: </span><span class="s1">int </span><span class="s2">= </span><span class="s3">1</span><span class="s2">) </span><span class="s1">-&gt; int</span><span class="s2">:</span>
+        <span class="s0">return </span><span class="s3">0</span>
+
+    <span class="s0">def </span><span class="s1">seekable</span><span class="s2">(</span><span class="s1">self</span><span class="s2">) </span><span class="s1">-&gt; bool</span><span class="s2">:</span>
+        <span class="s0">return False</span>
+
+    <span class="s0">def </span><span class="s1">tell</span><span class="s2">(</span><span class="s1">self</span><span class="s2">) </span><span class="s1">-&gt; int</span><span class="s2">:</span>
+        <span class="s0">return </span><span class="s3">0</span>
+
+    <span class="s0">def </span><span class="s1">truncate</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">__size</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">int</span><span class="s2">] = </span><span class="s3">1</span><span class="s2">) </span><span class="s1">-&gt; int</span><span class="s2">:</span>
+        <span class="s0">return </span><span class="s3">0</span>
+
+    <span class="s0">def </span><span class="s1">writable</span><span class="s2">(</span><span class="s1">self</span><span class="s2">) </span><span class="s1">-&gt; bool</span><span class="s2">:</span>
+        <span class="s0">return False</span>
+
+    <span class="s0">def </span><span class="s1">writelines</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">__lines</span><span class="s2">: </span><span class="s1">Iterable</span><span class="s2">[</span><span class="s1">str</span><span class="s2">]) </span><span class="s1">-&gt; </span><span class="s0">None</span><span class="s2">:</span>
+        <span class="s0">pass</span>
+
+    <span class="s0">def </span><span class="s1">__next__</span><span class="s2">(</span><span class="s1">self</span><span class="s2">) </span><span class="s1">-&gt; str</span><span class="s2">:</span>
+        <span class="s0">return </span><span class="s4">&quot;&quot;</span>
+
+    <span class="s0">def </span><span class="s1">__iter__</span><span class="s2">(</span><span class="s1">self</span><span class="s2">) </span><span class="s1">-&gt; Iterator</span><span class="s2">[</span><span class="s1">str</span><span class="s2">]:</span>
+        <span class="s0">return </span><span class="s1">iter</span><span class="s2">([</span><span class="s4">&quot;&quot;</span><span class="s2">])</span>
+
+    <span class="s0">def </span><span class="s1">__enter__</span><span class="s2">(</span><span class="s1">self</span><span class="s2">) </span><span class="s1">-&gt; IO</span><span class="s2">[</span><span class="s1">str</span><span class="s2">]:</span>
+        <span class="s0">pass</span>
+
+    <span class="s0">def </span><span class="s1">__exit__</span><span class="s2">(</span>
+        <span class="s1">self</span><span class="s2">,</span>
+        <span class="s1">__t</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">Type</span><span class="s2">[</span><span class="s1">BaseException</span><span class="s2">]],</span>
+        <span class="s1">__value</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">BaseException</span><span class="s2">],</span>
+        <span class="s1">__traceback</span><span class="s2">: </span><span class="s1">Optional</span><span class="s2">[</span><span class="s1">TracebackType</span><span class="s2">],</span>
+    <span class="s2">) </span><span class="s1">-&gt; </span><span class="s0">None</span><span class="s2">:</span>
+        <span class="s0">pass</span>
+
+    <span class="s0">def </span><span class="s1">write</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">text</span><span class="s2">: </span><span class="s1">str</span><span class="s2">) </span><span class="s1">-&gt; int</span><span class="s2">:</span>
+        <span class="s0">return </span><span class="s3">0</span>
+
+    <span class="s0">def </span><span class="s1">flush</span><span class="s2">(</span><span class="s1">self</span><span class="s2">) </span><span class="s1">-&gt; </span><span class="s0">None</span><span class="s2">:</span>
+        <span class="s0">pass</span>
+
+    <span class="s0">def </span><span class="s1">fileno</span><span class="s2">(</span><span class="s1">self</span><span class="s2">) </span><span class="s1">-&gt; int</span><span class="s2">:</span>
+        <span class="s0">return </span><span class="s2">-</span><span class="s3">1</span>
+
+
+<span class="s1">NULL_FILE </span><span class="s2">= </span><span class="s1">NullFile</span><span class="s2">()</span>
+</pre>
+</body>
+</html>
